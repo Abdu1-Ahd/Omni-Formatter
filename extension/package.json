@@ -1,0 +1,83 @@
+{
+  "name": "omni-formatter",
+  "displayName": "OmniFormatter",
+  "description": "Universal code formatter — single WASM binary, all languages, zero config migration",
+  "version": "0.1.0",
+  "publisher": "Abdu1-Ahd",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Abdu1-Ahd/Omni-Formatter"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Formatters"],
+  "keywords": ["formatter", "prettier", "black", "rustfmt", "gofmt", "wasm"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      { "id": "javascript" },
+      { "id": "typescript" },
+      { "id": "javascriptreact" },
+      { "id": "typescriptreact" },
+      { "id": "python" },
+      { "id": "rust" },
+      { "id": "go" },
+      { "id": "css" },
+      { "id": "scss" },
+      { "id": "less" },
+      { "id": "html" },
+      { "id": "svelte" },
+      { "id": "vue" },
+      { "id": "astro" }
+    ],
+    "configuration": {
+      "title": "OmniFormatter",
+      "properties": {
+        "omniFormatter.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable OmniFormatter for all supported languages."
+        },
+        "omniFormatter.logLevel": {
+          "type": "string",
+          "enum": ["error", "warn", "info", "debug"],
+          "default": "warn",
+          "description": "Log verbosity level for the OmniFormatter output channel."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "omniFormatter.formatDocument",
+        "title": "OmniFormatter: Format Document"
+      },
+      {
+        "command": "omniFormatter.showStatus",
+        "title": "OmniFormatter: Show Status"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --platform=node --target=node20 --format=cjs",
+    "build:workers": "esbuild workers/formatWorker.ts --bundle --outfile=dist/workers/formatWorker.js --platform=node --target=node20 --format=cjs",
+    "build:all": "npm run build && npm run build:workers",
+    "lint": "eslint src/ workers/ --ext .ts",
+    "test": "jest --testPathPattern='src/__tests__'",
+    "format:check": "prettier --check 'src/**/*.ts' 'workers/**/*.ts'"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "esbuild": "^0.21.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "prettier": "^3.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.4.0"
+  }
+}
