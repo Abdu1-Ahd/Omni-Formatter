@@ -1,0 +1,62 @@
+name: Bug Report
+description: Report unexpected behavior or a critical failure
+labels: ["type::bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill in all required fields. Incomplete reports will be closed.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Clear Description
+      description: Describe the bug. What happened? What did you expect to happen?
+      placeholder: "When formatting a TypeScript file with JSX, the embedded HTML block is deleted."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Exact Reproduction Steps
+      description: Provide a minimal, reproducible example. Include the source file content if relevant.
+      placeholder: |
+        1. Open a `.tsx` file containing a styled-component template literal
+        2. Save the file (format on save)
+        3. Observe: the template literal content is erased
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Windows
+        - macOS
+        - Linux (Ubuntu)
+        - Linux (Other)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: OmniFormatter Version
+      description: Run `omnifmt-cli --version` or check the extension's installed version in VS Code.
+      options:
+        - main (latest)
+        - 0.1.0
+        - Other (specify in description)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log Output / Stack Trace
+      description: Paste the VS Code Output panel content for the OmniFormatter channel, or any Rust panic output.
+      render: shell
+    validations:
+      required: false

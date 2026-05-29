@@ -1,0 +1,33 @@
+# CODEOWNERS
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Catch-all — all files require review from the project owner
+*                           @Abdu1-Ahd
+
+# CI/CD workflows — mandatory review on any pipeline change
+/.github/workflows/         @Abdu1-Ahd
+
+# WASM core — highest criticality, mandatory review
+/crates/core/               @Abdu1-Ahd
+
+# Shared protocol types — any change here is a breaking API change
+/crates/protocol/           @Abdu1-Ahd
+
+# Language modules — each module requires full review
+/crates/lang-js/            @Abdu1-Ahd
+/crates/lang-python/        @Abdu1-Ahd
+/crates/lang-rust/          @Abdu1-Ahd
+/crates/lang-go/            @Abdu1-Ahd
+/crates/lang-css/           @Abdu1-Ahd
+
+# Extension host — VS Code API surface
+/extension/                 @Abdu1-Ahd
+
+# Registry server — security-sensitive publish/verify logic
+/registry/                  @Abdu1-Ahd
+
+# CLI tool
+/crates/cli/                @Abdu1-Ahd
+
+# Security policy
+/.github/SECURITY.md        @Abdu1-Ahd
