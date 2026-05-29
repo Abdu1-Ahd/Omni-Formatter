@@ -1,0 +1,85 @@
+name: Compat Check — Reference Formatter Parity
+
+on:
+  schedule:
+    # Run every Monday at 03:00 UTC
+    - cron: "0 3 * * 1"
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  prettier-compat:
+    name: Prettier 3.x Compat Check (lang-js)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable + WASM target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --version "^0.13"
+
+      - name: Build lang-js WASM module
+        run: bash scripts/build-wasm.sh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Prettier 3.x (reference formatter)
+        run: npm install -g prettier@3
+
+      - name: Run compat check
+        run: bash scripts/run-compat-check.sh
+
+      - name: Upload diff on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compat-diff
+          path: tests/compat/diff/
+
+  black-compat:
+    name: Black 24.x Compat Check (lang-python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python + Black
+        run: |
+          python -m pip install --upgrade pip
+          pip install black==24.*
+
+      - name: Run compat check (stub — Phase 4)
+        run: echo "lang-python compat check runs in Phase 4"
+
+  rustfmt-compat:
+    name: rustfmt Compat Check (lang-rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable + rustfmt
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Run compat check (stub — Phase 4)
+        run: echo "lang-rust compat check runs in Phase 4"
+
+  gofmt-compat:
+    name: gofmt Compat Check (lang-go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Run compat check (stub — Phase 4)
+        run: echo "lang-go compat check runs in Phase 4"
