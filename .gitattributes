@@ -1,0 +1,13 @@
+# Enforce LF line endings across all platforms
+* text=auto eol=lf
+
+# Binary files — no line ending conversion
+*.wasm binary
+*.vsix binary
+*.png binary
+*.ico binary
+
+# Linguist — mark generated/vendored files
+extension/dist/** linguist-generated=true
+pkg/** linguist-generated=true
+tests/fixtures/generated/** linguist-vendored=true

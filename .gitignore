@@ -1,0 +1,44 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# WASM build outputs (non-dist)
+*.wasm
+!extension/dist/*.wasm
+pkg/
+
+# Node
+node_modules/
+dist/
+.pnpm-store/
+pnpm-lock.yaml
+
+# VS Code extension artifacts
+*.vsix
+out/
+
+# WASM V8 compiled module cache
+*.module-cache
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Test artifacts
+/tests/fixtures/generated/
+/coverage/
+
+# Registry uploads (local dev)
+registry/uploads/
