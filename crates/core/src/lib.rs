@@ -12,7 +12,14 @@
 //! JSON string values inside the JSON payload.
 
 pub mod arena;
+pub mod comments;
+pub mod debug;
+pub mod incremental;
 pub mod memory;
+pub mod range;
+pub mod stitch;
+pub mod unicode;
+pub mod zones;
 
 use wasm_bindgen::prelude::*;
 
