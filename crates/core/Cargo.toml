@@ -1,0 +1,28 @@
+[package]
+name        = "core"
+description = "OmniFormatter WASM core binary — format dispatcher, zone detector, comment anchoring, diff generator"
+version.workspace     = true
+edition.workspace     = true
+license.workspace     = true
+authors.workspace     = true
+repository.workspace  = true
+
+# Compile as a C-compatible dynamic library for WASM (required by wasm-bindgen)
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+protocol     = { path = "../protocol" }
+serde        = { workspace = true }
+serde_json   = { workspace = true }
+wasm-bindgen = { workspace = true }
+bumpalo      = { workspace = true }
+unicode-width = { workspace = true }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[features]
+# Enable debug double-format idempotency check (L-09 mitigation)
+# Disabled in release builds for performance
+debug = []

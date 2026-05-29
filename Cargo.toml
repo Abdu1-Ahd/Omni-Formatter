@@ -1,0 +1,39 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/protocol",
+    "crates/core",
+]
+
+[workspace.package]
+version     = "0.1.0"
+edition     = "2021"
+license     = "MIT"
+authors     = ["Abdu1-Ahd"]
+repository  = "https://github.com/Abdu1-Ahd/Omni-Formatter"
+
+[workspace.dependencies]
+# Serialization
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+
+# WASM bindings
+wasm-bindgen = "0.2"
+
+# Arena allocator (L-01 mitigation)
+bumpalo     = { version = "3", features = ["collections"] }
+
+# Unicode display-width (L-14 mitigation)
+unicode-width = "0.1"
+
+[profile.release]
+# Optimize for size — critical for WASM binary targets
+opt-level   = "s"
+lto         = true
+codegen-units = 1
+panic       = "abort"
+
+[profile.dev]
+# Faster incremental builds during development
+opt-level   = 0
+debug       = true
