@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OmniFormatter lang-rust Configuration Schema",
+  "description": "Configuration options for the Rust language module. Defaults match rustfmt stable.",
+  "type": "object",
+  "properties": {
+    "maxWidth": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 500,
+      "default": 100,
+      "description": "Maximum line width. rustfmt default is 100, not 80."
+    },
+    "tabSpaces": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16,
+      "default": 4,
+      "description": "Number of spaces per indent level. rustfmt default is 4."
+    },
+    "hardTabs": {
+      "type": "boolean",
+      "default": false,
+      "description": "Use hard tabs for indentation."
+    },
+    "newlineStyle": {
+      "type": "string",
+      "enum": ["Auto", "Unix", "Windows", "Native"],
+      "default": "Auto",
+      "description": "Line ending style."
+    },
+    "edition": {
+      "type": "string",
+      "enum": ["2015", "2018", "2021"],
+      "default": "2021",
+      "description": "Rust edition to target."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["opinionated", "advanced"],
+      "default": "opinionated",
+      "description": "'opinionated' = rustfmt stable compat. 'advanced' = full option surface."
+    }
+  },
+  "additionalProperties": false
+}

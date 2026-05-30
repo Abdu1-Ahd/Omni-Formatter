@@ -4,6 +4,10 @@ members = [
     "crates/protocol",
     "crates/core",
     "crates/lang-js",
+    "crates/lang-python",
+    "crates/lang-rust",
+    "crates/lang-go",
+    "crates/lang-css",
 ]
 
 [workspace.package]

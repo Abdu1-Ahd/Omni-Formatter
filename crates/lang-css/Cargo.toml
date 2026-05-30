@@ -1,0 +1,18 @@
+[package]
+name        = "lang-css"
+description = "OmniFormatter CSS/SCSS/Less/HTML language module — Prettier 3.x output parity"
+version.workspace     = true
+edition.workspace     = true
+license.workspace     = true
+authors.workspace     = true
+repository.workspace  = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+protocol      = { path = "../protocol" }
+serde         = { workspace = true }
+serde_json    = { workspace = true }
+wasm-bindgen  = { workspace = true }
+unicode-width = { workspace = true }

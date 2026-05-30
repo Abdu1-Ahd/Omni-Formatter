@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OmniFormatter lang-css Configuration Schema",
+  "description": "Configuration for CSS, SCSS, Less, and HTML. Defaults match Prettier 3.x.",
+  "type": "object",
+  "properties": {
+    "printWidth": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 500,
+      "default": 80,
+      "description": "Maximum line length in display columns."
+    },
+    "tabWidth": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16,
+      "default": 2,
+      "description": "Number of spaces per indent level."
+    },
+    "useTabs": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indent with tabs instead of spaces."
+    },
+    "singleQuote": {
+      "type": "boolean",
+      "default": false,
+      "description": "Use single quotes in CSS attribute selectors and values."
+    },
+    "endOfLine": {
+      "type": "string",
+      "enum": ["lf", "crlf", "cr", "auto"],
+      "default": "lf"
+    },
+    "htmlWhitespaceSensitivity": {
+      "type": "string",
+      "enum": ["css", "strict", "ignore"],
+      "default": "css",
+      "description": "How to handle whitespace in HTML. 'css' follows CSS display property semantics."
+    },
+    "vueIndentScriptAndStyle": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indent <script> and <style> blocks in Vue SFC files."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["opinionated", "advanced"],
+      "default": "opinionated"
+    }
+  },
+  "additionalProperties": false
+}

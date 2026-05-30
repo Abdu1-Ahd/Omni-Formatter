@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OmniFormatter lang-go Configuration Schema",
+  "description": "Configuration for the Go language module. gofmt is opinionated with zero configuration. These settings affect only non-gofmt extensions.",
+  "type": "object",
+  "properties": {
+    "organizeImports": {
+      "type": "boolean",
+      "default": true,
+      "description": "Organise and group imports (goimports style). Enabled by default."
+    },
+    "endOfLine": {
+      "type": "string",
+      "enum": ["lf", "crlf", "auto"],
+      "default": "lf",
+      "description": "Line ending style. gofmt uses LF. Override only if your project requires CRLF."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["opinionated", "advanced"],
+      "default": "opinionated",
+      "description": "'opinionated' = gofmt byte-for-byte parity. 'advanced' = allows minor config overrides."
+    }
+  },
+  "additionalProperties": false
+}

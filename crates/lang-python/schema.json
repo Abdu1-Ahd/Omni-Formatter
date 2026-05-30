@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OmniFormatter lang-python Configuration Schema",
+  "description": "Configuration options for the Python language module. All fields optional. Defaults match Black 24.x.",
+  "type": "object",
+  "properties": {
+    "lineLength": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 500,
+      "default": 88,
+      "description": "Maximum line length. Black default is 88, not 80."
+    },
+    "skipStringNormalization": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, do not normalize string quotes. Preserves original quote style."
+    },
+    "skipMagicTrailingComma": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, ignore trailing commas that force multi-line output."
+    },
+    "targetVersion": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["py38","py39","py310","py311","py312","py313"] },
+      "default": ["py39"],
+      "description": "Target Python version(s). Affects some formatting decisions."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["opinionated", "advanced"],
+      "default": "opinionated",
+      "description": "'opinionated' = Black 24.x compat guaranteed. 'advanced' = full option surface."
+    }
+  },
+  "additionalProperties": false
+}
