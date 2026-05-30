@@ -8,6 +8,7 @@ members = [
     "crates/lang-rust",
     "crates/lang-go",
     "crates/lang-css",
+    "cli",
 ]
 
 [workspace.package]
