@@ -11,8 +11,12 @@ repository.workspace  = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-protocol      = { path = "../protocol" }
-serde         = { workspace = true }
-serde_json    = { workspace = true }
-wasm-bindgen  = { workspace = true }
-unicode-width = { workspace = true }
+protocol        = { path = "../protocol" }
+serde           = { workspace = true }
+serde_json      = { workspace = true }
+wasm-bindgen    = { workspace = true }
+unicode-width   = { workspace = true }
+tree-sitter     = { workspace = true }
+tree-sitter-css = { workspace = true }
+tree-sitter-html= { workspace = true }
+log             = { workspace = true }

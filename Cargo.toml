@@ -32,6 +32,21 @@ bumpalo     = { version = "3", features = ["collections"] }
 # Unicode display-width (L-14 mitigation)
 unicode-width = "0.1"
 
+# Tree-sitter parsing infrastructure
+tree-sitter = "0.22"
+
+# Language grammars (vendored C bindings — wasm32 compatible via emscripten)
+tree-sitter-javascript = "0.21"
+tree-sitter-typescript = "0.21"
+tree-sitter-python     = "0.21"
+tree-sitter-rust       = "0.21"
+tree-sitter-go         = "0.21"
+tree-sitter-css        = "0.21"
+tree-sitter-html       = "0.20"
+
+# Logging
+log         = "0.4"
+
 [profile.release]
 # Optimize for size — critical for WASM binary targets
 opt-level   = "s"
