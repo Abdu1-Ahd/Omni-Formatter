@@ -61,7 +61,10 @@
     ]
   },
   "scripts": {
-    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --platform=node --target=node20 --format=cjs",
+    "vscode:prepublish": "npm run package",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
     "build:workers": "esbuild workers/formatWorker.ts --bundle --outfile=dist/workers/formatWorker.js --platform=node --target=node20 --format=cjs",
     "build:all": "npm run build && npm run build:workers",
     "lint": "eslint src/ workers/ --ext .ts",
