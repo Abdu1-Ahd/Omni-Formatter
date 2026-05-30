@@ -1,10 +1,23 @@
 //! Python config adapter — reads `pyproject.toml` [tool.black] section
 //! and translates to ConfigIR (L-10 mitigation).
+//!
+//! # Priority chain (this module handles Layer 2)
+//!
+//! .omnifmt.json → **pyproject.toml [tool.black]** → setup.cfg [tool:black] → .editorconfig → defaults
+//!
+//! # TOML Parsing
+//!
+//! Uses the `toml` crate (v0.8) to parse `pyproject.toml`.
+//! Unknown fields are silently ignored (Black forwards-compat rule).
+//! If the file is malformed TOML, returns `ConfigIR::default()` with `print_width = 88`.
 
 use protocol::config::{ConfigIR, QuoteStyle};
 use serde::Deserialize;
+use std::path::Path;
 
-/// The [tool.black] section of pyproject.toml.
+// ── Black config schema ───────────────────────────────────────────────────
+
+/// The `[tool.black]` section of `pyproject.toml`.
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "kebab-case", default)]
 pub struct BlackConfig {
@@ -17,6 +30,8 @@ pub struct BlackConfig {
     /// Target Python version(s). E.g. ["py39", "py310"].
     #[serde(default)]
     pub target_version: Vec<String>,
+    /// Preview mode (Black 23.x+). Default: false.
+    pub preview: Option<bool>,
 }
 
 impl BlackConfig {
@@ -33,20 +48,64 @@ impl BlackConfig {
     }
 }
 
-/// Parse the [tool.black] section from a pyproject.toml string.
+// ── Root TOML structure ───────────────────────────────────────────────────
+
+/// Top-level `pyproject.toml` structure (only the fields we care about).
+#[derive(Debug, Default, Deserialize)]
+struct PyprojectToml {
+    tool: Option<PyprojectTool>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct PyprojectTool {
+    black: Option<BlackConfig>,
+}
+
+// ── Public API ────────────────────────────────────────────────────────────
+
+/// Parse the `[tool.black]` section from a `pyproject.toml` file path.
 ///
-/// We extract only the [tool.black] subsection as JSON for simplicity.
-/// Unknown fields are silently ignored.
-pub fn config_from_pyproject_toml(toml_str: &str) -> ConfigIR {
-    // Phase 4 scaffold: TOML parsing requires the `toml` crate (added in Phase 4).
-    // For now, return Black defaults.
+/// Returns the resolved `ConfigIR` with Black options applied.
+/// Falls back to Black defaults if the file is missing, malformed, or has
+/// no `[tool.black]` section.
+pub fn config_from_pyproject_toml_path(path: &Path) -> ConfigIR {
     let mut config = ConfigIR::default();
-    config.print_width = 88; // Black's default differs from Prettier's 80
-    let _ = toml_str;
+    config.print_width = 88; // Black's default
+
+    let content = match std::fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(_) => return config,
+    };
+
+    config_from_pyproject_toml(&content)
+}
+
+/// Parse the `[tool.black]` section from a `pyproject.toml` string.
+///
+/// Returns the resolved `ConfigIR` with Black options applied.
+pub fn config_from_pyproject_toml(toml_str: &str) -> ConfigIR {
+    let mut config = ConfigIR::default();
+    config.print_width = 88; // Black's default
+
+    let parsed: PyprojectToml = match toml::from_str(toml_str) {
+        Ok(p) => p,
+        Err(e) => {
+            log::warn!("pyproject.toml parse error: {} — using Black defaults", e);
+            return config;
+        }
+    };
+
+    if let Some(tool) = parsed.tool {
+        if let Some(black) = tool.black {
+            black.apply_to(&mut config);
+        }
+    }
+
     config
 }
 
-/// Parse [tool.black] from a pre-extracted JSON representation.
+/// Parse `[tool.black]` from a pre-extracted JSON representation.
+/// Used by the extension host's TypeScript → Rust bridge.
 pub fn config_from_black_json(json: &str) -> ConfigIR {
     let mut config = ConfigIR::default();
     config.print_width = 88; // Black default
@@ -57,18 +116,108 @@ pub fn config_from_black_json(json: &str) -> ConfigIR {
     config
 }
 
+// ── setup.cfg parser ──────────────────────────────────────────────────────
+
+/// Parse `[tool:black]` from a `setup.cfg` string (INI format).
+///
+/// `setup.cfg` uses `=` instead of TOML syntax. We do a minimal hand-parse.
+pub fn config_from_setup_cfg(cfg_str: &str) -> ConfigIR {
+    let mut config = ConfigIR::default();
+    config.print_width = 88;
+
+    let mut in_black_section = false;
+    for line in cfg_str.lines() {
+        let trimmed = line.trim();
+        if trimmed == "[tool:black]" {
+            in_black_section = true;
+            continue;
+        }
+        if trimmed.starts_with('[') {
+            in_black_section = false;
+        }
+        if !in_black_section { continue; }
+        if let Some((key, val)) = trimmed.split_once('=') {
+            let key = key.trim();
+            let val = val.trim();
+            match key {
+                "line-length" | "line_length" => {
+                    if let Ok(n) = val.parse::<u16>() {
+                        config.print_width = n;
+                    }
+                }
+                "skip-string-normalization" | "skip_string_normalization" => {
+                    if val == "true" || val == "1" {
+                        config.quote_style = QuoteStyle::Single;
+                    }
+                }
+                "skip-magic-trailing-comma" | "skip_magic_trailing_comma" => {
+                    if val == "true" || val == "1" {
+                        config.trailing_comma = false;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    config
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn black_default_line_length_is_88() {
-        let config = config_from_black_json("{}");
+        let config = config_from_pyproject_toml("");
         assert_eq!(config.print_width, 88);
     }
 
     #[test]
-    fn black_line_length_overrides_default() {
+    fn pyproject_toml_full_parse() {
+        let toml = r#"
+[tool.black]
+line-length = 100
+skip-string-normalization = true
+target-version = ["py39", "py310"]
+"#;
+        let config = config_from_pyproject_toml(toml);
+        assert_eq!(config.print_width, 100);
+        assert_eq!(config.quote_style, QuoteStyle::Single);
+    }
+
+    #[test]
+    fn pyproject_toml_magic_trailing_comma() {
+        let toml = r#"
+[tool.black]
+skip-magic-trailing-comma = true
+"#;
+        let config = config_from_pyproject_toml(toml);
+        assert!(!config.trailing_comma);
+    }
+
+    #[test]
+    fn pyproject_toml_missing_black_section() {
+        let toml = r#"
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+"#;
+        let config = config_from_pyproject_toml(toml);
+        assert_eq!(config.print_width, 88); // fallback to Black default
+    }
+
+    #[test]
+    fn setup_cfg_parse() {
+        let cfg = "[tool:black]\nline-length = 79\nskip-string-normalization = true\n";
+        let config = config_from_setup_cfg(cfg);
+        assert_eq!(config.print_width, 79);
+        assert_eq!(config.quote_style, QuoteStyle::Single);
+    }
+
+    #[test]
+    fn black_json_line_length_overrides_default() {
         let config = config_from_black_json(r#"{"line-length": 100}"#);
         assert_eq!(config.print_width, 100);
     }

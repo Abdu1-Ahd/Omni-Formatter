@@ -47,6 +47,9 @@ tree-sitter-html       = "0.20"
 # Logging
 log         = "0.4"
 
+# TOML parsing (pyproject.toml, rustfmt.toml, Cargo.toml config)
+toml        = { version = "0.8", features = ["parse"] }
+
 [profile.release]
 # Optimize for size — critical for WASM binary targets
 opt-level   = "s"

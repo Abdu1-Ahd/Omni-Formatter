@@ -19,3 +19,4 @@ unicode-width   = { workspace = true }
 tree-sitter     = { workspace = true }
 tree-sitter-rust= { workspace = true }
 log             = { workspace = true }
+toml            = { workspace = true }
