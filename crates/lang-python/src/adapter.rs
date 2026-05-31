@@ -69,8 +69,10 @@ struct PyprojectTool {
 /// Falls back to Black defaults if the file is missing, malformed, or has
 /// no `[tool.black]` section.
 pub fn config_from_pyproject_toml_path(path: &Path) -> ConfigIR {
-    let mut config = ConfigIR::default();
-    config.print_width = 88; // Black's default
+    let config = ConfigIR {
+        print_width: 88, // Black's default
+        ..Default::default()
+    };
 
     let content = match std::fs::read_to_string(path) {
         Ok(s) => s,
@@ -84,8 +86,10 @@ pub fn config_from_pyproject_toml_path(path: &Path) -> ConfigIR {
 ///
 /// Returns the resolved `ConfigIR` with Black options applied.
 pub fn config_from_pyproject_toml(toml_str: &str) -> ConfigIR {
-    let mut config = ConfigIR::default();
-    config.print_width = 88; // Black's default
+    let mut config = ConfigIR {
+        print_width: 88, // Black's default
+        ..Default::default()
+    };
 
     let parsed: PyprojectToml = match toml::from_str(toml_str) {
         Ok(p) => p,
@@ -107,11 +111,12 @@ pub fn config_from_pyproject_toml(toml_str: &str) -> ConfigIR {
 /// Parse `[tool.black]` from a pre-extracted JSON representation.
 /// Used by the extension host's TypeScript → Rust bridge.
 pub fn config_from_black_json(json: &str) -> ConfigIR {
-    let mut config = ConfigIR::default();
-    config.print_width = 88; // Black default
-    match serde_json::from_str::<BlackConfig>(json) {
-        Ok(bc) => bc.apply_to(&mut config),
-        Err(_) => {}
+    let mut config = ConfigIR {
+        print_width: 88, // Black default
+        ..Default::default()
+    };
+    if let Ok(bc) = serde_json::from_str::<BlackConfig>(json) {
+        bc.apply_to(&mut config);
     }
     config
 }
@@ -122,8 +127,10 @@ pub fn config_from_black_json(json: &str) -> ConfigIR {
 ///
 /// `setup.cfg` uses `=` instead of TOML syntax. We do a minimal hand-parse.
 pub fn config_from_setup_cfg(cfg_str: &str) -> ConfigIR {
-    let mut config = ConfigIR::default();
-    config.print_width = 88;
+    let mut config = ConfigIR {
+        print_width: 88,
+        ..Default::default()
+    };
 
     let mut in_black_section = false;
     for line in cfg_str.lines() {
@@ -147,15 +154,11 @@ pub fn config_from_setup_cfg(cfg_str: &str) -> ConfigIR {
                         config.print_width = n;
                     }
                 }
-                "skip-string-normalization" | "skip_string_normalization" => {
-                    if val == "true" || val == "1" {
-                        config.quote_style = QuoteStyle::Single;
-                    }
+                "skip-string-normalization" | "skip_string_normalization" if val == "true" || val == "1" => {
+                    config.quote_style = QuoteStyle::Single;
                 }
-                "skip-magic-trailing-comma" | "skip_magic_trailing_comma" => {
-                    if val == "true" || val == "1" {
-                        config.trailing_comma = false;
-                    }
+                "skip-magic-trailing-comma" | "skip_magic_trailing_comma" if val == "true" || val == "1" => {
+                    config.trailing_comma = false;
                 }
                 _ => {}
             }

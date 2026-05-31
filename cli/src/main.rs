@@ -56,6 +56,7 @@ enum Commands {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct RegistryResolveResponse {
     name: String,
     version: String,

@@ -43,7 +43,7 @@ impl RustfmtConfig {
     pub fn apply_to(&self, base: &mut ConfigIR) {
         // rustfmt defaults differ from Prettier
         base.print_width = self.max_width.unwrap_or(100);
-        base.indent_size = self.tab_spaces.unwrap_or(4) as u8;
+        base.indent_size = self.tab_spaces.unwrap_or(4);
         if self.hard_tabs.unwrap_or(false) {
             base.indent_style = IndentStyle::Tabs;
         }
@@ -109,13 +109,13 @@ pub fn config_from_rustfmt_json(json: &str) -> ConfigIR {
     config
 }
 
-/// Returns the rustfmt stable defaults as a ConfigIR.
 fn rustfmt_defaults() -> ConfigIR {
-    let mut config = ConfigIR::default();
-    config.print_width = 100;
-    config.indent_size = 4;
-    config.trailing_comma = true; // Vertical → trailing comma in multi-line
-    config
+    ConfigIR {
+        print_width: 100,
+        indent_size: 4,
+        trailing_comma: true, // Vertical → trailing comma in multi-line
+        ..Default::default()
+    }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────

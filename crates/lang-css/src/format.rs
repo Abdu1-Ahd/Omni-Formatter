@@ -56,16 +56,16 @@ impl Line {
 
 struct CssFormatter<'a> {
     source: &'a [u8],
-    config: &'a ConfigIR,
-    dialect: CssDialect,
+    _config: &'a ConfigIR,
+    _dialect: CssDialect,
 }
 
 impl<'a> CssFormatter<'a> {
     fn new(source: &'a [u8], config: &'a ConfigIR, dialect: CssDialect) -> Self {
         Self {
             source,
-            config,
-            dialect,
+            _config: config,
+            _dialect: dialect,
         }
     }
 
@@ -131,7 +131,6 @@ impl<'a> CssFormatter<'a> {
                         None
                     };
                     let after_prettier_ignore = prev_comment
-                        .as_deref()
                         .map(|c| c.contains("prettier-ignore"))
                         .unwrap_or(false);
 
@@ -508,8 +507,8 @@ impl<'a> HtmlFormatter<'a> {
     }
 
     fn walk_html(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let mut add_blank = |out: &mut Vec<Line>| {
-            if out.last().map_or(false, |l| !l.content.is_empty()) {
+        let add_blank = |out: &mut Vec<Line>| {
+            if out.last().is_some_and(|l| !l.content.is_empty()) {
                 out.push(Line::new(0, ""));
             }
         };
@@ -594,7 +593,7 @@ impl<'a> HtmlFormatter<'a> {
 
         let mut inline_tag = format!("<{}", tag_name);
         for attr in &attrs {
-            inline_tag.push_str(" ");
+            inline_tag.push(' ');
             inline_tag.push_str(attr);
         }
         inline_tag.push_str(if is_self_closing { " />" } else { ">" });
@@ -674,10 +673,8 @@ impl<'a> HtmlFormatter<'a> {
         }
         let mut first = true;
         for child in &children {
-            if !first && Self::is_block_or_special(*child, self.source) {
-                if out.last().map_or(false, |l| !l.content.is_empty()) {
-                    out.push(Line::new(0, ""));
-                }
+            if !first && Self::is_block_or_special(*child, self.source) && out.last().is_some_and(|l| !l.content.is_empty()) {
+                out.push(Line::new(0, ""));
             }
             self.walk_html(*child, indent + 1, out);
             first = false;

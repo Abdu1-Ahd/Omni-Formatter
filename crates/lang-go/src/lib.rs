@@ -27,7 +27,6 @@ pub mod adapter;
 pub mod format;
 pub mod plugin;
 
-use protocol::ConfigIR;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

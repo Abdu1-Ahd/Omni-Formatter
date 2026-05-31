@@ -390,33 +390,30 @@ impl<'a> RustFormatter<'a> {
         }
         out.push(Line::new(indent, "}".to_string()));
         if let Some(alt) = node.child_by_field_name("alternative") {
-            match alt.kind() {
-                "else_clause" => {
-                    // Merge the closing } else {
-                    let last = out.pop().unwrap_or(Line::new(indent, "}"));
-                    if let Some(body) = alt.named_child(0) {
-                        if body.kind() == "if_expression" {
-                            // else if
-                            let cond2 = body
-                                .child_by_field_name("condition")
-                                .map(|n| self.format_expr(n, indent))
-                                .unwrap_or_default();
-                            out.push(Line::new(
-                                indent,
-                                format!("{} else if {} {{", last.content, cond2),
-                            ));
-                            if let Some(b2) = body.child_by_field_name("consequence") {
-                                self.walk_block_inner(b2, indent + 1, out);
-                            }
-                            out.push(Line::new(indent, "}".to_string()));
-                        } else {
-                            out.push(Line::new(indent, format!("{} else {{", last.content)));
-                            self.walk_block_inner(body, indent + 1, out);
-                            out.push(Line::new(indent, "}".to_string()));
+            if alt.kind() == "else_clause" {
+                // Merge the closing } else {
+                let last = out.pop().unwrap_or(Line::new(indent, "}"));
+                if let Some(body) = alt.named_child(0) {
+                    if body.kind() == "if_expression" {
+                        // else if
+                        let cond2 = body
+                            .child_by_field_name("condition")
+                            .map(|n| self.format_expr(n, indent))
+                            .unwrap_or_default();
+                        out.push(Line::new(
+                            indent,
+                            format!("{} else if {} {{", last.content, cond2),
+                        ));
+                        if let Some(b2) = body.child_by_field_name("consequence") {
+                            self.walk_block_inner(b2, indent + 1, out);
                         }
+                        out.push(Line::new(indent, "}".to_string()));
+                    } else {
+                        out.push(Line::new(indent, format!("{} else {{", last.content)));
+                        self.walk_block_inner(body, indent + 1, out);
+                        out.push(Line::new(indent, "}".to_string()));
                     }
                 }
-                _ => {}
             }
         }
     }

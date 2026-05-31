@@ -67,7 +67,7 @@ pub fn detect_zones(source: &[u8], host_language_id: &str) -> ZoneMap {
         let mut cursor = tree.walk();
         let mut has_embedded = false;
 
-        traverse_html(&mut cursor, source, &mut zones, &mut has_embedded);
+        traverse_html(&mut cursor, &mut zones, &mut has_embedded);
 
         if !has_embedded {
             return ZoneMap {
@@ -104,7 +104,6 @@ fn single_zone(source: &[u8], host_language_id: &str) -> Zone {
 
 fn traverse_html(
     cursor: &mut tree_sitter::TreeCursor,
-    source: &[u8],
     zones: &mut Vec<Zone>,
     has_embedded: &mut bool,
 ) {
@@ -147,7 +146,7 @@ fn traverse_html(
         }
 
         if cursor.goto_first_child() {
-            traverse_html(cursor, source, zones, has_embedded);
+            traverse_html(cursor, zones, has_embedded);
             cursor.goto_parent();
         }
         if !cursor.goto_next_sibling() {

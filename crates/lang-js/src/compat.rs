@@ -80,15 +80,19 @@ mod tests {
 
     #[test]
     fn opinionated_mode_is_strict_compat() {
-        let mut config = ConfigIR::default();
-        config.mode = ModuleMode::Opinionated;
+        let config = ConfigIR {
+            mode: ModuleMode::Opinionated,
+            ..Default::default()
+        };
         assert!(is_strict_compat_mode(&config));
     }
 
     #[test]
     fn advanced_mode_is_not_strict_compat() {
-        let mut config = ConfigIR::default();
-        config.mode = ModuleMode::Advanced;
+        let config = ConfigIR {
+            mode: ModuleMode::Advanced,
+            ..Default::default()
+        };
         assert!(!is_strict_compat_mode(&config));
     }
 

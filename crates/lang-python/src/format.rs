@@ -85,12 +85,6 @@ impl<'a> PythonFormatter<'a> {
             QuoteStyle::Double => '"',
             QuoteStyle::Single => '\'',
         };
-        // Black always prefers double quotes; override config unless user explicitly set single
-        let target_quote = if matches!(config.quote_style, QuoteStyle::Single) {
-            '\''
-        } else {
-            '"'
-        };
         Self {
             source,
             config,

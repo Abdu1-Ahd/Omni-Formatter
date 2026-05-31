@@ -96,9 +96,8 @@ pub fn parse_prettierrc_json(json: &str) -> Result<PrettierConfig, String> {
 /// Starts from `ConfigIR::default()` and overlays Prettier settings.
 pub fn config_from_prettierrc_json(json: &str) -> ConfigIR {
     let mut config = ConfigIR::default();
-    match parse_prettierrc_json(json) {
-        Ok(prettier) => prettier.apply_to(&mut config),
-        Err(_) => {} // Malformed .prettierrc — use defaults
+    if let Ok(prettier) = parse_prettierrc_json(json) {
+        prettier.apply_to(&mut config);
     }
     config
 }

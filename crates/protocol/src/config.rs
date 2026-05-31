@@ -14,79 +14,54 @@
 use serde::{Deserialize, Serialize};
 
 /// Print width mode for line-length limits.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum PrintWidthMode {
     /// Column limit enforced (default). Units are display columns (L-14).
+    #[default]
     Columns,
     /// No line-length limit. Format freely.
     Unlimited,
 }
 
-impl Default for PrintWidthMode {
-    fn default() -> Self {
-        PrintWidthMode::Columns
-    }
-}
-
 /// Indentation style.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum IndentStyle {
+    #[default]
     Spaces,
     Tabs,
 }
 
-impl Default for IndentStyle {
-    fn default() -> Self {
-        IndentStyle::Spaces
-    }
-}
-
 /// Quote style for string literals (relevant for JS/TS/CSS).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum QuoteStyle {
     Single,
+    #[default]
     Double,
 }
 
-impl Default for QuoteStyle {
-    fn default() -> Self {
-        QuoteStyle::Double
-    }
-}
-
 /// End-of-line style.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum EndOfLine {
+    #[default]
     Lf,
     Crlf,
     Cr,
     Auto,
 }
 
-impl Default for EndOfLine {
-    fn default() -> Self {
-        EndOfLine::Lf
-    }
-}
-
 /// Module operating mode (L-12 mitigation).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum ModuleMode {
     /// Zero-config, reference formatter output parity guaranteed.
+    #[default]
     Opinionated,
     /// Full option surface exposed. Compat guarantee voided.
     Advanced,
-}
-
-impl Default for ModuleMode {
-    fn default() -> Self {
-        ModuleMode::Opinionated
-    }
 }
 
 /// The universal configuration IR passed to every language module.

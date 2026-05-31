@@ -146,8 +146,7 @@ impl Renderer {
                     col + space_str.chars().count()
                 } else {
                     out.push('\n');
-                    let indent_str: String = std::iter::repeat(self.indent_char)
-                        .take(indent * self.indent_size)
+                    let indent_str: String = std::iter::repeat_n(self.indent_char, indent * self.indent_size)
                         .collect();
                     out.push_str(&indent_str);
                     indent * self.indent_size

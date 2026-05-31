@@ -146,7 +146,7 @@ impl<'a> GoFormatter<'a> {
             "var_declaration" => self.walk_var(node, indent, out),
             "const_declaration" => self.walk_const(node, indent, out),
             "short_var_declaration" => {
-                out.push(Line::new(indent, format!("{}", self.text_of(&node))));
+                out.push(Line::new(indent, self.text_of(&node).to_string()));
             }
             "assignment_statement" => {
                 out.push(Line::new(indent, self.text_of(&node)));

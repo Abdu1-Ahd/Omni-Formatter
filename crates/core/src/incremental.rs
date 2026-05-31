@@ -93,17 +93,16 @@ pub fn compute_dirty_region(source: &[u8], edit: &EditDelta, language_id: &str) 
         // Walk up to find the nearest complete statement or block
         while current_node.parent().is_some() {
             let kind = current_node.kind();
-            if kind.ends_with("statement")
+            if (kind.ends_with("statement")
                 || kind.ends_with("declaration")
                 || kind == "block"
                 || kind == "program"
                 || kind == "source_file"
                 || kind == "document"
-                || kind == "module"
+                || kind == "module")
+                && !current_node.has_error()
             {
-                if !current_node.has_error() {
-                    break;
-                }
+                break;
             }
             if let Some(parent) = current_node.parent() {
                 current_node = parent;

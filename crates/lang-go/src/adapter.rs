@@ -10,11 +10,7 @@ use protocol::config::{ConfigIR, IndentStyle};
 /// returns the Go defaults, except for potentially `end_of_line` which might
 /// be mapped from `.editorconfig` in the future.
 pub fn config_from_go_json(json: &str) -> ConfigIR {
-    let mut config = if let Ok(parsed) = serde_json::from_str::<ConfigIR>(json) {
-        parsed
-    } else {
-        ConfigIR::default()
-    };
+    let mut config = serde_json::from_str::<ConfigIR>(json).unwrap_or_default();
 
     // Go ALWAYS uses tabs for indentation
     config.indent_style = IndentStyle::Tabs;
