@@ -17,7 +17,11 @@ use wasmtime::*;
 const REGISTRY_URL: &str = "https://registry.omnifmt.dev";
 
 #[derive(Parser, Debug)]
-#[command(name = "omnifmt", version, about = "Universal, blazing fast, WebAssembly-powered code formatter.")]
+#[command(
+    name = "omnifmt",
+    version,
+    about = "Universal, blazing fast, WebAssembly-powered code formatter."
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -65,7 +69,11 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Format { paths, plugin, module } => {
+        Commands::Format {
+            paths,
+            plugin,
+            module,
+        } => {
             for path in paths {
                 if path.is_file() {
                     format_file(&path, plugin.as_deref(), module.as_deref(), true).await?;
@@ -76,7 +84,13 @@ async fn main() -> Result<()> {
                             Err(_) => continue,
                         };
                         if entry.path().is_file() {
-                            let _ = format_file(entry.path(), plugin.as_deref(), module.as_deref(), true).await;
+                            let _ = format_file(
+                                entry.path(),
+                                plugin.as_deref(),
+                                module.as_deref(),
+                                true,
+                            )
+                            .await;
                         }
                     }
                 }
@@ -153,7 +167,11 @@ async fn fetch_from_registry(module_name: &str) -> Result<Vec<u8>> {
     let url = format!("{}/resolve/{}", REGISTRY_URL, module_name);
     let res = client.get(&url).send().await?;
     if !res.status().is_success() {
-        bail!("Registry failed to resolve {}: HTTP {}", module_name, res.status());
+        bail!(
+            "Registry failed to resolve {}: HTTP {}",
+            module_name,
+            res.status()
+        );
     }
     let resolve_data: RegistryResolveResponse = res.json().await?;
 
@@ -179,7 +197,12 @@ async fn fetch_from_registry(module_name: &str) -> Result<Vec<u8>> {
     // 4. Verify integrity
     let hash = sha256_hex(&wasm_bytes);
     if hash != resolve_data.sha256 {
-        bail!("Integrity check failed for {}! Expected {}, got {}", module_name, resolve_data.sha256, hash);
+        bail!(
+            "Integrity check failed for {}! Expected {}, got {}",
+            module_name,
+            resolve_data.sha256,
+            hash
+        );
     }
 
     // 5. Save to cache
@@ -197,23 +220,33 @@ fn sha256_hex(data: &[u8]) -> String {
 
 // ── Wasmtime execution ────────────────────────────────────────────────────
 
-fn execute_wasm_format(wasm_bytes: &[u8], source: &[u8], config_json: &str, _module_name: &str) -> Result<Vec<u8>> {
+fn execute_wasm_format(
+    wasm_bytes: &[u8],
+    source: &[u8],
+    config_json: &str,
+    _module_name: &str,
+) -> Result<Vec<u8>> {
     let engine = Engine::default();
     let module = Module::new(&engine, wasm_bytes).context("Failed to compile WASM module")?;
 
     let mut store = Store::new(&engine, ());
-    let instance = Instance::new(&mut store, &module, &[])
-        .context("Failed to instantiate WASM module")?;
+    let instance =
+        Instance::new(&mut store, &module, &[]).context("Failed to instantiate WASM module")?;
 
     // Exported memory and allocator
-    let memory = instance.get_memory(&mut store, "memory").context("WASM missing exported 'memory'")?;
-    let alloc = instance.get_typed_func::<u32, u32>(&mut store, "alloc")
+    let memory = instance
+        .get_memory(&mut store, "memory")
+        .context("WASM missing exported 'memory'")?;
+    let alloc = instance
+        .get_typed_func::<u32, u32>(&mut store, "alloc")
         .context("WASM missing exported 'alloc'")?;
-    let dealloc = instance.get_typed_func::<(u32, u32), ()>(&mut store, "dealloc")
+    let dealloc = instance
+        .get_typed_func::<(u32, u32), ()>(&mut store, "dealloc")
         .context("WASM missing exported 'dealloc'")?;
 
     // Exported format function
-    let format_func = instance.get_typed_func::<(u32, u32, u32, u32), u64>(&mut store, "format")
+    let format_func = instance
+        .get_typed_func::<(u32, u32, u32, u32), u64>(&mut store, "format")
         .context("WASM missing exported 'format' function")?;
 
     // 1. Allocate and write source buffer
@@ -226,12 +259,15 @@ fn execute_wasm_format(wasm_bytes: &[u8], source: &[u8], config_json: &str, _mod
     memory.write(&mut store, config_ptr as usize, config_bytes)?;
 
     // 3. Call `format`
-    let result_u64 = format_func.call(&mut store, (
-        source_ptr,
-        source.len() as u32,
-        config_ptr,
-        config_bytes.len() as u32,
-    ))?;
+    let result_u64 = format_func.call(
+        &mut store,
+        (
+            source_ptr,
+            source.len() as u32,
+            config_ptr,
+            config_bytes.len() as u32,
+        ),
+    )?;
 
     // Cleanup input allocations
     dealloc.call(&mut store, (source_ptr, source.len() as u32))?;

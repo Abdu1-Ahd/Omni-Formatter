@@ -33,9 +33,9 @@ pub mod compat;
 pub mod format;
 pub mod plugin;
 
-use wasm_bindgen::prelude::*;
 use protocol::{ConfigIR, FormatError};
 use serde_json;
+use wasm_bindgen::prelude::*;
 
 /// Format JavaScript, TypeScript, JSX, or TSX source.
 ///

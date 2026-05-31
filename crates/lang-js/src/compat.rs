@@ -38,7 +38,10 @@ pub fn is_strict_compat_mode(config: &ConfigIR) -> bool {
 pub fn formatter_chain_label(config: &ConfigIR) -> String {
     let version = env!("CARGO_PKG_VERSION");
     if is_strict_compat_mode(config) {
-        format!("lang-js {} (Prettier {} compat)", version, PRETTIER_COMPAT_VERSION)
+        format!(
+            "lang-js {} (Prettier {} compat)",
+            version, PRETTIER_COMPAT_VERSION
+        )
     } else {
         format!("lang-js {} (advanced mode)", version)
     }
@@ -47,19 +50,19 @@ pub fn formatter_chain_label(config: &ConfigIR) -> String {
 /// Verify the Prettier version installed in the project via package.json content.
 pub fn verify_prettier_version(package_json_content: &str) -> Option<String> {
     let parsed: serde_json::Value = serde_json::from_str(package_json_content).ok()?;
-    
+
     if let Some(dev_deps) = parsed.get("devDependencies") {
         if let Some(version) = dev_deps.get("prettier") {
             return version.as_str().map(|s| s.to_string());
         }
     }
-    
+
     if let Some(deps) = parsed.get("dependencies") {
         if let Some(version) = deps.get("prettier") {
             return version.as_str().map(|s| s.to_string());
         }
     }
-    
+
     None
 }
 

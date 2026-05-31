@@ -19,8 +19,12 @@ pub struct PrettierCssConfig {
 
 impl PrettierCssConfig {
     pub fn apply_to(&self, base: &mut ConfigIR) {
-        if let Some(w) = self.print_width { base.print_width = w; }
-        if let Some(s) = self.tab_width { base.indent_size = s; }
+        if let Some(w) = self.print_width {
+            base.print_width = w;
+        }
+        if let Some(s) = self.tab_width {
+            base.indent_size = s;
+        }
         if let Some(true) = self.single_quote {
             base.quote_style = QuoteStyle::Single;
         }

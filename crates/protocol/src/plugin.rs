@@ -29,7 +29,12 @@ pub trait LanguagePlugin: Send + Sync {
 
     /// Optional: format `source` with an explicit dialect tag (used by lang-css for
     /// CSS vs SCSS vs Less vs HTML). Defaults to calling `format` with no dialect.
-    fn format_dialect(&self, source: &[u8], config: &ConfigIR, _dialect: &str) -> Result<Vec<u8>, FormatError> {
+    fn format_dialect(
+        &self,
+        source: &[u8],
+        config: &ConfigIR,
+        _dialect: &str,
+    ) -> Result<Vec<u8>, FormatError> {
         self.format(source, config)
     }
 

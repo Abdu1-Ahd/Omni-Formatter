@@ -27,8 +27,8 @@ pub mod adapter;
 pub mod format;
 pub mod plugin;
 
-use wasm_bindgen::prelude::*;
 use protocol::ConfigIR;
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub fn format_go(source_bytes: &[u8], config_json: &str) -> Result<Vec<u8>, JsValue> {
@@ -40,13 +40,19 @@ pub fn format_go(source_bytes: &[u8], config_json: &str) -> Result<Vec<u8>, JsVa
 }
 
 #[wasm_bindgen]
-pub fn config_schema() -> String { include_str!("../schema.json").to_string() }
+pub fn config_schema() -> String {
+    include_str!("../schema.json").to_string()
+}
 
 #[wasm_bindgen]
-pub fn version() -> String { env!("CARGO_PKG_VERSION").to_string() }
+pub fn version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
 
 #[wasm_bindgen]
-pub fn language_id() -> String { "go".to_string() }
+pub fn language_id() -> String {
+    "go".to_string()
+}
 
 #[wasm_bindgen]
 pub fn aliases() -> Vec<JsValue> {

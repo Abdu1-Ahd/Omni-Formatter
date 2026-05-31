@@ -15,10 +15,10 @@ pub fn config_from_go_json(json: &str) -> ConfigIR {
     } else {
         ConfigIR::default()
     };
-    
+
     // Go ALWAYS uses tabs for indentation
     config.indent_style = IndentStyle::Tabs;
-    
+
     config
 }
 

@@ -28,7 +28,6 @@
 
 use protocol::{ByteRange, EditDelta};
 
-
 /// The result of computing the dirty region for an incremental format.
 #[derive(Debug, Clone)]
 pub struct DirtyRegion {
@@ -53,11 +52,7 @@ pub struct DirtyRegion {
 ///
 /// The `DirtyRegion` that should be formatted — the smallest complete
 /// syntactic unit containing the edit offset.
-pub fn compute_dirty_region(
-    source: &[u8],
-    edit: &EditDelta,
-    language_id: &str,
-) -> DirtyRegion {
+pub fn compute_dirty_region(source: &[u8], edit: &EditDelta, language_id: &str) -> DirtyRegion {
     let mut parser = tree_sitter::Parser::new();
     let language = match language_id {
         "javascript" | "javascriptreact" => tree_sitter_javascript::language(),

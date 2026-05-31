@@ -140,7 +140,7 @@ mod tests {
     fn malformed_json_returns_defaults() {
         let config = config_from_prettierrc_json("{ invalid json }");
         assert_eq!(config.print_width, 80); // default
-        assert_eq!(config.indent_size, 2);  // default
+        assert_eq!(config.indent_size, 2); // default
     }
 
     #[test]

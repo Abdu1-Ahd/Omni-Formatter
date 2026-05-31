@@ -1,8 +1,8 @@
+use core::registry::PluginRegistry;
+use protocol::ConfigIR;
 use std::env;
 use std::fs;
 use std::path::Path;
-use protocol::ConfigIR;
-use core::registry::PluginRegistry;
 
 fn build_registry() -> PluginRegistry {
     let mut registry = PluginRegistry::new();
@@ -34,7 +34,10 @@ fn main() {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         if matches!(ext, "out" | "out2" | "ref") {
             let stem = Path::new(path.file_stem().unwrap_or_default());
-            stem.extension().and_then(|e| e.to_str()).unwrap_or(ext).to_string()
+            stem.extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or(ext)
+                .to_string()
         } else {
             ext.to_string()
         }
@@ -44,7 +47,8 @@ fn main() {
     let config = ConfigIR::default();
 
     let registry = build_registry();
-    let result = registry.format_by_ext(&real_ext, &source, &config)
+    let result = registry
+        .format_by_ext(&real_ext, &source, &config)
         .map_err(|e| e.to_string());
 
     match result {

@@ -89,15 +89,16 @@ pub fn build_anchor_map(source: &[u8], language_id: &str) -> Vec<CommentAnchor> 
 
     let mut anchors = Vec::new();
     let mut cursor = tree.walk();
-    
+
     traverse_for_comments(&mut cursor, source, &mut anchors);
-    
+
     anchors
 }
 
 pub fn find_suppressed_zones(source: &[u8], language_id: &str) -> Vec<protocol::zone::Zone> {
     let anchors = build_anchor_map(source, language_id);
-    anchors.into_iter()
+    anchors
+        .into_iter()
         .filter(|a| a.is_suppression && a.anchor_kind == AnchorKind::Before)
         .map(|a| protocol::zone::Zone {
             language_id: language_id.to_string(),
@@ -109,35 +110,51 @@ pub fn find_suppressed_zones(source: &[u8], language_id: &str) -> Vec<protocol::
         .collect()
 }
 
-fn traverse_for_comments(cursor: &mut tree_sitter::TreeCursor, source: &[u8], anchors: &mut Vec<CommentAnchor>) {
+fn traverse_for_comments(
+    cursor: &mut tree_sitter::TreeCursor,
+    source: &[u8],
+    anchors: &mut Vec<CommentAnchor>,
+) {
     loop {
         let node = cursor.node();
         if node.kind() == "comment" {
             let comment_text = &source[node.start_byte()..node.end_byte()];
             let is_suppression = is_suppression_comment(comment_text);
-            
+
             let prev_sibling = node.prev_named_sibling();
             let next_sibling = node.next_named_sibling();
-            
+
             let mut anchor_kind = AnchorKind::Before;
             let mut sibling_range = protocol::ByteRange { start: 0, end: 0 };
-            
+
             if let Some(prev) = prev_sibling {
                 if prev.end_position().row == node.start_position().row {
                     anchor_kind = AnchorKind::After;
-                    sibling_range = protocol::ByteRange { start: prev.start_byte(), end: prev.end_byte() };
+                    sibling_range = protocol::ByteRange {
+                        start: prev.start_byte(),
+                        end: prev.end_byte(),
+                    };
                 } else if let Some(next) = next_sibling {
                     anchor_kind = AnchorKind::Before;
-                    sibling_range = protocol::ByteRange { start: next.start_byte(), end: next.end_byte() };
+                    sibling_range = protocol::ByteRange {
+                        start: next.start_byte(),
+                        end: next.end_byte(),
+                    };
                 } else {
                     anchor_kind = AnchorKind::After;
-                    sibling_range = protocol::ByteRange { start: prev.start_byte(), end: prev.end_byte() };
+                    sibling_range = protocol::ByteRange {
+                        start: prev.start_byte(),
+                        end: prev.end_byte(),
+                    };
                 }
             } else if let Some(next) = next_sibling {
                 anchor_kind = AnchorKind::Before;
-                sibling_range = protocol::ByteRange { start: next.start_byte(), end: next.end_byte() };
+                sibling_range = protocol::ByteRange {
+                    start: next.start_byte(),
+                    end: next.end_byte(),
+                };
             }
-            
+
             // Only add if we found a sibling
             if prev_sibling.is_some() || next_sibling.is_some() {
                 anchors.push(CommentAnchor {
@@ -164,8 +181,7 @@ fn traverse_for_comments(cursor: &mut tree_sitter::TreeCursor, source: &[u8], an
 /// Check if a byte slice starts with any known suppression token.
 pub fn is_suppression_comment(text: &[u8]) -> bool {
     SUPPRESSION_TOKENS.iter().any(|token| {
-        text.len() >= token.len()
-            && text[..token.len()].eq_ignore_ascii_case(token.as_bytes())
+        text.len() >= token.len() && text[..token.len()].eq_ignore_ascii_case(token.as_bytes())
     })
 }
 

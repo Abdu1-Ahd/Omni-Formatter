@@ -120,17 +120,16 @@ pub fn format(request_json: &str) -> String {
             }
         };
         let edit = TextEdit {
-            range: protocol::ByteRange { start: 0, end: source.len() },
+            range: protocol::ByteRange {
+                start: 0,
+                end: source.len(),
+            },
             new_text,
         };
         (vec![edit], false)
     };
 
-    let chain = format!(
-        "OmniFormatter {} (lang-{})",
-        env!("CARGO_PKG_VERSION"),
-        ext
-    );
+    let chain = format!("OmniFormatter {} (lang-{})", env!("CARGO_PKG_VERSION"), ext);
 
     let response = FormatResponse {
         edits,
@@ -187,8 +186,14 @@ mod tests {
         let parsed: serde_json::Value =
             serde_json::from_str(&result).expect("format() must return valid JSON");
 
-        assert!(parsed.get("edits").is_some(), "response must have 'edits' field");
-        assert!(parsed.get("is_noop").is_some(), "response must have 'is_noop' field");
+        assert!(
+            parsed.get("edits").is_some(),
+            "response must have 'edits' field"
+        );
+        assert!(
+            parsed.get("is_noop").is_some(),
+            "response must have 'is_noop' field"
+        );
     }
 
     #[test]
@@ -206,8 +211,7 @@ mod tests {
         let result = format(&request.to_string());
         let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
         assert_eq!(
-            parsed["error"]["kind"],
-            "file_too_large",
+            parsed["error"]["kind"], "file_too_large",
             "must reject files over 10MB"
         );
     }

@@ -50,7 +50,11 @@ pub struct ExpandedRange {
 ///
 /// Returns the requested range expanded to full lines (stub).
 /// Full Tree-sitter CST traversal implemented in Phase 4.
-pub fn expand_to_nearest_unit(source: &[u8], requested: ByteRange, language_id: &str) -> ExpandedRange {
+pub fn expand_to_nearest_unit(
+    source: &[u8],
+    requested: ByteRange,
+    language_id: &str,
+) -> ExpandedRange {
     let lang = match language_id {
         "javascript" | "javascriptreact" => tree_sitter_javascript::language(),
         "typescript" | "typescriptreact" => tree_sitter_typescript::language_tsx(),
@@ -73,7 +77,9 @@ pub fn expand_to_nearest_unit(source: &[u8], requested: ByteRange, language_id: 
     };
 
     let root = tree.root_node();
-    let mut node = root.descendant_for_byte_range(requested.start, requested.end).unwrap_or(root);
+    let mut node = root
+        .descendant_for_byte_range(requested.start, requested.end)
+        .unwrap_or(root);
 
     if node.kind() == "ERROR" {
         return ExpandedRange {
@@ -85,13 +91,13 @@ pub fn expand_to_nearest_unit(source: &[u8], requested: ByteRange, language_id: 
 
     while let Some(parent) = node.parent() {
         let kind = node.kind();
-        if node.is_named() && (
-            kind.contains("statement") || 
-            kind.contains("declaration") || 
-            kind.contains("definition") || 
-            kind == "block" || 
-            kind == "rule_set"
-        ) {
+        if node.is_named()
+            && (kind.contains("statement")
+                || kind.contains("declaration")
+                || kind.contains("definition")
+                || kind == "block"
+                || kind == "rule_set")
+        {
             break;
         }
         node = parent;

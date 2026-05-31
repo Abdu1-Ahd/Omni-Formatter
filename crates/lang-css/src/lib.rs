@@ -31,8 +31,8 @@ pub mod adapter;
 pub mod format;
 pub mod plugin;
 
-use wasm_bindgen::prelude::*;
 use protocol::ConfigIR;
+use wasm_bindgen::prelude::*;
 
 /// The dialect of CSS-family source being formatted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,7 +56,11 @@ impl CssDialect {
 }
 
 #[wasm_bindgen]
-pub fn format_css(source_bytes: &[u8], config_json: &str, language_id: &str) -> Result<Vec<u8>, JsValue> {
+pub fn format_css(
+    source_bytes: &[u8],
+    config_json: &str,
+    language_id: &str,
+) -> Result<Vec<u8>, JsValue> {
     let config: ConfigIR = serde_json::from_str(config_json).unwrap_or_default();
     let dialect = CssDialect::from_language_id(language_id);
     match format::format(source_bytes, &config, dialect) {
@@ -66,13 +70,19 @@ pub fn format_css(source_bytes: &[u8], config_json: &str, language_id: &str) -> 
 }
 
 #[wasm_bindgen]
-pub fn config_schema() -> String { include_str!("../schema.json").to_string() }
+pub fn config_schema() -> String {
+    include_str!("../schema.json").to_string()
+}
 
 #[wasm_bindgen]
-pub fn version() -> String { env!("CARGO_PKG_VERSION").to_string() }
+pub fn version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
 
 #[wasm_bindgen]
-pub fn language_id() -> String { "css".to_string() }
+pub fn language_id() -> String {
+    "css".to_string()
+}
 
 #[wasm_bindgen]
 pub fn aliases() -> Vec<JsValue> {

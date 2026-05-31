@@ -32,7 +32,10 @@ struct Line {
 
 impl Line {
     fn new(indent: usize, content: impl Into<String>) -> Self {
-        Line { indent, content: content.into() }
+        Line {
+            indent,
+            content: content.into(),
+        }
     }
 
     fn render(&self, indent_size: usize) -> String {
@@ -45,7 +48,9 @@ impl Line {
 /// Normalize a Python string literal to the target quote style (Black rule).
 /// If the inner content already contains the target quote, keep original.
 fn normalize_string(raw: &str, target: char) -> String {
-    if raw.len() < 2 { return raw.to_string(); }
+    if raw.len() < 2 {
+        return raw.to_string();
+    }
     let first = raw.chars().next().unwrap();
     // Don't touch triple-quoted strings, f-strings, b-strings for now
     if first == 'f' || first == 'b' || first == 'r' {
@@ -81,8 +86,16 @@ impl<'a> PythonFormatter<'a> {
             QuoteStyle::Single => '\'',
         };
         // Black always prefers double quotes; override config unless user explicitly set single
-        let target_quote = if matches!(config.quote_style, QuoteStyle::Single) { '\'' } else { '"' };
-        Self { source, config, target_quote }
+        let target_quote = if matches!(config.quote_style, QuoteStyle::Single) {
+            '\''
+        } else {
+            '"'
+        };
+        Self {
+            source,
+            config,
+            target_quote,
+        }
     }
 
     fn text_of(&self, node: &tree_sitter::Node) -> &str {
@@ -121,7 +134,8 @@ impl<'a> PythonFormatter<'a> {
             "with_statement" => self.walk_with(node, indent, lines),
             "try_statement" => self.walk_try(node, indent, lines),
             "return_statement" => {
-                let value = node.named_child(0)
+                let value = node
+                    .named_child(0)
                     .map(|n| self.format_expr(n))
                     .unwrap_or_default();
                 let stmt = if value.is_empty() {
@@ -146,9 +160,9 @@ impl<'a> PythonFormatter<'a> {
             "assignment" | "augmented_assignment" => {
                 lines.push(Line::new(indent, self.format_assignment(node)));
             }
-            "assert_statement" | "raise_statement" | "delete_statement"
-            | "pass_statement" | "break_statement" | "continue_statement"
-            | "global_statement" | "nonlocal_statement" => {
+            "assert_statement" | "raise_statement" | "delete_statement" | "pass_statement"
+            | "break_statement" | "continue_statement" | "global_statement"
+            | "nonlocal_statement" => {
                 lines.push(Line::new(indent, self.text_of(&node)));
             }
             "block" => {
@@ -181,16 +195,23 @@ impl<'a> PythonFormatter<'a> {
             lines.push(Line::new(0, ""));
             lines.push(Line::new(0, ""));
         }
-        let name = node.child_by_field_name("name")
-            .map(|n| self.text_of(&n)).unwrap_or("?");
-        let params = node.child_by_field_name("parameters")
+        let name = node
+            .child_by_field_name("name")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("?");
+        let params = node
+            .child_by_field_name("parameters")
             .map(|n| self.format_params(n))
             .unwrap_or_else(|| "()".to_string());
-        let return_type = node.child_by_field_name("return_type")
+        let return_type = node
+            .child_by_field_name("return_type")
             .map(|n| format!(" -> {}", self.text_of(&n)))
             .unwrap_or_default();
 
-        lines.push(Line::new(indent, format!("def {}{}{}:", name, params, return_type)));
+        lines.push(Line::new(
+            indent,
+            format!("def {}{}{}:", name, params, return_type),
+        ));
 
         if let Some(body) = node.child_by_field_name("body") {
             self.walk_node(body, indent + 1, lines);
@@ -209,9 +230,12 @@ impl<'a> PythonFormatter<'a> {
             lines.push(Line::new(0, ""));
             lines.push(Line::new(0, ""));
         }
-        let name = node.child_by_field_name("name")
-            .map(|n| self.text_of(&n)).unwrap_or("?");
-        let superclasses = node.child_by_field_name("superclasses")
+        let name = node
+            .child_by_field_name("name")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("?");
+        let superclasses = node
+            .child_by_field_name("superclasses")
             .map(|n| self.text_of(&n))
             .unwrap_or_default();
         let header = if superclasses.is_empty() {
@@ -226,8 +250,10 @@ impl<'a> PythonFormatter<'a> {
     }
 
     fn walk_if(&self, node: tree_sitter::Node, indent: usize, lines: &mut Vec<Line>) {
-        let cond = node.child_by_field_name("condition")
-            .map(|n| self.format_expr(n)).unwrap_or_default();
+        let cond = node
+            .child_by_field_name("condition")
+            .map(|n| self.format_expr(n))
+            .unwrap_or_default();
         lines.push(Line::new(indent, format!("if {}:", cond)));
         if let Some(body) = node.child_by_field_name("consequence") {
             self.walk_node(body, indent + 1, lines);
@@ -237,8 +263,10 @@ impl<'a> PythonFormatter<'a> {
         for child in node.children(&mut cursor) {
             match child.kind() {
                 "elif_clause" => {
-                    let c = child.child_by_field_name("condition")
-                        .map(|n| self.format_expr(n)).unwrap_or_default();
+                    let c = child
+                        .child_by_field_name("condition")
+                        .map(|n| self.format_expr(n))
+                        .unwrap_or_default();
                     lines.push(Line::new(indent, format!("elif {}:", c)));
                     if let Some(b) = child.child_by_field_name("consequence") {
                         self.walk_node(b, indent + 1, lines);
@@ -256,10 +284,14 @@ impl<'a> PythonFormatter<'a> {
     }
 
     fn walk_for(&self, node: tree_sitter::Node, indent: usize, lines: &mut Vec<Line>) {
-        let left = node.child_by_field_name("left")
-            .map(|n| self.text_of(&n)).unwrap_or("_");
-        let right = node.child_by_field_name("right")
-            .map(|n| self.format_expr(n)).unwrap_or_default();
+        let left = node
+            .child_by_field_name("left")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("_");
+        let right = node
+            .child_by_field_name("right")
+            .map(|n| self.format_expr(n))
+            .unwrap_or_default();
         lines.push(Line::new(indent, format!("for {} in {}:", left, right)));
         if let Some(body) = node.child_by_field_name("body") {
             self.walk_node(body, indent + 1, lines);
@@ -267,8 +299,10 @@ impl<'a> PythonFormatter<'a> {
     }
 
     fn walk_while(&self, node: tree_sitter::Node, indent: usize, lines: &mut Vec<Line>) {
-        let cond = node.child_by_field_name("condition")
-            .map(|n| self.format_expr(n)).unwrap_or_default();
+        let cond = node
+            .child_by_field_name("condition")
+            .map(|n| self.format_expr(n))
+            .unwrap_or_default();
         lines.push(Line::new(indent, format!("while {}:", cond)));
         if let Some(body) = node.child_by_field_name("body") {
             self.walk_node(body, indent + 1, lines);
@@ -288,7 +322,8 @@ impl<'a> PythonFormatter<'a> {
             match child.kind() {
                 "block" => self.walk_node(child, indent + 1, lines),
                 "except_clause" => {
-                    let except_type = child.child_by_field_name("value")
+                    let except_type = child
+                        .child_by_field_name("value")
                         .map(|n| format!(" {}", self.text_of(&n)))
                         .unwrap_or_default();
                     lines.push(Line::new(indent, format!("except{}:", except_type)));
@@ -326,7 +361,10 @@ impl<'a> PythonFormatter<'a> {
             let inner = raw.trim_start_matches('(').trim_end_matches(')');
             let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
             let indent = "    ";
-            let joined = parts.iter().map(|p| format!("\n{}{},", indent, p)).collect::<String>();
+            let joined = parts
+                .iter()
+                .map(|p| format!("\n{}{},", indent, p))
+                .collect::<String>();
             return format!("({}\n)", joined);
         }
         raw.to_string()
@@ -363,7 +401,7 @@ impl<'a> PythonFormatter<'a> {
         };
         let raw = self.text_of(&node);
         let has_trailing = raw.contains(",)") || raw.contains(",]") || raw.contains(",}");
-        
+
         let mut items = Vec::new();
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
@@ -371,34 +409,47 @@ impl<'a> PythonFormatter<'a> {
                 items.push(self.format_expr(child));
             }
         }
-        
+
         if !has_trailing {
             let flat = format!("{}{}{}", open, items.join(", "), close);
             if flat.len() <= self.config.print_width as usize {
                 return flat;
             }
         }
-        
+
         let indent = "    ";
-        let joined = items.iter().map(|i| format!("\n{}{},", indent, i)).collect::<String>();
+        let joined = items
+            .iter()
+            .map(|i| format!("\n{}{},", indent, i))
+            .collect::<String>();
         format!("{}{}\n{}", open, joined, close)
     }
 
     fn format_call(&self, node: tree_sitter::Node) -> String {
-        let func = node.child_by_field_name("function")
-            .map(|n| self.text_of(&n)).unwrap_or("");
-        let args = node.child_by_field_name("arguments")
-            .map(|n| self.text_of(&n)).unwrap_or("()");
+        let func = node
+            .child_by_field_name("function")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("");
+        let args = node
+            .child_by_field_name("arguments")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("()");
         format!("{}{}", func, args)
     }
 
     fn format_binary(&self, node: tree_sitter::Node) -> String {
-        let left = node.child_by_field_name("left")
-            .map(|n| self.format_expr(n)).unwrap_or_default();
-        let op = node.child_by_field_name("operator")
-            .map(|n| self.text_of(&n)).unwrap_or("+");
-        let right = node.child_by_field_name("right")
-            .map(|n| self.format_expr(n)).unwrap_or_default();
+        let left = node
+            .child_by_field_name("left")
+            .map(|n| self.format_expr(n))
+            .unwrap_or_default();
+        let op = node
+            .child_by_field_name("operator")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("+");
+        let right = node
+            .child_by_field_name("right")
+            .map(|n| self.format_expr(n))
+            .unwrap_or_default();
         format!("{} {} {}", left, op, right)
     }
 
@@ -447,11 +498,15 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&language)
-        .map_err(|e| FormatError::Internal { message: format!("python grammar load failed: {}", e) })?;
+        .map_err(|e| FormatError::Internal {
+            message: format!("python grammar load failed: {}", e),
+        })?;
 
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| FormatError::ParseFailed { message: "tree-sitter returned None for Python".into() })?;
+        .ok_or_else(|| FormatError::ParseFailed {
+            message: "tree-sitter returned None for Python".into(),
+        })?;
 
     if tree.root_node().has_error() {
         log::warn!("lang-python: parse error — emitting verbatim");
@@ -462,7 +517,11 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     let t_format_start = std::time::Instant::now();
     let formatter = PythonFormatter::new(source, config);
     let lines = formatter.format_tree(tree.root_node());
-    let lines = wrap_long_lines(lines, config.print_width as usize, config.indent_size as usize);
+    let lines = wrap_long_lines(
+        lines,
+        config.print_width as usize,
+        config.indent_size as usize,
+    );
     let t_format = t_format_start.elapsed();
 
     let t_emit_start = std::time::Instant::now();
@@ -481,7 +540,12 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     }
     let t_emit = t_emit_start.elapsed();
 
-    eprintln!("[Python] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms", t_parse.as_secs_f64() * 1000.0, t_format.as_secs_f64() * 1000.0, t_emit.as_secs_f64() * 1000.0);
+    eprintln!(
+        "[Python] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms",
+        t_parse.as_secs_f64() * 1000.0,
+        t_format.as_secs_f64() * 1000.0,
+        t_emit.as_secs_f64() * 1000.0
+    );
 
     Ok(out.into_bytes())
 }
@@ -510,7 +574,10 @@ mod tests {
 
     #[test]
     fn format_empty_returns_empty_newline() {
-        let config = ConfigIR { print_width: 88, ..Default::default() };
+        let config = ConfigIR {
+            print_width: 88,
+            ..Default::default()
+        };
         let result = format(b"", &config).unwrap();
         assert_eq!(result, b"\n");
     }
@@ -529,7 +596,10 @@ mod tests {
     #[test]
     fn format_does_not_panic_on_unicode() {
         let src = "x = '你好'\n".as_bytes();
-        let config = ConfigIR { print_width: 88, ..Default::default() };
+        let config = ConfigIR {
+            print_width: 88,
+            ..Default::default()
+        };
         let result = format(src, &config).unwrap();
         assert!(!result.is_empty());
     }

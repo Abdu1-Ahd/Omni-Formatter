@@ -1,11 +1,13 @@
-use protocol::{config::ConfigIR, FormatError, LanguagePlugin};
 use crate::format;
+use protocol::{config::ConfigIR, FormatError, LanguagePlugin};
 
 /// Python language plugin.
 pub struct PythonPlugin;
 
 impl LanguagePlugin for PythonPlugin {
-    fn name(&self) -> &str { "lang-python" }
+    fn name(&self) -> &str {
+        "lang-python"
+    }
 
     fn extensions(&self) -> &[&str] {
         &["py", "pyi", "pyw"]

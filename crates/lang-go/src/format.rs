@@ -35,7 +35,10 @@ struct Line {
 
 impl Line {
     fn new(indent: usize, content: impl Into<String>) -> Self {
-        Line { indent, content: content.into() }
+        Line {
+            indent,
+            content: content.into(),
+        }
     }
 
     fn render(&self) -> String {
@@ -76,11 +79,19 @@ impl<'a> GoFormatter<'a> {
                 {
                     let mut cursor = node.walk();
                     for child in node.children(&mut cursor) {
-                        if !child.is_named() { continue; }
+                        if !child.is_named() {
+                            continue;
+                        }
                         match child.kind() {
-                            "package_clause" => { package_node = Some(child); }
-                            "import_declaration" => { import_nodes.push(child); }
-                            _ => { other_nodes.push(child); }
+                            "package_clause" => {
+                                package_node = Some(child);
+                            }
+                            "import_declaration" => {
+                                import_nodes.push(child);
+                            }
+                            _ => {
+                                other_nodes.push(child);
+                            }
                         }
                     }
                 }
@@ -97,7 +108,9 @@ impl<'a> GoFormatter<'a> {
                         // Multiple specs from one block → keep block form
                         let had_block = {
                             let mut c = node.walk();
-                            let result = node.children(&mut c).any(|ch| ch.kind() == "import_spec_list");
+                            let result = node
+                                .children(&mut c)
+                                .any(|ch| ch.kind() == "import_spec_list");
                             result
                         };
                         if had_block && paths.len() > 1 {
@@ -121,8 +134,10 @@ impl<'a> GoFormatter<'a> {
                 }
             }
             "package_clause" => {
-                let name = node.child_by_field_name("name")
-                    .map(|n| self.text_of(&n)).unwrap_or("main");
+                let name = node
+                    .child_by_field_name("name")
+                    .map(|n| self.text_of(&n))
+                    .unwrap_or("main");
                 out.push(Line::new(indent, format!("package {}", name)));
             }
             "function_declaration" => self.walk_func(node, indent, out),
@@ -146,14 +161,19 @@ impl<'a> GoFormatter<'a> {
             "for_statement" => self.walk_for(node, indent, out),
             "switch_statement" | "select_statement" => self.walk_switch(node, indent, out),
             "go_statement" => {
-                out.push(Line::new(indent, format!("go {}", self.text_of(
-                    &node.named_child(0).unwrap_or(node)
-                ))));
+                out.push(Line::new(
+                    indent,
+                    format!("go {}", self.text_of(&node.named_child(0).unwrap_or(node))),
+                ));
             }
             "defer_statement" => {
-                out.push(Line::new(indent, format!("defer {}", self.text_of(
-                    &node.named_child(0).unwrap_or(node)
-                ))));
+                out.push(Line::new(
+                    indent,
+                    format!(
+                        "defer {}",
+                        self.text_of(&node.named_child(0).unwrap_or(node))
+                    ),
+                ));
             }
             "send_statement" => {
                 out.push(Line::new(indent, self.text_of(&node)));
@@ -184,10 +204,12 @@ impl<'a> GoFormatter<'a> {
         for child in node.children(&mut cursor) {
             match child.kind() {
                 "import_spec" => {
-                    let name = child.child_by_field_name("name")
+                    let name = child
+                        .child_by_field_name("name")
                         .map(|n| format!("{} ", self.text_of(&n)))
                         .unwrap_or_default();
-                    let path = child.child_by_field_name("path")
+                    let path = child
+                        .child_by_field_name("path")
                         .map(|n| self.text_of(&n).to_string())
                         .unwrap_or_default();
                     paths.push(format!("{}{}", name, path));
@@ -195,11 +217,15 @@ impl<'a> GoFormatter<'a> {
                 "import_spec_list" => {
                     let mut ic = child.walk();
                     for spec in child.children(&mut ic) {
-                        if spec.kind() != "import_spec" { continue; }
-                        let name = spec.child_by_field_name("name")
+                        if spec.kind() != "import_spec" {
+                            continue;
+                        }
+                        let name = spec
+                            .child_by_field_name("name")
                             .map(|n| format!("{} ", self.text_of(&n)))
                             .unwrap_or_default();
-                        let path = spec.child_by_field_name("path")
+                        let path = spec
+                            .child_by_field_name("path")
                             .map(|n| self.text_of(&n).to_string())
                             .unwrap_or_default();
                         if !path.is_empty() {
@@ -234,14 +260,21 @@ impl<'a> GoFormatter<'a> {
     }
 
     fn walk_func(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let name = node.child_by_field_name("name")
-            .map(|n| self.text_of(&n)).unwrap_or("?");
+        let name = node
+            .child_by_field_name("name")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("?");
         // Normalize parameter list: collapse extra spaces
-        let params = node.child_by_field_name("parameters")
+        let params = node
+            .child_by_field_name("parameters")
             .map(|n| {
                 let raw = self.text_of(&n);
                 let inner = raw.trim_start_matches('(').trim_end_matches(')');
-                let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+                let parts: Vec<&str> = inner
+                    .split(',')
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .collect();
                 if parts.is_empty() {
                     "()".to_string()
                 } else {
@@ -249,11 +282,15 @@ impl<'a> GoFormatter<'a> {
                 }
             })
             .unwrap_or_else(|| "()".to_string());
-        let result = node.child_by_field_name("result")
+        let result = node
+            .child_by_field_name("result")
             .map(|n| format!(" {}", self.text_of(&n)))
             .unwrap_or_default();
 
-        out.push(Line::new(indent, format!("func {}{}{} {{", name, params, result)));
+        out.push(Line::new(
+            indent,
+            format!("func {}{}{} {{", name, params, result),
+        ));
         if let Some(body) = node.child_by_field_name("body") {
             self.walk_block_inner(body, indent + 1, out);
         }
@@ -261,17 +298,27 @@ impl<'a> GoFormatter<'a> {
     }
 
     fn walk_method(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let receiver = node.child_by_field_name("receiver")
-            .map(|n| self.text_of(&n)).unwrap_or("()");
-        let name = node.child_by_field_name("name")
-            .map(|n| self.text_of(&n)).unwrap_or("?");
-        let params = node.child_by_field_name("parameters")
-            .map(|n| self.text_of(&n)).unwrap_or("()");
-        let result = node.child_by_field_name("result")
+        let receiver = node
+            .child_by_field_name("receiver")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("()");
+        let name = node
+            .child_by_field_name("name")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("?");
+        let params = node
+            .child_by_field_name("parameters")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("()");
+        let result = node
+            .child_by_field_name("result")
             .map(|n| format!(" {}", self.text_of(&n)))
             .unwrap_or_default();
 
-        out.push(Line::new(indent, format!("func {}{}{}{} {{", receiver, name, params, result)));
+        out.push(Line::new(
+            indent,
+            format!("func {}{}{}{} {{", receiver, name, params, result),
+        ));
         if let Some(body) = node.child_by_field_name("body") {
             self.walk_block_inner(body, indent + 1, out);
         }
@@ -281,11 +328,17 @@ impl<'a> GoFormatter<'a> {
     fn walk_type(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
         let mut cursor = node.walk();
         for spec in node.children(&mut cursor) {
-            if spec.kind() != "type_spec" && spec.kind() != "type_alias" { continue; }
-            let name = spec.child_by_field_name("name")
-                .map(|n| self.text_of(&n)).unwrap_or("?");
-            let type_val = spec.child_by_field_name("type")
-                .map(|n| self.text_of(&n)).unwrap_or("?");
+            if spec.kind() != "type_spec" && spec.kind() != "type_alias" {
+                continue;
+            }
+            let name = spec
+                .child_by_field_name("name")
+                .map(|n| self.text_of(&n))
+                .unwrap_or("?");
+            let type_val = spec
+                .child_by_field_name("type")
+                .map(|n| self.text_of(&n))
+                .unwrap_or("?");
             out.push(Line::new(indent, format!("type {} {}", name, type_val)));
         }
     }
@@ -299,11 +352,14 @@ impl<'a> GoFormatter<'a> {
     }
 
     fn walk_if(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let init = node.child_by_field_name("initializer")
+        let init = node
+            .child_by_field_name("initializer")
             .map(|n| format!("{} ; ", self.text_of(&n)))
             .unwrap_or_default();
-        let cond = node.child_by_field_name("condition")
-            .map(|n| self.text_of(&n)).unwrap_or("true");
+        let cond = node
+            .child_by_field_name("condition")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("true");
 
         out.push(Line::new(indent, format!("if {}{} {{", init, cond)));
         if let Some(body) = node.child_by_field_name("consequence") {
@@ -332,19 +388,23 @@ impl<'a> GoFormatter<'a> {
     fn build_for_clause(&self, node: tree_sitter::Node) -> String {
         // Range-based for
         if let Some(range) = node.child_by_field_name("range") {
-            let left = node.child_by_field_name("left")
+            let left = node
+                .child_by_field_name("left")
                 .map(|n| format!("{} := ", self.text_of(&n)))
                 .unwrap_or_default();
             return format!("{}range {}", left, self.text_of(&range));
         }
         // Classic 3-clause for
-        let init = node.child_by_field_name("initializer")
+        let init = node
+            .child_by_field_name("initializer")
             .map(|n| self.text_of(&n).to_string())
             .unwrap_or_default();
-        let cond = node.child_by_field_name("condition")
+        let cond = node
+            .child_by_field_name("condition")
             .map(|n| self.text_of(&n).to_string())
             .unwrap_or_default();
-        let post = node.child_by_field_name("post")
+        let post = node
+            .child_by_field_name("post")
             .map(|n| self.text_of(&n).to_string())
             .unwrap_or_default();
         if init.is_empty() && post.is_empty() {
@@ -355,22 +415,32 @@ impl<'a> GoFormatter<'a> {
     }
 
     fn walk_switch(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let keyword = if node.kind() == "select_statement" { "select" } else { "switch" };
-        let init = node.child_by_field_name("initializer")
+        let keyword = if node.kind() == "select_statement" {
+            "select"
+        } else {
+            "switch"
+        };
+        let init = node
+            .child_by_field_name("initializer")
             .map(|n| format!("{} ; ", self.text_of(&n)))
             .unwrap_or_default();
-        let tag = node.child_by_field_name("tag")
+        let tag = node
+            .child_by_field_name("tag")
             .map(|n| format!(" {}", self.text_of(&n)))
             .unwrap_or_default();
         out.push(Line::new(indent, format!("{} {}{} {{", keyword, init, tag)));
         if let Some(body) = node.child_by_field_name("body") {
             let mut cursor = body.walk();
             for case in body.children(&mut cursor) {
-                if !case.is_named() { continue; }
+                if !case.is_named() {
+                    continue;
+                }
                 match case.kind() {
                     "expression_case" => {
-                        let val = case.child_by_field_name("value")
-                            .map(|n| self.text_of(&n)).unwrap_or("?");
+                        let val = case
+                            .child_by_field_name("value")
+                            .map(|n| self.text_of(&n))
+                            .unwrap_or("?");
                         out.push(Line::new(indent, format!("case {}:", val)));
                         let mut cc = case.walk();
                         for stmt in case.children(&mut cc) {
@@ -398,7 +468,9 @@ impl<'a> GoFormatter<'a> {
     fn walk_block_inner(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
-            if !child.is_named() { continue; }
+            if !child.is_named() {
+                continue;
+            }
             self.walk(child, indent, out);
         }
     }
@@ -428,11 +500,15 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&language)
-        .map_err(|e| FormatError::Internal { message: format!("go grammar load failed: {}", e) })?;
+        .map_err(|e| FormatError::Internal {
+            message: format!("go grammar load failed: {}", e),
+        })?;
 
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| FormatError::ParseFailed { message: "tree-sitter returned None for Go".into() })?;
+        .ok_or_else(|| FormatError::ParseFailed {
+            message: "tree-sitter returned None for Go".into(),
+        })?;
 
     if tree.root_node().has_error() {
         log::warn!("lang-go: parse error — emitting verbatim");
@@ -465,7 +541,12 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     }
     let t_emit = t_emit_start.elapsed();
 
-    eprintln!("[Go] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms", t_parse.as_secs_f64() * 1000.0, t_format.as_secs_f64() * 1000.0, t_emit.as_secs_f64() * 1000.0);
+    eprintln!(
+        "[Go] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms",
+        t_parse.as_secs_f64() * 1000.0,
+        t_format.as_secs_f64() * 1000.0,
+        t_emit.as_secs_f64() * 1000.0
+    );
 
     Ok(cleaned.into_bytes())
 }
@@ -517,7 +598,10 @@ mod tests {
         let result_str = std::str::from_utf8(&result).unwrap();
         // gofmt always uses tabs; spaces config must be ignored
         if result_str.contains("fmt.Println") {
-            assert!(result_str.contains('\t'), "gofmt must use tabs unconditionally");
+            assert!(
+                result_str.contains('\t'),
+                "gofmt must use tabs unconditionally"
+            );
         }
     }
 

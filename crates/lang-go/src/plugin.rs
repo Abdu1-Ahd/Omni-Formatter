@@ -1,11 +1,13 @@
-use protocol::{config::ConfigIR, FormatError, LanguagePlugin};
 use crate::format;
+use protocol::{config::ConfigIR, FormatError, LanguagePlugin};
 
 /// Go language plugin.
 pub struct GoPlugin;
 
 impl LanguagePlugin for GoPlugin {
-    fn name(&self) -> &str { "lang-go" }
+    fn name(&self) -> &str {
+        "lang-go"
+    }
 
     fn extensions(&self) -> &[&str] {
         &["go"]

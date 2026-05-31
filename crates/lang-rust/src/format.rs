@@ -24,13 +24,16 @@ fn rust_language() -> tree_sitter::Language {
 
 #[derive(Debug, Clone)]
 struct Line {
-    indent: usize,  // number of 4-space levels
+    indent: usize, // number of 4-space levels
     content: String,
 }
 
 impl Line {
     fn new(indent: usize, content: impl Into<String>) -> Self {
-        Line { indent, content: content.into() }
+        Line {
+            indent,
+            content: content.into(),
+        }
     }
 
     fn render(&self) -> String {
@@ -70,7 +73,9 @@ impl<'a> RustFormatter<'a> {
                 let mut prev_kind = "";
                 let mut cursor = node.walk();
                 for child in node.children(&mut cursor) {
-                    if !child.is_named() { continue; }
+                    if !child.is_named() {
+                        continue;
+                    }
                     // Blank line between top-level items (rustfmt rule)
                     // Only insert if the last emitted line is non-blank to preserve idempotency
                     if !prev_kind.is_empty()
@@ -90,7 +95,10 @@ impl<'a> RustFormatter<'a> {
             "enum_item" => self.walk_enum(node, indent, out),
             "trait_item" => self.walk_trait(node, indent, out),
             "use_declaration" => {
-                out.push(Line::new(indent, format!("{};", self.text_of(&node).trim_end_matches(';'))));
+                out.push(Line::new(
+                    indent,
+                    format!("{};", self.text_of(&node).trim_end_matches(';')),
+                ));
             }
             "mod_item" => self.walk_mod(node, indent, out),
             "attribute_item" | "inner_attribute_item" => {
@@ -100,7 +108,10 @@ impl<'a> RustFormatter<'a> {
                 out.push(Line::new(indent, self.text_of(&node)));
             }
             "const_item" | "static_item" | "type_item" => {
-                out.push(Line::new(indent, format!("{};", self.text_of(&node).trim_end_matches(';'))));
+                out.push(Line::new(
+                    indent,
+                    format!("{};", self.text_of(&node).trim_end_matches(';')),
+                ));
             }
             "expression_statement" => {
                 // Use named_child(0) to skip the anonymous `;` token
@@ -110,7 +121,9 @@ impl<'a> RustFormatter<'a> {
                         // (the `};` was a formatting artifact — rustfmt omits it for block exprs)
                         "match_expression" => self.walk_match(inner, indent, out),
                         "if_expression" => self.walk_if(inner, indent, out),
-                        "while_expression" | "loop_expression" => self.walk_loop(inner, indent, out),
+                        "while_expression" | "loop_expression" => {
+                            self.walk_loop(inner, indent, out)
+                        }
                         "for_expression" => self.walk_for(inner, indent, out),
                         "block" => self.walk_block_inner(inner, indent, out),
                         // All other expressions: emit as `expr;`
@@ -125,7 +138,8 @@ impl<'a> RustFormatter<'a> {
                 out.push(Line::new(indent, self.format_let(node, indent)));
             }
             "return_expression" => {
-                let val = node.named_child(0)
+                let val = node
+                    .named_child(0)
                     .map(|n| format!(" {}", self.format_expr(n, indent)))
                     .unwrap_or_default();
                 out.push(Line::new(indent, format!("return{};", val)));
@@ -145,22 +159,29 @@ impl<'a> RustFormatter<'a> {
     }
 
     fn walk_fn(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let vis = node.child_by_field_name("visibility")
+        let vis = node
+            .child_by_field_name("visibility")
             .map(|n| format!("{} ", self.text_of(&n)))
             .unwrap_or_default();
-        let name = node.child_by_field_name("name")
-            .map(|n| self.text_of(&n)).unwrap_or("?");
-        let type_params = node.child_by_field_name("type_parameters")
-            .map(|n| self.text_of(&n)).unwrap_or("");
-        let params = node.child_by_field_name("parameters")
+        let name = node
+            .child_by_field_name("name")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("?");
+        let type_params = node
+            .child_by_field_name("type_parameters")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("");
+        let params = node
+            .child_by_field_name("parameters")
             .map(|n| self.format_fn_params(n, indent))
             .unwrap_or_else(|| "()".to_string());
-        let ret = node.child_by_field_name("return_type")
+        let ret = node
+            .child_by_field_name("return_type")
             .map(|n| format!(" -> {}", self.text_of(&n)))
             .unwrap_or_default();
 
         // Check if declaration fits on one line
-        let sig = format!("{}fn {}{}{}{}",vis, name, type_params, params, ret);
+        let sig = format!("{}fn {}{}{}{}", vis, name, type_params, params, ret);
         let sig_len = indent * 4 + sig.len();
 
         if let Some(body) = node.child_by_field_name("body") {
@@ -185,7 +206,11 @@ impl<'a> RustFormatter<'a> {
         let normalized = {
             let inner = raw.trim_start_matches('(').trim_end_matches(')');
             // Split on commas, normalize each param
-            let params: Vec<&str> = inner.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+            let params: Vec<&str> = inner
+                .split(',')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .collect();
             if params.is_empty() {
                 return "()".to_string();
             }
@@ -196,7 +221,8 @@ impl<'a> RustFormatter<'a> {
             }
             // Expand: one param per line
             let indent_str = "    ".repeat(indent + 1);
-            let joined = params.iter()
+            let joined = params
+                .iter()
                 .map(|p| format!("\n{}{},", indent_str, p))
                 .collect::<String>();
             format!("({}\n{})", joined, "    ".repeat(indent))
@@ -205,14 +231,22 @@ impl<'a> RustFormatter<'a> {
     }
 
     fn walk_impl(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let type_params = node.child_by_field_name("type_parameters")
-            .map(|n| self.text_of(&n)).unwrap_or("");
-        let trait_ref = node.child_by_field_name("trait")
+        let type_params = node
+            .child_by_field_name("type_parameters")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("");
+        let trait_ref = node
+            .child_by_field_name("trait")
             .map(|n| format!("{} for ", self.text_of(&n)))
             .unwrap_or_default();
-        let type_name = node.child_by_field_name("type")
-            .map(|n| self.text_of(&n)).unwrap_or("?");
-        out.push(Line::new(indent, format!("impl{} {}{} {{", type_params, trait_ref, type_name)));
+        let type_name = node
+            .child_by_field_name("type")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("?");
+        out.push(Line::new(
+            indent,
+            format!("impl{} {}{} {{", type_params, trait_ref, type_name),
+        ));
         if let Some(body) = node.child_by_field_name("body") {
             self.walk_block_inner(body, indent + 1, out);
         }
@@ -220,59 +254,96 @@ impl<'a> RustFormatter<'a> {
     }
 
     fn walk_struct(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let vis = node.child_by_field_name("visibility")
+        let vis = node
+            .child_by_field_name("visibility")
             .map(|n| format!("{} ", self.text_of(&n)))
             .unwrap_or_default();
-        let name = node.child_by_field_name("name")
-            .map(|n| self.text_of(&n)).unwrap_or("?");
-        let type_params = node.child_by_field_name("type_parameters")
-            .map(|n| self.text_of(&n)).unwrap_or("");
+        let name = node
+            .child_by_field_name("name")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("?");
+        let type_params = node
+            .child_by_field_name("type_parameters")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("");
 
         if let Some(body) = node.child_by_field_name("body") {
-            out.push(Line::new(indent, format!("{}struct {}{} {{", vis, name, type_params)));
+            out.push(Line::new(
+                indent,
+                format!("{}struct {}{} {{", vis, name, type_params),
+            ));
             let mut cursor = body.walk();
             for field in body.children(&mut cursor) {
-                if !field.is_named() { continue; }
-                let field_vis = field.child_by_field_name("visibility")
+                if !field.is_named() {
+                    continue;
+                }
+                let field_vis = field
+                    .child_by_field_name("visibility")
                     .map(|n| format!("{} ", self.text_of(&n)))
                     .unwrap_or_default();
-                let field_name = field.child_by_field_name("name")
-                    .map(|n| self.text_of(&n)).unwrap_or("?");
-                let field_type = field.child_by_field_name("type")
-                    .map(|n| self.text_of(&n)).unwrap_or("?");
-                out.push(Line::new(indent + 1, format!("{}{}: {},", field_vis, field_name, field_type)));
+                let field_name = field
+                    .child_by_field_name("name")
+                    .map(|n| self.text_of(&n))
+                    .unwrap_or("?");
+                let field_type = field
+                    .child_by_field_name("type")
+                    .map(|n| self.text_of(&n))
+                    .unwrap_or("?");
+                out.push(Line::new(
+                    indent + 1,
+                    format!("{}{}: {},", field_vis, field_name, field_type),
+                ));
             }
             out.push(Line::new(indent, "}".to_string()));
         } else {
-            out.push(Line::new(indent, format!("{}struct {}{};", vis, name, type_params)));
+            out.push(Line::new(
+                indent,
+                format!("{}struct {}{};", vis, name, type_params),
+            ));
         }
     }
 
     fn walk_enum(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let vis = node.child_by_field_name("visibility")
+        let vis = node
+            .child_by_field_name("visibility")
             .map(|n| format!("{} ", self.text_of(&n)))
             .unwrap_or_default();
-        let name = node.child_by_field_name("name")
-            .map(|n| self.text_of(&n)).unwrap_or("?");
-        let type_params = node.child_by_field_name("type_parameters")
-            .map(|n| self.text_of(&n)).unwrap_or("");
-        out.push(Line::new(indent, format!("{}enum {}{} {{", vis, name, type_params)));
+        let name = node
+            .child_by_field_name("name")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("?");
+        let type_params = node
+            .child_by_field_name("type_parameters")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("");
+        out.push(Line::new(
+            indent,
+            format!("{}enum {}{} {{", vis, name, type_params),
+        ));
         if let Some(body) = node.child_by_field_name("body") {
             let mut cursor = body.walk();
             for variant in body.children(&mut cursor) {
-                if !variant.is_named() { continue; }
-                out.push(Line::new(indent + 1, format!("{},", self.text_of(&variant))));
+                if !variant.is_named() {
+                    continue;
+                }
+                out.push(Line::new(
+                    indent + 1,
+                    format!("{},", self.text_of(&variant)),
+                ));
             }
         }
         out.push(Line::new(indent, "}".to_string()));
     }
 
     fn walk_trait(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let vis = node.child_by_field_name("visibility")
+        let vis = node
+            .child_by_field_name("visibility")
             .map(|n| format!("{} ", self.text_of(&n)))
             .unwrap_or_default();
-        let name = node.child_by_field_name("name")
-            .map(|n| self.text_of(&n)).unwrap_or("?");
+        let name = node
+            .child_by_field_name("name")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("?");
         out.push(Line::new(indent, format!("{}trait {} {{", vis, name)));
         if let Some(body) = node.child_by_field_name("body") {
             self.walk_block_inner(body, indent + 1, out);
@@ -281,11 +352,14 @@ impl<'a> RustFormatter<'a> {
     }
 
     fn walk_mod(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let vis = node.child_by_field_name("visibility")
+        let vis = node
+            .child_by_field_name("visibility")
             .map(|n| format!("{} ", self.text_of(&n)))
             .unwrap_or_default();
-        let name = node.child_by_field_name("name")
-            .map(|n| self.text_of(&n)).unwrap_or("?");
+        let name = node
+            .child_by_field_name("name")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("?");
         if let Some(body) = node.child_by_field_name("body") {
             out.push(Line::new(indent, format!("{}mod {} {{", vis, name)));
             self.walk_block_inner(body, indent + 1, out);
@@ -298,14 +372,18 @@ impl<'a> RustFormatter<'a> {
     fn walk_block_inner(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
-            if !child.is_named() { continue; }
+            if !child.is_named() {
+                continue;
+            }
             self.walk(child, indent, out);
         }
     }
 
     fn walk_if(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let cond = node.child_by_field_name("condition")
-            .map(|n| self.format_expr(n, indent)).unwrap_or_default();
+        let cond = node
+            .child_by_field_name("condition")
+            .map(|n| self.format_expr(n, indent))
+            .unwrap_or_default();
         out.push(Line::new(indent, format!("if {} {{", cond)));
         if let Some(body) = node.child_by_field_name("consequence") {
             self.walk_block_inner(body, indent + 1, out);
@@ -319,9 +397,14 @@ impl<'a> RustFormatter<'a> {
                     if let Some(body) = alt.named_child(0) {
                         if body.kind() == "if_expression" {
                             // else if
-                            let cond2 = body.child_by_field_name("condition")
-                                .map(|n| self.format_expr(n, indent)).unwrap_or_default();
-                            out.push(Line::new(indent, format!("{} else if {} {{", last.content, cond2)));
+                            let cond2 = body
+                                .child_by_field_name("condition")
+                                .map(|n| self.format_expr(n, indent))
+                                .unwrap_or_default();
+                            out.push(Line::new(
+                                indent,
+                                format!("{} else if {} {{", last.content, cond2),
+                            ));
                             if let Some(b2) = body.child_by_field_name("consequence") {
                                 self.walk_block_inner(b2, indent + 1, out);
                             }
@@ -339,32 +422,51 @@ impl<'a> RustFormatter<'a> {
     }
 
     fn walk_match(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let val = node.child_by_field_name("value")
-            .map(|n| self.format_expr(n, indent)).unwrap_or_default();
+        let val = node
+            .child_by_field_name("value")
+            .map(|n| self.format_expr(n, indent))
+            .unwrap_or_default();
         out.push(Line::new(indent, format!("match {} {{", val)));
         if let Some(body) = node.child_by_field_name("body") {
             let mut cursor = body.walk();
             for arm in body.children(&mut cursor) {
-                if !arm.is_named() { continue; }
-                let pattern = arm.child_by_field_name("pattern")
-                    .map(|n| self.text_of(&n)).unwrap_or("_");
-                let guard = arm.child_by_field_name("guard")
+                if !arm.is_named() {
+                    continue;
+                }
+                let pattern = arm
+                    .child_by_field_name("pattern")
+                    .map(|n| self.text_of(&n))
+                    .unwrap_or("_");
+                let guard = arm
+                    .child_by_field_name("guard")
                     .map(|n| format!(" if {}", self.text_of(&n)))
                     .unwrap_or_default();
-                let value = arm.child_by_field_name("value")
-                    .map(|n| self.format_expr(n, indent + 1)).unwrap_or_default();
-                out.push(Line::new(indent + 1, format!("{}{} => {},", pattern, guard, value)));
+                let value = arm
+                    .child_by_field_name("value")
+                    .map(|n| self.format_expr(n, indent + 1))
+                    .unwrap_or_default();
+                out.push(Line::new(
+                    indent + 1,
+                    format!("{}{} => {},", pattern, guard, value),
+                ));
             }
         }
         out.push(Line::new(indent, "}".to_string()));
     }
 
     fn walk_for(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let pattern = node.child_by_field_name("pattern")
-            .map(|n| self.text_of(&n)).unwrap_or("_");
-        let value = node.child_by_field_name("value")
-            .map(|n| self.format_expr(n, indent)).unwrap_or_default();
-        out.push(Line::new(indent, format!("for {} in {} {{", pattern, value)));
+        let pattern = node
+            .child_by_field_name("pattern")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("_");
+        let value = node
+            .child_by_field_name("value")
+            .map(|n| self.format_expr(n, indent))
+            .unwrap_or_default();
+        out.push(Line::new(
+            indent,
+            format!("for {} in {} {{", pattern, value),
+        ));
         if let Some(body) = node.child_by_field_name("body") {
             self.walk_block_inner(body, indent + 1, out);
         }
@@ -374,8 +476,10 @@ impl<'a> RustFormatter<'a> {
     fn walk_loop(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
         let keyword = match node.kind() {
             "while_expression" => {
-                let cond = node.child_by_field_name("condition")
-                    .map(|n| self.format_expr(n, indent)).unwrap_or_default();
+                let cond = node
+                    .child_by_field_name("condition")
+                    .map(|n| self.format_expr(n, indent))
+                    .unwrap_or_default();
                 format!("while {} {{", cond)
             }
             _ => "loop {".to_string(),
@@ -388,12 +492,16 @@ impl<'a> RustFormatter<'a> {
     }
 
     fn format_let(&self, node: tree_sitter::Node, indent: usize) -> String {
-        let pattern = node.child_by_field_name("pattern")
-            .map(|n| self.text_of(&n)).unwrap_or("_");
-        let type_ann = node.child_by_field_name("type")
+        let pattern = node
+            .child_by_field_name("pattern")
+            .map(|n| self.text_of(&n))
+            .unwrap_or("_");
+        let type_ann = node
+            .child_by_field_name("type")
             .map(|n| format!(": {}", self.text_of(&n)))
             .unwrap_or_default();
-        let value = node.child_by_field_name("value")
+        let value = node
+            .child_by_field_name("value")
             .map(|n| format!(" = {}", self.format_expr(n, indent)))
             .unwrap_or_default();
         format!("let {}{}{};", pattern, type_ann, value)
@@ -409,24 +517,30 @@ impl<'a> RustFormatter<'a> {
 
 /// Split method chains that exceed `max_width` into one-call-per-line style.
 fn format_chains(lines: Vec<Line>, max_width: usize) -> Vec<Line> {
-    lines.into_iter().flat_map(|line| {
-        if line.len_rendered() <= max_width {
-            return vec![line];
-        }
-        // Detect method chain: contains `.` not inside strings/parens
-        if line.content.contains('.') && !line.content.starts_with("//") {
-            let parts: Vec<&str> = line.content.splitn(10, '.').collect();
-            if parts.len() > 2 {
-                let mut result = vec![Line::new(line.indent, format!("{}.", parts[0]))];
-                for part in &parts[1..parts.len() - 1] {
-                    result.push(Line::new(line.indent + 1, format!(".{}", part)));
-                }
-                result.push(Line::new(line.indent + 1, format!(".{}", parts[parts.len() - 1])));
-                return result;
+    lines
+        .into_iter()
+        .flat_map(|line| {
+            if line.len_rendered() <= max_width {
+                return vec![line];
             }
-        }
-        vec![line]
-    }).collect()
+            // Detect method chain: contains `.` not inside strings/parens
+            if line.content.contains('.') && !line.content.starts_with("//") {
+                let parts: Vec<&str> = line.content.splitn(10, '.').collect();
+                if parts.len() > 2 {
+                    let mut result = vec![Line::new(line.indent, format!("{}.", parts[0]))];
+                    for part in &parts[1..parts.len() - 1] {
+                        result.push(Line::new(line.indent + 1, format!(".{}", part)));
+                    }
+                    result.push(Line::new(
+                        line.indent + 1,
+                        format!(".{}", parts[parts.len() - 1]),
+                    ));
+                    return result;
+                }
+            }
+            vec![line]
+        })
+        .collect()
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────
@@ -438,11 +552,15 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&language)
-        .map_err(|e| FormatError::Internal { message: format!("rust grammar load failed: {}", e) })?;
+        .map_err(|e| FormatError::Internal {
+            message: format!("rust grammar load failed: {}", e),
+        })?;
 
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| FormatError::ParseFailed { message: "tree-sitter returned None for Rust".into() })?;
+        .ok_or_else(|| FormatError::ParseFailed {
+            message: "tree-sitter returned None for Rust".into(),
+        })?;
 
     if tree.root_node().has_error() {
         log::warn!("lang-rust: parse error — emitting verbatim");
@@ -484,7 +602,12 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     }
     let t_emit = t_emit_start.elapsed();
 
-    eprintln!("[Rust] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms", t_parse.as_secs_f64() * 1000.0, t_format.as_secs_f64() * 1000.0, t_emit.as_secs_f64() * 1000.0);
+    eprintln!(
+        "[Rust] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms",
+        t_parse.as_secs_f64() * 1000.0,
+        t_format.as_secs_f64() * 1000.0,
+        t_emit.as_secs_f64() * 1000.0
+    );
 
     Ok(trimmed.into_bytes())
 }

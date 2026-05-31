@@ -135,7 +135,9 @@ pub fn config_from_setup_cfg(cfg_str: &str) -> ConfigIR {
         if trimmed.starts_with('[') {
             in_black_section = false;
         }
-        if !in_black_section { continue; }
+        if !in_black_section {
+            continue;
+        }
         if let Some((key, val)) = trimmed.split_once('=') {
             let key = key.trim();
             let val = val.trim();

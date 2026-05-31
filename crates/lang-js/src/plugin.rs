@@ -1,11 +1,13 @@
-use protocol::{config::ConfigIR, FormatError, LanguagePlugin};
 use crate::format;
+use protocol::{config::ConfigIR, FormatError, LanguagePlugin};
 
 /// JS/TS/JSX/TSX language plugin.
 pub struct JsPlugin;
 
 impl LanguagePlugin for JsPlugin {
-    fn name(&self) -> &str { "lang-js" }
+    fn name(&self) -> &str {
+        "lang-js"
+    }
 
     fn extensions(&self) -> &[&str] {
         &["js", "mjs", "cjs", "jsx", "ts", "mts", "cts", "tsx"]

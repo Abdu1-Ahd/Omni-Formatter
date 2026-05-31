@@ -108,8 +108,12 @@ mod tests {
 
     struct EchoPlugin;
     impl LanguagePlugin for EchoPlugin {
-        fn name(&self) -> &str { "echo" }
-        fn extensions(&self) -> &[&str] { &["echo"] }
+        fn name(&self) -> &str {
+            "echo"
+        }
+        fn extensions(&self) -> &[&str] {
+            &["echo"]
+        }
         fn format(&self, source: &[u8], _config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
             Ok(source.to_vec())
         }

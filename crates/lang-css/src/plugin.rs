@@ -1,11 +1,13 @@
-use protocol::{config::ConfigIR, FormatError, LanguagePlugin};
 use crate::{format, CssDialect};
+use protocol::{config::ConfigIR, FormatError, LanguagePlugin};
 
 /// CSS/SCSS/Less/HTML language plugin.
 pub struct CssPlugin;
 
 impl LanguagePlugin for CssPlugin {
-    fn name(&self) -> &str { "lang-css" }
+    fn name(&self) -> &str {
+        "lang-css"
+    }
 
     fn extensions(&self) -> &[&str] {
         &["css", "scss", "less", "html", "htm"]
@@ -24,7 +26,12 @@ impl LanguagePlugin for CssPlugin {
         format::format(source, config, CssDialect::Css)
     }
 
-    fn format_dialect(&self, source: &[u8], config: &ConfigIR, dialect: &str) -> Result<Vec<u8>, FormatError> {
+    fn format_dialect(
+        &self,
+        source: &[u8],
+        config: &ConfigIR,
+        dialect: &str,
+    ) -> Result<Vec<u8>, FormatError> {
         let d = match dialect {
             "scss" => CssDialect::Scss,
             "less" => CssDialect::Less,

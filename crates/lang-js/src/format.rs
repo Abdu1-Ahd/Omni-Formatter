@@ -50,14 +50,18 @@ impl Doc {
     }
 
     fn line() -> Self {
-        Doc::Line { space_str: " ".to_string() }
+        Doc::Line {
+            space_str: " ".to_string(),
+        }
     }
 
     fn hard_line() -> Self {
         // A line that always breaks, even in flat mode.
         // Modelled by nesting in a group-breaking context: we emit a Line
         // but mark it so the flat renderer treats it as a break.
-        Doc::Line { space_str: "\x00".to_string() } // sentinel: flat renderer breaks on \x00
+        Doc::Line {
+            space_str: "\x00".to_string(),
+        } // sentinel: flat renderer breaks on \x00
     }
 
     fn concat(a: Doc, b: Doc) -> Self {
@@ -112,13 +116,24 @@ impl Renderer {
             }
             Doc::Concat(a, b) => {
                 let after_a = self.flat_len(a, col);
-                if after_a == usize::MAX { usize::MAX } else { self.flat_len(b, after_a) }
+                if after_a == usize::MAX {
+                    usize::MAX
+                } else {
+                    self.flat_len(b, after_a)
+                }
             }
             Doc::Group(inner) | Doc::Indent(inner) => self.flat_len(inner, col),
         }
     }
 
-    fn render_doc(&self, doc: &Doc, indent: usize, flat: bool, out: &mut String, col: usize) -> usize {
+    fn render_doc(
+        &self,
+        doc: &Doc,
+        indent: usize,
+        flat: bool,
+        out: &mut String,
+        col: usize,
+    ) -> usize {
         match doc {
             Doc::Nil => col,
             Doc::Text(s) => {
@@ -151,9 +166,7 @@ impl Renderer {
                     self.render_doc(inner, indent, false, out, col)
                 }
             }
-            Doc::Indent(inner) => {
-                self.render_doc(inner, indent + 1, flat, out, col)
-            }
+            Doc::Indent(inner) => self.render_doc(inner, indent + 1, flat, out, col),
         }
     }
 }
@@ -172,7 +185,11 @@ impl<'a> DocBuilder<'a> {
             QuoteStyle::Single => '\'',
             QuoteStyle::Double => '"',
         };
-        Self { source, config, quote }
+        Self {
+            source,
+            config,
+            quote,
+        }
     }
 
     fn text_of(&self, node: &tree_sitter::Node) -> &str {
@@ -191,7 +208,8 @@ impl<'a> DocBuilder<'a> {
             }
             "return_statement" => {
                 let mut cursor = node.walk();
-                let value = node.children(&mut cursor)
+                let value = node
+                    .children(&mut cursor)
                     .find(|c| c.is_named() && c.kind() != "comment")
                     .map(|n| Doc::concat(Doc::text(" "), self.build(n)))
                     .unwrap_or(Doc::Nil);
@@ -220,8 +238,21 @@ impl<'a> DocBuilder<'a> {
             "parenthesized_expression" => {
                 let inner = node.child(1).map(|n| self.build(n)).unwrap_or(Doc::Nil);
                 Doc::group(Doc::concat(
-                    Doc::concat(Doc::text("("), Doc::indent(Doc::concat(Doc::Line { space_str: "".into() }, inner))),
-                    Doc::concat(Doc::Line { space_str: "".into() }, Doc::text(")"))
+                    Doc::concat(
+                        Doc::text("("),
+                        Doc::indent(Doc::concat(
+                            Doc::Line {
+                                space_str: "".into(),
+                            },
+                            inner,
+                        )),
+                    ),
+                    Doc::concat(
+                        Doc::Line {
+                            space_str: "".into(),
+                        },
+                        Doc::text(")"),
+                    ),
                 ))
             }
             "type_annotation" => {
@@ -261,11 +292,16 @@ impl<'a> DocBuilder<'a> {
     }
 
     fn build_if(&self, node: tree_sitter::Node) -> Doc {
-        let cond = node.child_by_field_name("condition")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let cons = node.child_by_field_name("consequence")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let alt = node.child_by_field_name("alternative")
+        let cond = node
+            .child_by_field_name("condition")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let cons = node
+            .child_by_field_name("consequence")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let alt = node
+            .child_by_field_name("alternative")
             .map(|n| Doc::concat(Doc::text(" else "), self.build(n)));
 
         let mut doc = Doc::concat(
@@ -279,29 +315,47 @@ impl<'a> DocBuilder<'a> {
     }
 
     fn build_for(&self, node: tree_sitter::Node) -> Doc {
-        let init = node.child_by_field_name("initializer")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let cond = node.child_by_field_name("condition")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let update = node.child_by_field_name("increment")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let body = node.child_by_field_name("body")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
+        let init = node
+            .child_by_field_name("initializer")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let cond = node
+            .child_by_field_name("condition")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let update = node
+            .child_by_field_name("increment")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let body = node
+            .child_by_field_name("body")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
 
         Doc::concat(
             Doc::text("for ("),
             Doc::concat(
-                Doc::concat(init, Doc::concat(Doc::text("; "), Doc::concat(cond, Doc::concat(Doc::text("; "), update)))),
+                Doc::concat(
+                    init,
+                    Doc::concat(
+                        Doc::text("; "),
+                        Doc::concat(cond, Doc::concat(Doc::text("; "), update)),
+                    ),
+                ),
                 Doc::concat(Doc::text(") "), body),
             ),
         )
     }
 
     fn build_while(&self, node: tree_sitter::Node) -> Doc {
-        let cond = node.child_by_field_name("condition")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let body = node.child_by_field_name("body")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
+        let cond = node
+            .child_by_field_name("condition")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let body = node
+            .child_by_field_name("body")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
         Doc::concat(
             Doc::concat(Doc::text("while ("), Doc::concat(cond, Doc::text(")"))),
             Doc::concat(Doc::text(" "), body),
@@ -309,9 +363,16 @@ impl<'a> DocBuilder<'a> {
     }
 
     fn build_var_decl(&self, node: tree_sitter::Node) -> Doc {
-        let keyword = node.child_by_field_name("kind")
+        let keyword = node
+            .child_by_field_name("kind")
             .map(|n| self.text_of(&n).to_string())
-            .unwrap_or_else(|| self.text_of(&node).split_whitespace().next().unwrap_or("var").to_string());
+            .unwrap_or_else(|| {
+                self.text_of(&node)
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("var")
+                    .to_string()
+            });
         let mut declarators: Vec<Doc> = Vec::new();
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
@@ -333,14 +394,19 @@ impl<'a> DocBuilder<'a> {
     }
 
     fn build_declarator(&self, node: tree_sitter::Node) -> Doc {
-        let name = node.child_by_field_name("name")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let type_ann = node.child_by_field_name("type")
+        let name = node
+            .child_by_field_name("name")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let type_ann = node
+            .child_by_field_name("type")
             .or_else(|| node.child_by_field_name("type_annotation"))
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let value = node.child_by_field_name("value")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let value = node
+            .child_by_field_name("value")
             .map(|n| Doc::concat(Doc::text(" = "), self.build(n)));
-        
+
         let name_with_type = Doc::concat(name, type_ann);
         match value {
             Some(v) => Doc::concat(name_with_type, v),
@@ -349,23 +415,34 @@ impl<'a> DocBuilder<'a> {
     }
 
     fn build_function(&self, node: tree_sitter::Node) -> Doc {
-        let name = node.child_by_field_name("name")
+        let name = node
+            .child_by_field_name("name")
             .map(|n| Doc::concat(Doc::text(" "), Doc::text(self.text_of(&n))))
             .unwrap_or(Doc::Nil);
-        let params = node.child_by_field_name("parameters")
-            .map(|n| self.build_params(n)).unwrap_or(Doc::text("()"));
-        let return_type = node.child_by_field_name("return_type")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let body = node.child_by_field_name("body")
-            .map(|n| self.build_curly_block(n)).unwrap_or(Doc::text("{}"));
+        let params = node
+            .child_by_field_name("parameters")
+            .map(|n| self.build_params(n))
+            .unwrap_or(Doc::text("()"));
+        let return_type = node
+            .child_by_field_name("return_type")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let body = node
+            .child_by_field_name("body")
+            .map(|n| self.build_curly_block(n))
+            .unwrap_or(Doc::text("{}"));
         Doc::concat(
             Doc::concat(Doc::text("function"), name),
-            Doc::concat(Doc::concat(params, return_type), Doc::concat(Doc::text(" "), body)),
+            Doc::concat(
+                Doc::concat(params, return_type),
+                Doc::concat(Doc::text(" "), body),
+            ),
         )
     }
 
     fn build_arrow(&self, node: tree_sitter::Node) -> Doc {
-        let params = node.child_by_field_name("parameter")
+        let params = node
+            .child_by_field_name("parameter")
             .or_else(|| node.child_by_field_name("parameters"))
             .map(|n| {
                 if n.kind() == "formal_parameters" {
@@ -375,9 +452,12 @@ impl<'a> DocBuilder<'a> {
                 }
             })
             .unwrap_or(Doc::text("()"));
-        let return_type = node.child_by_field_name("return_type")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let body = node.child_by_field_name("body")
+        let return_type = node
+            .child_by_field_name("return_type")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let body = node
+            .child_by_field_name("body")
             .map(|n| {
                 if n.kind() == "statement_block" {
                     self.build_curly_block(n)
@@ -386,7 +466,10 @@ impl<'a> DocBuilder<'a> {
                 }
             })
             .unwrap_or(Doc::Nil);
-        Doc::concat(Doc::concat(params, return_type), Doc::concat(Doc::text(" => "), body))
+        Doc::concat(
+            Doc::concat(params, return_type),
+            Doc::concat(Doc::text(" => "), body),
+        )
     }
 
     fn build_params(&self, node: tree_sitter::Node) -> Doc {
@@ -400,7 +483,11 @@ impl<'a> DocBuilder<'a> {
         let inner = if params.is_empty() {
             Doc::Nil
         } else {
-            let trailing = if self.config.trailing_comma && !params.is_empty() { "," } else { "" };
+            let trailing = if self.config.trailing_comma && !params.is_empty() {
+                ","
+            } else {
+                ""
+            };
             Doc::concat(
                 Doc::join(Doc::concat(Doc::text(","), Doc::line()), params),
                 Doc::text(trailing),
@@ -408,43 +495,71 @@ impl<'a> DocBuilder<'a> {
         };
         Doc::group(Doc::concat(
             Doc::text("("),
-            Doc::concat(Doc::indent(Doc::concat(Doc::Line { space_str: "".into() }, inner)), Doc::concat(Doc::Line { space_str: "".into() }, Doc::text(")"))),
+            Doc::concat(
+                Doc::indent(Doc::concat(
+                    Doc::Line {
+                        space_str: "".into(),
+                    },
+                    inner,
+                )),
+                Doc::concat(
+                    Doc::Line {
+                        space_str: "".into(),
+                    },
+                    Doc::text(")"),
+                ),
+            ),
         ))
     }
 
     fn build_class(&self, node: tree_sitter::Node) -> Doc {
-        let name = node.child_by_field_name("name")
+        let name = node
+            .child_by_field_name("name")
             .map(|n| Doc::concat(Doc::text(" "), Doc::text(self.text_of(&n))))
             .unwrap_or(Doc::Nil);
-        let superclass = node.child_by_field_name("superclass")
+        let superclass = node
+            .child_by_field_name("superclass")
             .map(|n| Doc::concat(Doc::text(" extends "), Doc::text(self.text_of(&n))))
             .unwrap_or(Doc::Nil);
-        let body = node.child_by_field_name("body")
-            .map(|n| self.build_curly_block(n)).unwrap_or(Doc::text("{}"));
+        let body = node
+            .child_by_field_name("body")
+            .map(|n| self.build_curly_block(n))
+            .unwrap_or(Doc::text("{}"));
         Doc::concat(
             Doc::text("class"),
-            Doc::concat(name, Doc::concat(superclass, Doc::concat(Doc::text(" "), body))),
+            Doc::concat(
+                name,
+                Doc::concat(superclass, Doc::concat(Doc::text(" "), body)),
+            ),
         )
     }
 
     fn build_import(&self, node: tree_sitter::Node) -> Doc {
         // Emit verbatim for now — import reordering is a separate pass
         let semi = if self.config.semicolons { ";" } else { "" };
-        Doc::concat(Doc::text(self.text_of(&node).trim_end_matches(';')), Doc::text(semi))
+        Doc::concat(
+            Doc::text(self.text_of(&node).trim_end_matches(';')),
+            Doc::text(semi),
+        )
     }
 
     fn build_export(&self, node: tree_sitter::Node) -> Doc {
-        let inner = node.named_child(0)
+        let inner = node
+            .named_child(0)
             .map(|n| Doc::concat(Doc::text(" "), self.build(n)))
             .unwrap_or(Doc::Nil);
         Doc::concat(Doc::text("export"), inner)
     }
 
     fn build_call(&self, node: tree_sitter::Node) -> Doc {
-        let func = node.child_by_field_name("function")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let args = node.child_by_field_name("arguments")
-            .map(|n| self.build_args(n)).unwrap_or(Doc::text("()"));
+        let func = node
+            .child_by_field_name("function")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let args = node
+            .child_by_field_name("arguments")
+            .map(|n| self.build_args(n))
+            .unwrap_or(Doc::text("()"));
         Doc::concat(func, args)
     }
 
@@ -464,36 +579,54 @@ impl<'a> DocBuilder<'a> {
             Doc::text("("),
             Doc::concat(
                 Doc::indent(Doc::concat(
-                    Doc::Line { space_str: "".into() },
+                    Doc::Line {
+                        space_str: "".into(),
+                    },
                     Doc::concat(
                         Doc::join(Doc::concat(Doc::text(","), Doc::line()), args),
                         Doc::text(trailing),
                     ),
                 )),
-                Doc::concat(Doc::Line { space_str: "".into() }, Doc::text(")")),
+                Doc::concat(
+                    Doc::Line {
+                        space_str: "".into(),
+                    },
+                    Doc::text(")"),
+                ),
             ),
         ))
     }
 
     fn build_member(&self, node: tree_sitter::Node) -> Doc {
-        let object = node.child_by_field_name("object")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let property = node.child_by_field_name("property")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
+        let object = node
+            .child_by_field_name("object")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let property = node
+            .child_by_field_name("property")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
         let op = if node.child_count() >= 2 {
             node.child(1).map(|n| self.text_of(&n)).unwrap_or(".")
-        } else { "." };
+        } else {
+            "."
+        };
         Doc::concat(object, Doc::concat(Doc::text(op), property))
     }
 
     fn build_binary(&self, node: tree_sitter::Node) -> Doc {
-        let left = node.child_by_field_name("left")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let op = node.child_by_field_name("operator")
+        let left = node
+            .child_by_field_name("left")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let op = node
+            .child_by_field_name("operator")
             .map(|n| self.text_of(&n).to_string())
             .unwrap_or_default();
-        let right = node.child_by_field_name("right")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
+        let right = node
+            .child_by_field_name("right")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
         Doc::group(Doc::concat(
             left,
             Doc::indent(Doc::concat(
@@ -504,13 +637,18 @@ impl<'a> DocBuilder<'a> {
     }
 
     fn build_assignment(&self, node: tree_sitter::Node) -> Doc {
-        let left = node.child_by_field_name("left")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
-        let op = node.child_by_field_name("operator")
+        let left = node
+            .child_by_field_name("left")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
+        let op = node
+            .child_by_field_name("operator")
             .map(|n| self.text_of(&n).to_string())
             .unwrap_or_else(|| "=".to_string());
-        let right = node.child_by_field_name("right")
-            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
+        let right = node
+            .child_by_field_name("right")
+            .map(|n| self.build(n))
+            .unwrap_or(Doc::Nil);
         Doc::group(Doc::concat(
             Doc::concat(left, Doc::text(format!(" {} ", op))),
             Doc::indent(right),
@@ -560,13 +698,20 @@ impl<'a> DocBuilder<'a> {
             Doc::text("["),
             Doc::concat(
                 Doc::indent(Doc::concat(
-                    Doc::Line { space_str: "".into() },
+                    Doc::Line {
+                        space_str: "".into(),
+                    },
                     Doc::concat(
                         Doc::join(Doc::concat(Doc::text(","), Doc::line()), items),
                         Doc::text(trailing),
                     ),
                 )),
-                Doc::concat(Doc::Line { space_str: "".into() }, Doc::text("]")),
+                Doc::concat(
+                    Doc::Line {
+                        space_str: "".into(),
+                    },
+                    Doc::text("]"),
+                ),
             ),
         ))
     }
@@ -593,7 +738,12 @@ impl<'a> DocBuilder<'a> {
         if inner.contains(target) {
             return Doc::text(raw);
         }
-        Doc::text(format!("{}{}{}", target, inner.replace(outer, &target.to_string()), target))
+        Doc::text(format!(
+            "{}{}{}",
+            target,
+            inner.replace(outer, &target.to_string()),
+            target
+        ))
     }
 
     fn build_curly_block(&self, node: tree_sitter::Node) -> Doc {
@@ -619,7 +769,10 @@ impl<'a> DocBuilder<'a> {
         Doc::concat(
             Doc::text("{"),
             Doc::concat(
-                Doc::indent(Doc::concat(Doc::hard_line(), Doc::join(Doc::hard_line(), stmts))),
+                Doc::indent(Doc::concat(
+                    Doc::hard_line(),
+                    Doc::join(Doc::hard_line(), stmts),
+                )),
                 Doc::concat(Doc::hard_line(), Doc::text("}")),
             ),
         )
@@ -646,11 +799,15 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&language)
-        .map_err(|e| FormatError::Internal { message: format!("grammar load failed: {}", e) })?;
+        .map_err(|e| FormatError::Internal {
+            message: format!("grammar load failed: {}", e),
+        })?;
 
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| FormatError::ParseFailed { message: "tree-sitter returned None".into() })?;
+        .ok_or_else(|| FormatError::ParseFailed {
+            message: "tree-sitter returned None".into(),
+        })?;
 
     if tree.root_node().has_error() {
         log::warn!("lang-js: parse error in source — emitting verbatim");
@@ -683,7 +840,13 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     let t_emit = t_emit_start.elapsed();
 
     let lang_name = if is_ts { "TS" } else { "JS" };
-    eprintln!("[{}] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms", lang_name, t_parse.as_secs_f64() * 1000.0, t_format.as_secs_f64() * 1000.0, t_emit.as_secs_f64() * 1000.0);
+    eprintln!(
+        "[{}] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms",
+        lang_name,
+        t_parse.as_secs_f64() * 1000.0,
+        t_format.as_secs_f64() * 1000.0,
+        t_emit.as_secs_f64() * 1000.0
+    );
 
     Ok(rendered.into_bytes())
 }
@@ -727,7 +890,10 @@ mod tests {
 
     #[test]
     fn format_single_variable() {
-        let config = ConfigIR { semicolons: true, ..Default::default() };
+        let config = ConfigIR {
+            semicolons: true,
+            ..Default::default()
+        };
         let source = b"const x = 1;\n";
         let result = format(source, &config).unwrap();
         // Should round-trip cleanly

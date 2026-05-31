@@ -43,15 +43,15 @@ impl RustfmtConfig {
     pub fn apply_to(&self, base: &mut ConfigIR) {
         // rustfmt defaults differ from Prettier
         base.print_width = self.max_width.unwrap_or(100);
-        base.indent_size  = self.tab_spaces.unwrap_or(4) as u8;
+        base.indent_size = self.tab_spaces.unwrap_or(4) as u8;
         if self.hard_tabs.unwrap_or(false) {
             base.indent_style = IndentStyle::Tabs;
         }
         if let Some(ref style) = self.newline_style {
             base.end_of_line = match style.to_lowercase().as_str() {
-                "unix"    => EndOfLine::Lf,
+                "unix" => EndOfLine::Lf,
                 "windows" => EndOfLine::Crlf,
-                _         => EndOfLine::Auto,
+                _ => EndOfLine::Auto,
             };
         }
         // "Vertical" or "Always" → trailing commas; "Never" → no trailing commas
@@ -112,9 +112,9 @@ pub fn config_from_rustfmt_json(json: &str) -> ConfigIR {
 /// Returns the rustfmt stable defaults as a ConfigIR.
 fn rustfmt_defaults() -> ConfigIR {
     let mut config = ConfigIR::default();
-    config.print_width   = 100;
-    config.indent_size   = 4;
-    config.trailing_comma = true;   // Vertical → trailing comma in multi-line
+    config.print_width = 100;
+    config.indent_size = 4;
+    config.trailing_comma = true; // Vertical → trailing comma in multi-line
     config
 }
 
