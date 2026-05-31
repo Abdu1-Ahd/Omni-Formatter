@@ -31,6 +31,7 @@
 pub mod adapter;
 pub mod compat;
 pub mod format;
+pub mod plugin;
 
 use wasm_bindgen::prelude::*;
 use protocol::{ConfigIR, FormatError};
@@ -64,14 +65,14 @@ pub fn config_schema() -> String {
 
 /// Returns the module's semver version string.
 #[wasm_bindgen]
-pub fn version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
+pub fn version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
 }
 
 /// Returns the primary VS Code languageId this module handles.
 #[wasm_bindgen]
-pub fn language_id() -> &'static str {
-    "javascript"
+pub fn language_id() -> String {
+    "javascript".to_string()
 }
 
 /// Returns all VS Code languageIds and file extensions this module handles.

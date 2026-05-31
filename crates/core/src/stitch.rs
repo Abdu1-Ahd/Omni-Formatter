@@ -119,7 +119,7 @@ mod tests {
             range: ByteRange { start, end },
             indent_column,
             suppressed: false,
-            kind: ZoneKind::HtmlScript,
+            kind: ZoneKind::Language("html".to_string()),
         }
     }
 
@@ -133,7 +133,7 @@ mod tests {
     #[test]
     fn stitch_single_zone_replaces_content() {
         let source = b"<script>const x=1</script>";
-        let zone = make_zone(8, 18, 0); // "const x=1"
+        let zone = make_zone(8, 17, 0); // "const x=1"
         let fz = FormattedZone {
             zone: &zone,
             formatted: b"const x = 1;".to_vec(),

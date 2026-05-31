@@ -35,10 +35,6 @@ pub fn is_strict_compat_mode(config: &ConfigIR) -> bool {
     config.mode == ModuleMode::Opinionated
 }
 
-/// Returns the formatter chain label for the status bar.
-///
-/// In compat mode: `"lang-js 0.1.0 (Prettier 3.x compat)"`
-/// In advanced mode: `"lang-js 0.1.0 (advanced mode)"`
 pub fn formatter_chain_label(config: &ConfigIR) -> String {
     let version = env!("CARGO_PKG_VERSION");
     if is_strict_compat_mode(config) {
@@ -46,6 +42,32 @@ pub fn formatter_chain_label(config: &ConfigIR) -> String {
     } else {
         format!("lang-js {} (advanced mode)", version)
     }
+}
+
+/// Verify the Prettier version installed in the project via package.json content.
+pub fn verify_prettier_version(package_json_content: &str) -> Option<String> {
+    let parsed: serde_json::Value = serde_json::from_str(package_json_content).ok()?;
+    
+    if let Some(dev_deps) = parsed.get("devDependencies") {
+        if let Some(version) = dev_deps.get("prettier") {
+            return version.as_str().map(|s| s.to_string());
+        }
+    }
+    
+    if let Some(deps) = parsed.get("dependencies") {
+        if let Some(version) = deps.get("prettier") {
+            return version.as_str().map(|s| s.to_string());
+        }
+    }
+    
+    None
+}
+
+/// Verify the Prettier version by reading package.json from disk.
+pub fn verify_prettier_version_from_disk(dir: &std::path::Path) -> Option<String> {
+    let pkg_path = dir.join("package.json");
+    let content = std::fs::read_to_string(pkg_path).ok()?;
+    verify_prettier_version(&content)
 }
 
 #[cfg(test)]

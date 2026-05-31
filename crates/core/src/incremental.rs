@@ -28,6 +28,7 @@
 
 use protocol::{ByteRange, EditDelta};
 
+
 /// The result of computing the dirty region for an incremental format.
 #[derive(Debug, Clone)]
 pub struct DirtyRegion {
@@ -52,59 +53,92 @@ pub struct DirtyRegion {
 ///
 /// The `DirtyRegion` that should be formatted — the smallest complete
 /// syntactic unit containing the edit offset.
-///
-/// # Phase 3 Status
-///
-/// Returns a stub region covering ±5 lines around the edit offset.
-/// Full Tree-sitter incremental parse in Phase 4.
 pub fn compute_dirty_region(
     source: &[u8],
     edit: &EditDelta,
     language_id: &str,
 ) -> DirtyRegion {
-    // Phase 3 stub: expand to ±5 lines around the edit offset.
-    // Full CST-based expansion implemented in Phase 4.
-    let start = expand_to_line_start(source, edit.start, 5);
-    let end = expand_to_line_end(source, edit.start + edit.inserted.len(), 5);
+    let mut parser = tree_sitter::Parser::new();
+    let language = match language_id {
+        "javascript" | "javascriptreact" => tree_sitter_javascript::language(),
+        "typescript" | "typescriptreact" => tree_sitter_typescript::language_typescript(),
+        "python" => tree_sitter_python::language(),
+        "rust" => tree_sitter_rust::language(),
+        "go" => tree_sitter_go::language(),
+        "css" | "scss" | "less" => tree_sitter_css::language(),
+        "html" => tree_sitter_html::language(),
+        _ => return fallback_region(source, edit, language_id),
+    };
 
+    if parser.set_language(&language).is_err() {
+        return fallback_region(source, edit, language_id);
+    }
+
+    if let Some(tree) = parser.parse(source, None) {
+        let mut cursor = tree.walk();
+        let mut current_node = tree.root_node();
+        let target_byte = edit.start;
+
+        // Find the deepest node covering the edit start byte
+        loop {
+            let mut found_child = false;
+            for child in current_node.children(&mut cursor) {
+                // tree-sitter uses exclusive end_byte
+                if child.start_byte() <= target_byte && child.end_byte() > target_byte {
+                    current_node = child;
+                    found_child = true;
+                    break;
+                }
+            }
+            if !found_child {
+                break;
+            }
+        }
+
+        // Walk up to find the nearest complete statement or block
+        while current_node.parent().is_some() {
+            let kind = current_node.kind();
+            if kind.ends_with("statement")
+                || kind.ends_with("declaration")
+                || kind == "block"
+                || kind == "program"
+                || kind == "source_file"
+                || kind == "document"
+                || kind == "module"
+            {
+                if !current_node.has_error() {
+                    break;
+                }
+            }
+            if let Some(parent) = current_node.parent() {
+                current_node = parent;
+            } else {
+                break;
+            }
+        }
+
+        return DirtyRegion {
+            range: ByteRange {
+                start: current_node.start_byte(),
+                end: current_node.end_byte(),
+            },
+            language_id: language_id.to_string(),
+        };
+    }
+
+    fallback_region(source, edit, language_id)
+}
+
+fn fallback_region(source: &[u8], edit: &EditDelta, language_id: &str) -> DirtyRegion {
+    let requested = ByteRange {
+        start: edit.start,
+        end: edit.start + edit.inserted.len(),
+    };
+    let expanded = crate::range::expand_to_nearest_unit(source, requested, language_id);
     DirtyRegion {
-        range: ByteRange { start, end },
+        range: expanded.range,
         language_id: language_id.to_string(),
     }
-}
-
-/// Walk backwards from `offset` by up to `lines` newlines.
-fn expand_to_line_start(source: &[u8], offset: usize, lines: usize) -> usize {
-    let mut pos = offset.min(source.len().saturating_sub(1));
-    let mut lines_seen = 0;
-
-    while pos > 0 {
-        pos -= 1;
-        if source[pos] == b'\n' {
-            lines_seen += 1;
-            if lines_seen >= lines {
-                return pos + 1;
-            }
-        }
-    }
-    0
-}
-
-/// Walk forwards from `offset` by up to `lines` newlines.
-fn expand_to_line_end(source: &[u8], offset: usize, lines: usize) -> usize {
-    let mut pos = offset.min(source.len());
-    let mut lines_seen = 0;
-
-    while pos < source.len() {
-        if source[pos] == b'\n' {
-            lines_seen += 1;
-            if lines_seen >= lines {
-                return pos;
-            }
-        }
-        pos += 1;
-    }
-    source.len()
 }
 
 #[cfg(test)]
@@ -112,28 +146,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn dirty_region_within_source_bounds() {
-        let source = b"line1\nline2\nline3\nline4\nline5\nline6\nline7\n";
-        let edit = EditDelta {
-            start: 20,
-            deleted: 0,
-            inserted: b"x".to_vec(),
-        };
-        let region = compute_dirty_region(source, &edit, "javascript");
-        assert!(region.range.start <= 20);
-        assert!(region.range.end >= 21);
-        assert!(region.range.end <= source.len());
-    }
+    fn dirty_region_single_statement() {
+        let mut source = String::new();
+        for i in 0..100 {
+            source.push_str(&format!("let var{} = {};\n", i, i));
+        }
 
-    #[test]
-    fn dirty_region_clamps_to_source_start() {
-        let source = b"short source";
+        let mut bytes = source.into_bytes();
+        // find start of line 50 (index 49)
+        let edit_start = bytes
+            .iter()
+            .enumerate()
+            .filter(|(_, &b)| b == b'\n')
+            .nth(48)
+            .map(|(i, _)| i + 1)
+            .unwrap();
+
+        // Edit inside "let var49 = 49;\n"
         let edit = EditDelta {
-            start: 0,
-            deleted: 0,
+            start: edit_start + 4,
+            deleted: 1,
             inserted: b"x".to_vec(),
         };
-        let region = compute_dirty_region(source, &edit, "rust");
-        assert_eq!(region.range.start, 0);
+
+        bytes[edit_start + 4] = b'x';
+
+        let region = compute_dirty_region(&bytes, &edit, "javascript");
+
+        // The region should cover just the single statement, not the whole file
+        let length = region.range.end - region.range.start;
+        assert!(length < 30, "Region too large: {}", length);
+        assert!(length > 10, "Region too small: {}", length);
     }
 }

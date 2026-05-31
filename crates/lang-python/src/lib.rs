@@ -30,6 +30,7 @@
 
 pub mod adapter;
 pub mod format;
+pub mod plugin;
 
 use wasm_bindgen::prelude::*;
 use protocol::ConfigIR;
@@ -49,10 +50,10 @@ pub fn config_schema() -> String {
 }
 
 #[wasm_bindgen]
-pub fn version() -> &'static str { env!("CARGO_PKG_VERSION") }
+pub fn version() -> String { env!("CARGO_PKG_VERSION").to_string() }
 
 #[wasm_bindgen]
-pub fn language_id() -> &'static str { "python" }
+pub fn language_id() -> String { "python".to_string() }
 
 #[wasm_bindgen]
 pub fn aliases() -> Vec<JsValue> {

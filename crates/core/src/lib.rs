@@ -17,6 +17,7 @@ pub mod debug;
 pub mod incremental;
 pub mod memory;
 pub mod range;
+pub mod registry;
 pub mod stitch;
 pub mod unicode;
 pub mod zones;
@@ -79,13 +80,62 @@ pub fn format(request_json: &str) -> String {
         .to_string();
     }
 
-    // Phase 1 stub: return source unchanged.
-    // Language module dispatch, zone detection, comment anchoring, and diff
-    // generation are implemented in Phases 3 and 4.
+    // ── Language dispatch ──────────────────────────────────────────────────
+    // Map language_id to a file extension the registry understands.
+    // VS Code language IDs don't always match file extensions, so we normalise.
+    let ext = language_id_to_ext(&request.language_id);
+
+    let registry = registry::default_registry();
+    let config = &request.config;
+    let source = &request.source;
+
+    let formatted = match registry.format_by_ext(ext, source, config) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            return serde_json::json!({
+                "error": {
+                    "kind": "format_failed",
+                    "detail": { "message": format!("{}", e) }
+                }
+            })
+            .to_string();
+        }
+    };
+
+    // ── Diff generation ────────────────────────────────────────────────────
+    // Produce a single whole-document edit if the output differs, or is_noop.
+    let (edits, is_noop) = if formatted == *source {
+        (Vec::new(), true)
+    } else {
+        let new_text = match std::str::from_utf8(&formatted) {
+            Ok(s) => s.to_string(),
+            Err(_) => {
+                return serde_json::json!({
+                    "error": {
+                        "kind": "internal",
+                        "detail": { "message": "formatter produced invalid UTF-8" }
+                    }
+                })
+                .to_string();
+            }
+        };
+        let edit = TextEdit {
+            range: protocol::ByteRange { start: 0, end: source.len() },
+            new_text,
+        };
+        (vec![edit], false)
+    };
+
+    let chain = format!(
+        "OmniFormatter {} (lang-{})",
+        env!("CARGO_PKG_VERSION"),
+        ext
+    );
+
     let response = FormatResponse {
-        edits: Vec::new(),        // No edits = source is already "formatted"
-        formatter_chain: format!("OmniFormatter core (stub) for {}", request.language_id),
-        is_noop: true,
+        edits,
+        formatter_chain: chain,
+        is_noop,
     };
 
     // Serialise the response.
@@ -98,6 +148,23 @@ pub fn format(request_json: &str) -> String {
             }
         })
         .to_string(),
+    }
+}
+
+/// Map VS Code language identifiers to the extension keys the registry uses.
+fn language_id_to_ext(language_id: &str) -> &str {
+    match language_id {
+        "javascript" | "javascriptreact" => "js",
+        "typescript" | "typescriptreact" => "ts",
+        "python" => "py",
+        "rust" => "rs",
+        "go" => "go",
+        "css" => "css",
+        "scss" => "scss",
+        "less" => "less",
+        "html" => "html",
+        // Fallback: use the language_id verbatim (covers future plugins)
+        other => other,
     }
 }
 

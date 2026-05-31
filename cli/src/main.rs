@@ -70,11 +70,12 @@ async fn main() -> Result<()> {
                 if path.is_file() {
                     format_file(&path, plugin.as_deref(), module.as_deref(), true).await?;
                 } else if path.is_dir() {
-                    // Primitive dir walk (in a real CLI, use ignore/walkdir)
-                    for entry in walkdir::WalkDir::new(&path) {
-                        let entry = entry?;
+                    for entry in ignore::Walk::new(&path) {
+                        let entry = match entry {
+                            Ok(e) => e,
+                            Err(_) => continue,
+                        };
                         if entry.path().is_file() {
-                            // Best-effort format
                             let _ = format_file(entry.path(), plugin.as_deref(), module.as_deref(), true).await;
                         }
                     }

@@ -90,7 +90,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_actor  ON audit_log(actor_id, created_a
 -- ── Seed: bundled modules (installed with every registry deployment) ───────
 -- These are the five built-in modules. They are owned by the system publisher (id=1).
 INSERT OR IGNORE INTO publishers (id, username, public_key, status)
-VALUES (1, 'omnifmt-system', 'SYSTEM_KEY_PLACEHOLDER', 'active');
+VALUES (1, 'omnifmt-system', 'MCowBQYDK2VwAyEAnZBVFjRtNitJzH901Y3IzSWvmxthN55kmBQNgokZrNs', 'active');
 
 INSERT OR IGNORE INTO modules (id, name, description, owner_id, language_ids)
 VALUES

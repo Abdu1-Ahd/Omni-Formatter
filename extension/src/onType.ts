@@ -17,7 +17,7 @@
 import * as vscode from "vscode";
 import { WorkerPool } from "./workerPool";
 import { StatusBar } from "./statusBar";
-import { toUtf8ByteOffset } from "./offsets";
+import { toUtf8ByteOffset, toUtf16CodeUnitOffset } from "./offsets";
 
 export class OnTypeHandler implements vscode.Disposable {
   private readonly pool: WorkerPool;
@@ -113,7 +113,14 @@ export class OnTypeHandler implements vscode.Disposable {
       }
 
       this.statusBar.update(document.languageId, response.formatter_chain ?? "", Math.round(elapsedMs));
-      return []; // Phase 3 stub: edits returned in Phase 4
+      
+      return response.edits.map((edit: any) => {
+        const startUtf16 = toUtf16CodeUnitOffset(sourceText, edit.range.start);
+        const endUtf16 = toUtf16CodeUnitOffset(sourceText, edit.range.end);
+        const startPos = document.positionAt(startUtf16);
+        const endPos = document.positionAt(endUtf16);
+        return vscode.TextEdit.replace(new vscode.Range(startPos, endPos), edit.new_text);
+      });
     } catch {
       return [];
     }

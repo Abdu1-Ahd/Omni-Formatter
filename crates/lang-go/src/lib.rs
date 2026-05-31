@@ -23,16 +23,16 @@
 //!
 //! Phase 4 scaffold. Format logic is pass-through stub.
 
+pub mod adapter;
 pub mod format;
+pub mod plugin;
 
 use wasm_bindgen::prelude::*;
 use protocol::ConfigIR;
 
 #[wasm_bindgen]
 pub fn format_go(source_bytes: &[u8], config_json: &str) -> Result<Vec<u8>, JsValue> {
-    // Go always uses tabs — enforce this regardless of ConfigIR
-    let mut config: ConfigIR = serde_json::from_str(config_json).unwrap_or_default();
-    config.indent_style = protocol::config::IndentStyle::Tabs;
+    let config = adapter::config_from_go_json(config_json);
     match format::format(source_bytes, &config) {
         Ok(f) => Ok(f),
         Err(e) => Err(JsValue::from_str(&e.to_string())),
@@ -43,10 +43,10 @@ pub fn format_go(source_bytes: &[u8], config_json: &str) -> Result<Vec<u8>, JsVa
 pub fn config_schema() -> String { include_str!("../schema.json").to_string() }
 
 #[wasm_bindgen]
-pub fn version() -> &'static str { env!("CARGO_PKG_VERSION") }
+pub fn version() -> String { env!("CARGO_PKG_VERSION").to_string() }
 
 #[wasm_bindgen]
-pub fn language_id() -> &'static str { "go" }
+pub fn language_id() -> String { "go".to_string() }
 
 #[wasm_bindgen]
 pub fn aliases() -> Vec<JsValue> {

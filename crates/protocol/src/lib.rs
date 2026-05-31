@@ -5,10 +5,12 @@
 
 pub mod config;
 pub mod error;
+pub mod plugin;
 pub mod zone;
 
 pub use config::ConfigIR;
 pub use error::FormatError;
+pub use plugin::LanguagePlugin;
 pub use zone::Zone;
 
 use serde::{Deserialize, Serialize};

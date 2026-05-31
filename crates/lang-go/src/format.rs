@@ -69,34 +69,55 @@ impl<'a> GoFormatter<'a> {
     fn walk(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
         match node.kind() {
             "source_file" => {
-                // Collect and group imports, then emit rest
-                let mut imports: Vec<String> = Vec::new();
-                let mut non_imports: Vec<tree_sitter::Node> = Vec::new();
-                let mut cursor = node.walk();
-                for child in node.children(&mut cursor) {
-                    if !child.is_named() { continue; }
-                    match child.kind() {
-                        "import_declaration" => {
-                            imports.push(self.format_import(child));
+                // Collect package clause, imports, and other declarations separately
+                let mut package_node: Option<tree_sitter::Node> = None;
+                let mut import_nodes: Vec<tree_sitter::Node> = Vec::new();
+                let mut other_nodes: Vec<tree_sitter::Node> = Vec::new();
+                {
+                    let mut cursor = node.walk();
+                    for child in node.children(&mut cursor) {
+                        if !child.is_named() { continue; }
+                        match child.kind() {
+                            "package_clause" => { package_node = Some(child); }
+                            "import_declaration" => { import_nodes.push(child); }
+                            _ => { other_nodes.push(child); }
                         }
-                        _ => non_imports.push(child),
                     }
                 }
-                // Emit package clause first (it's the first non-import item)
-                let mut first = true;
-                for child in &non_imports {
-                    if !first { out.push(Line::new(0, "")); }
-                    first = false;
-                    self.walk(*child, indent, out);
+                // 1. Emit package clause
+                if let Some(pkg) = package_node {
+                    self.walk(pkg, indent, out);
                 }
-                // Emit collected imports after package
-                if !imports.is_empty() {
+                // 2. Emit all imports — keep each declaration separate (gofmt rule)
+                if !import_nodes.is_empty() {
                     out.push(Line::new(0, ""));
-                    for imp in &imports {
-                        for line in imp.lines() {
-                            out.push(Line::new(0, line));
+                    for node in &import_nodes {
+                        let paths = self.collect_import_paths(*node);
+                        // Single path inside an existing group block → keep as group
+                        // Multiple specs from one block → keep block form
+                        let had_block = {
+                            let mut c = node.walk();
+                            let result = node.children(&mut c).any(|ch| ch.kind() == "import_spec_list");
+                            result
+                        };
+                        if had_block && paths.len() > 1 {
+                            out.push(Line::new(0, "import (".to_string()));
+                            for path in &paths {
+                                out.push(Line::new(1, path.to_string()));
+                            }
+                            out.push(Line::new(0, ")".to_string()));
+                        } else {
+                            // Separate `import "x"` declarations stay separate
+                            for path in &paths {
+                                out.push(Line::new(0, format!("import {}", path)));
+                            }
                         }
                     }
+                }
+                // 3. Emit other top-level declarations
+                for child in &other_nodes {
+                    out.push(Line::new(0, ""));
+                    self.walk(*child, indent, out);
                 }
             }
             "package_clause" => {
@@ -156,18 +177,78 @@ impl<'a> GoFormatter<'a> {
         }
     }
 
+    fn collect_import_paths(&self, node: tree_sitter::Node) -> Vec<String> {
+        // import_declaration can have a single import_spec or an import_spec_list
+        let mut paths = Vec::new();
+        let mut cursor = node.walk();
+        for child in node.children(&mut cursor) {
+            match child.kind() {
+                "import_spec" => {
+                    let name = child.child_by_field_name("name")
+                        .map(|n| format!("{} ", self.text_of(&n)))
+                        .unwrap_or_default();
+                    let path = child.child_by_field_name("path")
+                        .map(|n| self.text_of(&n).to_string())
+                        .unwrap_or_default();
+                    paths.push(format!("{}{}", name, path));
+                }
+                "import_spec_list" => {
+                    let mut ic = child.walk();
+                    for spec in child.children(&mut ic) {
+                        if spec.kind() != "import_spec" { continue; }
+                        let name = spec.child_by_field_name("name")
+                            .map(|n| format!("{} ", self.text_of(&n)))
+                            .unwrap_or_default();
+                        let path = spec.child_by_field_name("path")
+                            .map(|n| self.text_of(&n).to_string())
+                            .unwrap_or_default();
+                        if !path.is_empty() {
+                            paths.push(format!("{}{}", name, path));
+                        }
+                    }
+                }
+                // Fallback: raw text for unrecognized forms
+                k if k != "(" && k != ")" && k != "import" => {
+                    let t = self.text_of(&child).trim().to_string();
+                    if !t.is_empty() && t != "import" {
+                        paths.push(t);
+                    }
+                }
+                _ => {}
+            }
+        }
+        if paths.is_empty() {
+            // fallback: emit raw
+            let raw = self.text_of(&node).to_string();
+            if !raw.trim().is_empty() {
+                paths.push(raw);
+            }
+        }
+        paths
+    }
+
+    #[allow(dead_code)]
     fn format_import(&self, node: tree_sitter::Node) -> String {
         let raw = self.text_of(&node);
-        // Separate stdlib vs. external imports (stdlib has no `.` in path)
-        // For now emit as-is; grouping heuristic applied in post-pass
         raw.to_string()
     }
 
     fn walk_func(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
         let name = node.child_by_field_name("name")
             .map(|n| self.text_of(&n)).unwrap_or("?");
+        // Normalize parameter list: collapse extra spaces
         let params = node.child_by_field_name("parameters")
-            .map(|n| self.text_of(&n)).unwrap_or("()");
+            .map(|n| {
+                let raw = self.text_of(&n);
+                let inner = raw.trim_start_matches('(').trim_end_matches(')');
+                let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+                if parts.is_empty() {
+                    "()".to_string()
+                } else {
+                    format!("({})", parts.join(", "))
+                }
+            })
+            .unwrap_or_else(|| "()".to_string());
         let result = node.child_by_field_name("result")
             .map(|n| format!(" {}", self.text_of(&n)))
             .unwrap_or_default();
@@ -229,7 +310,7 @@ impl<'a> GoFormatter<'a> {
             self.walk_block_inner(body, indent + 1, out);
         }
         if let Some(alt) = node.child_by_field_name("alternative") {
-            let last = out.pop().unwrap_or(Line::new(indent, "}".into()));
+            let last = out.pop().unwrap_or(Line::new(indent, "}"));
             out.push(Line::new(indent, format!("{} else {{", last.content)));
             self.walk_block_inner(alt, indent + 1, out);
             out.push(Line::new(indent, "}".to_string()));
@@ -341,25 +422,30 @@ fn group_imports(output: &str) -> String {
 ///
 /// gofmt unconditionally uses tabs. The `config.indent_style` and
 /// `config.indent_size` fields are ignored for Go.
-pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+    let t_start = std::time::Instant::now();
     let language = go_language();
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&language)
-        .map_err(|e| FormatError::Internal(format!("go grammar load failed: {}", e)))?;
+        .map_err(|e| FormatError::Internal { message: format!("go grammar load failed: {}", e) })?;
 
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| FormatError::ParseError("tree-sitter returned None for Go".into()))?;
+        .ok_or_else(|| FormatError::ParseFailed { message: "tree-sitter returned None for Go".into() })?;
 
     if tree.root_node().has_error() {
         log::warn!("lang-go: parse error — emitting verbatim");
         return Ok(source.to_vec());
     }
+    let t_parse = t_start.elapsed();
 
+    let t_format_start = std::time::Instant::now();
     let formatter = GoFormatter::new(source, config);
     let lines = formatter.format_tree(tree.root_node());
+    let t_format = t_format_start.elapsed();
 
+    let t_emit_start = std::time::Instant::now();
     let mut raw = String::with_capacity(source.len());
     for line in &lines {
         raw.push_str(&line.render());
@@ -368,7 +454,6 @@ pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> 
 
     let out = group_imports(&raw);
 
-    // Remove trailing whitespace from each line
     let cleaned: String = out
         .lines()
         .map(|l| l.trim_end())
@@ -378,18 +463,27 @@ pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> 
     if !cleaned.ends_with('\n') {
         cleaned.push('\n');
     }
+    let t_emit = t_emit_start.elapsed();
+
+    eprintln!("[Go] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms", t_parse.as_secs_f64() * 1000.0, t_format.as_secs_f64() * 1000.0, t_emit.as_secs_f64() * 1000.0);
+
+    Ok(cleaned.into_bytes())
+}
+
+pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+    let out = format_internal(source, config)?;
 
     #[cfg(debug_assertions)]
     {
-        let second = format(cleaned.as_bytes(), config)?;
+        let second = format_internal(&out, config)?;
         debug_assert_eq!(
-            cleaned.as_bytes(),
+            out.as_slice(),
             second.as_slice(),
             "lang-go: format is not idempotent!"
         );
     }
 
-    Ok(cleaned.into_bytes())
+    Ok(out)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────

@@ -43,7 +43,7 @@ impl RustfmtConfig {
     pub fn apply_to(&self, base: &mut ConfigIR) {
         // rustfmt defaults differ from Prettier
         base.print_width = self.max_width.unwrap_or(100);
-        base.indent_size  = self.tab_spaces.unwrap_or(4) as u16;
+        base.indent_size  = self.tab_spaces.unwrap_or(4) as u8;
         if self.hard_tabs.unwrap_or(false) {
             base.indent_style = IndentStyle::Tabs;
         }

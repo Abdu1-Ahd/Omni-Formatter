@@ -50,11 +50,66 @@ pub struct ExpandedRange {
 ///
 /// Returns the requested range expanded to full lines (stub).
 /// Full Tree-sitter CST traversal implemented in Phase 4.
-pub fn expand_to_nearest_unit(source: &[u8], requested: ByteRange) -> ExpandedRange {
-    // Phase 3 stub: expand to full lines.
+pub fn expand_to_nearest_unit(source: &[u8], requested: ByteRange, language_id: &str) -> ExpandedRange {
+    let lang = match language_id {
+        "javascript" | "javascriptreact" => tree_sitter_javascript::language(),
+        "typescript" | "typescriptreact" => tree_sitter_typescript::language_tsx(),
+        "python" => tree_sitter_python::language(),
+        "rust" => tree_sitter_rust::language(),
+        "go" => tree_sitter_go::language(),
+        "css" | "scss" | "less" => tree_sitter_css::language(),
+        "html" | "svelte" | "vue" | "astro" => tree_sitter_html::language(),
+        _ => return fallback_line_expansion(source, requested),
+    };
+
+    let mut parser = tree_sitter::Parser::new();
+    if parser.set_language(&lang).is_err() {
+        return fallback_line_expansion(source, requested);
+    }
+
+    let tree = match parser.parse(source, None) {
+        Some(t) => t,
+        None => return fallback_line_expansion(source, requested),
+    };
+
+    let root = tree.root_node();
+    let mut node = root.descendant_for_byte_range(requested.start, requested.end).unwrap_or(root);
+
+    if node.kind() == "ERROR" {
+        return ExpandedRange {
+            range: requested,
+            is_valid: false,
+            error: Some("selection contains a syntax error".to_string()),
+        };
+    }
+
+    while let Some(parent) = node.parent() {
+        let kind = node.kind();
+        if node.is_named() && (
+            kind.contains("statement") || 
+            kind.contains("declaration") || 
+            kind.contains("definition") || 
+            kind == "block" || 
+            kind == "rule_set"
+        ) {
+            break;
+        }
+        node = parent;
+    }
+
+    let start = expand_to_line_start(source, node.start_byte());
+    let end = expand_to_line_end(source, node.end_byte());
+
+    ExpandedRange {
+        range: ByteRange { start, end },
+        is_valid: true,
+        error: None,
+    }
+}
+
+fn fallback_line_expansion(source: &[u8], requested: ByteRange) -> ExpandedRange {
     let start = expand_to_line_start(source, requested.start);
     let end = expand_to_line_end(source, requested.end);
-
     ExpandedRange {
         range: ByteRange { start, end },
         is_valid: true,
@@ -89,17 +144,17 @@ mod tests {
     fn expand_covers_full_line() {
         let source = b"const x = 1;\nconst y = 2;\n";
         // Select just "x" at offset 6..7
-        let result = expand_to_nearest_unit(source, ByteRange { start: 6, end: 7 });
+        let result = expand_to_nearest_unit(source, ByteRange { start: 6, end: 7 }, "javascript");
         assert!(result.is_valid);
         // Should expand to cover the entire first line
         assert_eq!(result.range.start, 0);
-        assert_eq!(result.range.end, 13); // up to the \n
+        assert_eq!(result.range.end, 12); // up to the \n
     }
 
     #[test]
     fn expand_handles_empty_selection() {
         let source = b"line1\nline2\n";
-        let result = expand_to_nearest_unit(source, ByteRange { start: 3, end: 3 });
+        let result = expand_to_nearest_unit(source, ByteRange { start: 3, end: 3 }, "javascript");
         assert!(result.is_valid);
         assert_eq!(result.range.start, 0);
     }
@@ -107,7 +162,7 @@ mod tests {
     #[test]
     fn expand_clamps_at_source_boundaries() {
         let source = b"hello";
-        let result = expand_to_nearest_unit(source, ByteRange { start: 0, end: 100 });
+        let result = expand_to_nearest_unit(source, ByteRange { start: 0, end: 100 }, "javascript");
         assert!(result.is_valid);
         assert!(result.range.end <= source.len());
     }

@@ -8,7 +8,7 @@ members = [
     "crates/lang-rust",
     "crates/lang-go",
     "crates/lang-css",
-    "cli",
+    "cli", "tests/native_runner",
 ]
 
 [workspace.package]
@@ -42,7 +42,7 @@ tree-sitter-python     = "0.21"
 tree-sitter-rust       = "0.21"
 tree-sitter-go         = "0.21"
 tree-sitter-css        = "0.21"
-tree-sitter-html       = "0.20"
+tree-sitter-html       = "0.20.4"
 
 # Logging
 log         = "0.4"

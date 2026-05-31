@@ -1,0 +1,13 @@
+body {
+  color : red;
+    display:flex
+}
+
+/* prettier-ignore */
+.ignored {
+  color:    blue;
+}
+
+.very-long-class-name-that-exceeds-one-hundred-characters-in-total-length-and-forces-a-line-wrap-in-css {
+    background-color: black;
+}

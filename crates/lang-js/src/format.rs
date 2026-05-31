@@ -190,7 +190,9 @@ impl<'a> DocBuilder<'a> {
                 Doc::concat(inner, Doc::text(semi))
             }
             "return_statement" => {
-                let value = node.child_by_field_name("value")
+                let mut cursor = node.walk();
+                let value = node.children(&mut cursor)
+                    .find(|c| c.is_named() && c.kind() != "comment")
                     .map(|n| Doc::concat(Doc::text(" "), self.build(n)))
                     .unwrap_or(Doc::Nil);
                 let semi = if self.config.semicolons { ";" } else { "" };
@@ -222,6 +224,10 @@ impl<'a> DocBuilder<'a> {
                     Doc::concat(Doc::Line { space_str: "".into() }, Doc::text(")"))
                 ))
             }
+            "type_annotation" => {
+                let inner = node.child(1).map(|n| self.build(n)).unwrap_or(Doc::Nil);
+                Doc::concat(Doc::text(": "), inner)
+            }
             "comment" => {
                 // Preserve comments verbatim
                 Doc::concat(Doc::text(self.text_of(&node)), Doc::hard_line())
@@ -234,8 +240,17 @@ impl<'a> DocBuilder<'a> {
     fn build_block(&self, node: tree_sitter::Node) -> Doc {
         let mut stmts: Vec<Doc> = Vec::new();
         let mut cursor = node.walk();
+        let mut skip_next = false;
         for child in node.children(&mut cursor) {
             if child.is_named() {
+                if skip_next {
+                    skip_next = false;
+                    stmts.push(Doc::text(self.text_of(&child)));
+                    continue;
+                }
+                if child.kind() == "comment" && self.text_of(&child).contains("prettier-ignore") {
+                    skip_next = true;
+                }
                 stmts.push(self.build(child));
             }
         }
@@ -320,11 +335,16 @@ impl<'a> DocBuilder<'a> {
     fn build_declarator(&self, node: tree_sitter::Node) -> Doc {
         let name = node.child_by_field_name("name")
             .map(|n| self.build(n)).unwrap_or(Doc::Nil);
+        let type_ann = node.child_by_field_name("type")
+            .or_else(|| node.child_by_field_name("type_annotation"))
+            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
         let value = node.child_by_field_name("value")
             .map(|n| Doc::concat(Doc::text(" = "), self.build(n)));
+        
+        let name_with_type = Doc::concat(name, type_ann);
         match value {
-            Some(v) => Doc::concat(name, v),
-            None => name,
+            Some(v) => Doc::concat(name_with_type, v),
+            None => name_with_type,
         }
     }
 
@@ -334,16 +354,19 @@ impl<'a> DocBuilder<'a> {
             .unwrap_or(Doc::Nil);
         let params = node.child_by_field_name("parameters")
             .map(|n| self.build_params(n)).unwrap_or(Doc::text("()"));
+        let return_type = node.child_by_field_name("return_type")
+            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
         let body = node.child_by_field_name("body")
             .map(|n| self.build_curly_block(n)).unwrap_or(Doc::text("{}"));
         Doc::concat(
             Doc::concat(Doc::text("function"), name),
-            Doc::concat(params, Doc::concat(Doc::text(" "), body)),
+            Doc::concat(Doc::concat(params, return_type), Doc::concat(Doc::text(" "), body)),
         )
     }
 
     fn build_arrow(&self, node: tree_sitter::Node) -> Doc {
         let params = node.child_by_field_name("parameter")
+            .or_else(|| node.child_by_field_name("parameters"))
             .map(|n| {
                 if n.kind() == "formal_parameters" {
                     self.build_params(n)
@@ -352,6 +375,8 @@ impl<'a> DocBuilder<'a> {
                 }
             })
             .unwrap_or(Doc::text("()"));
+        let return_type = node.child_by_field_name("return_type")
+            .map(|n| self.build(n)).unwrap_or(Doc::Nil);
         let body = node.child_by_field_name("body")
             .map(|n| {
                 if n.kind() == "statement_block" {
@@ -361,7 +386,7 @@ impl<'a> DocBuilder<'a> {
                 }
             })
             .unwrap_or(Doc::Nil);
-        Doc::concat(params, Doc::concat(Doc::text(" => "), body))
+        Doc::concat(Doc::concat(params, return_type), Doc::concat(Doc::text(" => "), body))
     }
 
     fn build_params(&self, node: tree_sitter::Node) -> Doc {
@@ -574,8 +599,17 @@ impl<'a> DocBuilder<'a> {
     fn build_curly_block(&self, node: tree_sitter::Node) -> Doc {
         let mut stmts: Vec<Doc> = Vec::new();
         let mut cursor = node.walk();
+        let mut skip_next = false;
         for child in node.children(&mut cursor) {
             if child.is_named() {
+                if skip_next {
+                    skip_next = false;
+                    stmts.push(Doc::text(self.text_of(&child)));
+                    continue;
+                }
+                if child.kind() == "comment" && self.text_of(&child).contains("prettier-ignore") {
+                    skip_next = true;
+                }
                 stmts.push(self.build(child));
             }
         }
@@ -599,34 +633,37 @@ impl<'a> DocBuilder<'a> {
 /// # Returns
 ///
 /// Formatted UTF-8 bytes on success.
-/// `FormatError::ParseError` if Tree-sitter cannot parse the source.
-pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
-    // Select grammar by heuristic: TypeScript if source contains `: ` type annotations.
-    // The language ID is unavailable at this layer — the WASM dispatcher sets it.
+/// Format JavaScript, TypeScript, JSX, or TSX source (Prettier 3.x parity).
+fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+    let t_start = std::time::Instant::now();
     let language = if source.windows(2).any(|w| w == b": ") {
         typescript_language()
     } else {
         javascript_language()
     };
+    let is_ts = source.windows(2).any(|w| w == b": ");
 
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&language)
-        .map_err(|e| FormatError::Internal(format!("grammar load failed: {}", e)))?;
+        .map_err(|e| FormatError::Internal { message: format!("grammar load failed: {}", e) })?;
 
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| FormatError::ParseError("tree-sitter returned None".into()))?;
+        .ok_or_else(|| FormatError::ParseFailed { message: "tree-sitter returned None".into() })?;
 
     if tree.root_node().has_error() {
-        // Fall back to pass-through on parse errors to avoid data loss (L-04 mitigation)
         log::warn!("lang-js: parse error in source — emitting verbatim");
         return Ok(source.to_vec());
     }
+    let t_parse = t_start.elapsed();
 
+    let t_format_start = std::time::Instant::now();
     let builder = DocBuilder::new(source, config);
     let doc = builder.build_block(tree.root_node());
+    let t_format = t_format_start.elapsed();
 
+    let t_emit_start = std::time::Instant::now();
     let indent_char = match config.indent_style {
         IndentStyle::Tabs => '\t',
         IndentStyle::Spaces => ' ',
@@ -639,24 +676,32 @@ pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> 
 
     let mut rendered = renderer.render(&doc);
 
-    // Ensure exactly one trailing newline
     while rendered.ends_with('\n') {
         rendered.pop();
     }
     rendered.push('\n');
+    let t_emit = t_emit_start.elapsed();
+
+    let lang_name = if is_ts { "TS" } else { "JS" };
+    eprintln!("[{}] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms", lang_name, t_parse.as_secs_f64() * 1000.0, t_format.as_secs_f64() * 1000.0, t_emit.as_secs_f64() * 1000.0);
+
+    Ok(rendered.into_bytes())
+}
+
+pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+    let out = format_internal(source, config)?;
 
     #[cfg(debug_assertions)]
     {
-        // Idempotency double-check (L-09 mitigation)
-        let second = format(rendered.as_bytes(), config)?;
+        let second = format_internal(&out, config)?;
         debug_assert_eq!(
-            rendered.as_bytes(),
+            out.as_slice(),
             second.as_slice(),
             "lang-js: format is not idempotent!"
         );
     }
 
-    Ok(rendered.into_bytes())
+    Ok(out)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────

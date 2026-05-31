@@ -44,10 +44,9 @@ check_prettier() {
         local prettier_out
         prettier_out=$(prettier --parser typescript "$fixture" 2>/dev/null)
 
-        # Format with OmniFormatter (TODO: call the lang-js WASM module)
-        # Phase 3 stub: OmniFormatter output = input (pass-through)
+        # Format with OmniFormatter
         local omni_out
-        omni_out=$(cat "$fixture")
+        omni_out=$(cargo run --manifest-path "$WORKSPACE_ROOT/cli/Cargo.toml" -- print "$fixture")
 
         # Compare
         if [ "$prettier_out" != "$omni_out" ]; then

@@ -45,20 +45,8 @@ pub struct Zone {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ZoneKind {
-    /// `<script>` or `<script type="...">` inside HTML/Svelte/Vue/Astro.
-    HtmlScript,
-    /// `<style>` or `<style lang="...">` inside HTML/Svelte/Vue/Astro.
-    HtmlStyle,
-    /// Inline `style="..."` attribute value (CSS subset).
-    InlineStyle,
-    /// Tagged template literal: `` css`...` ``, `` html`...` ``, `` gql`...` ``.
-    TaggedTemplate { tag: String },
-    /// Svelte `<template>` block.
-    SvelteTemplate,
-    /// Vue `<template>` block.
-    VueTemplate,
-    /// Astro `---` frontmatter block (JS/TS).
-    AstroFrontmatter,
-    /// A `py"..."` or `py"""..."""` embedded string in Rust source.
-    RustEmbeddedPython,
+    Language(String),
+    Comment,
+    StringLiteral,
+    Regex,
 }

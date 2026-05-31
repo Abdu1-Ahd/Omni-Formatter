@@ -170,6 +170,17 @@ impl<'a> PythonFormatter<'a> {
     }
 
     fn walk_function(&self, node: tree_sitter::Node, indent: usize, lines: &mut Vec<Line>) {
+        if indent == 0 && !lines.is_empty() {
+            while let Some(last) = lines.last() {
+                if last.content.is_empty() {
+                    lines.pop();
+                } else {
+                    break;
+                }
+            }
+            lines.push(Line::new(0, ""));
+            lines.push(Line::new(0, ""));
+        }
         let name = node.child_by_field_name("name")
             .map(|n| self.text_of(&n)).unwrap_or("?");
         let params = node.child_by_field_name("parameters")
@@ -184,14 +195,20 @@ impl<'a> PythonFormatter<'a> {
         if let Some(body) = node.child_by_field_name("body") {
             self.walk_node(body, indent + 1, lines);
         }
-        // Black adds a blank line after top-level functions
-        if indent == 0 {
-            lines.push(Line::new(0, ""));
-            lines.push(Line::new(0, ""));
-        }
     }
 
     fn walk_class(&self, node: tree_sitter::Node, indent: usize, lines: &mut Vec<Line>) {
+        if indent == 0 && !lines.is_empty() {
+            while let Some(last) = lines.last() {
+                if last.content.is_empty() {
+                    lines.pop();
+                } else {
+                    break;
+                }
+            }
+            lines.push(Line::new(0, ""));
+            lines.push(Line::new(0, ""));
+        }
         let name = node.child_by_field_name("name")
             .map(|n| self.text_of(&n)).unwrap_or("?");
         let superclasses = node.child_by_field_name("superclasses")
@@ -205,10 +222,6 @@ impl<'a> PythonFormatter<'a> {
         lines.push(Line::new(indent, header));
         if let Some(body) = node.child_by_field_name("body") {
             self.walk_node(body, indent + 1, lines);
-        }
-        if indent == 0 {
-            lines.push(Line::new(0, ""));
-            lines.push(Line::new(0, ""));
         }
     }
 
@@ -345,23 +358,27 @@ impl<'a> PythonFormatter<'a> {
         let (open, close) = match node.kind() {
             "list" => ("[", "]"),
             "tuple" => ("(", ")"),
-            "set" => ("{", "}"),
-            "dictionary" => ("{", "}"),
+            "set" | "dictionary" => ("{", "}"),
             _ => ("(", ")"),
         };
         let raw = self.text_of(&node);
-        // Magic trailing comma: if trailing comma detected, expand
         let has_trailing = raw.contains(",)") || raw.contains(",]") || raw.contains(",}");
+        
+        let mut items = Vec::new();
+        let mut cursor = node.walk();
+        for child in node.children(&mut cursor) {
+            if child.is_named() {
+                items.push(self.format_expr(child));
+            }
+        }
+        
         if !has_trailing {
-            // Try to fit on one line
-            let flat = raw.replace('\n', "").split_whitespace().collect::<Vec<_>>().join(" ");
+            let flat = format!("{}{}{}", open, items.join(", "), close);
             if flat.len() <= self.config.print_width as usize {
                 return flat;
             }
         }
-        // Expand with one element per line
-        let inner = &raw[1..raw.len() - 1];
-        let items: Vec<&str> = inner.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+        
         let indent = "    ";
         let joined = items.iter().map(|i| format!("\n{}{},", indent, i)).collect::<String>();
         format!("{}{}\n{}", open, joined, close)
@@ -424,33 +441,37 @@ fn wrap_long_lines(lines: Vec<Line>, print_width: usize, indent_size: usize) -> 
 // ── Entry point ───────────────────────────────────────────────────────────
 
 /// Format Python source bytes (Black 24.x parity).
-pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+    let t_start = std::time::Instant::now();
     let language = python_language();
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&language)
-        .map_err(|e| FormatError::Internal(format!("python grammar load failed: {}", e)))?;
+        .map_err(|e| FormatError::Internal { message: format!("python grammar load failed: {}", e) })?;
 
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| FormatError::ParseError("tree-sitter returned None for Python".into()))?;
+        .ok_or_else(|| FormatError::ParseFailed { message: "tree-sitter returned None for Python".into() })?;
 
     if tree.root_node().has_error() {
         log::warn!("lang-python: parse error — emitting verbatim");
         return Ok(source.to_vec());
     }
+    let t_parse = t_start.elapsed();
 
+    let t_format_start = std::time::Instant::now();
     let formatter = PythonFormatter::new(source, config);
     let lines = formatter.format_tree(tree.root_node());
     let lines = wrap_long_lines(lines, config.print_width as usize, config.indent_size as usize);
+    let t_format = t_format_start.elapsed();
 
+    let t_emit_start = std::time::Instant::now();
     let mut out = String::with_capacity(source.len());
     for line in &lines {
         out.push_str(&line.render(config.indent_size as usize));
         out.push('\n');
     }
 
-    // Trim trailing blank lines, then add exactly one newline (Black rule)
     while out.ends_with("\n\n\n") {
         let len = out.len();
         out.truncate(len - 1);
@@ -458,18 +479,27 @@ pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> 
     if !out.ends_with('\n') {
         out.push('\n');
     }
+    let t_emit = t_emit_start.elapsed();
+
+    eprintln!("[Python] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms", t_parse.as_secs_f64() * 1000.0, t_format.as_secs_f64() * 1000.0, t_emit.as_secs_f64() * 1000.0);
+
+    Ok(out.into_bytes())
+}
+
+pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+    let out = format_internal(source, config)?;
 
     #[cfg(debug_assertions)]
     {
-        let second = format(out.as_bytes(), config)?;
+        let second = format_internal(&out, config)?;
         debug_assert_eq!(
-            out.as_bytes(),
+            out.as_slice(),
             second.as_slice(),
             "lang-python: format is not idempotent!"
         );
     }
 
-    Ok(out.into_bytes())
+    Ok(out)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────

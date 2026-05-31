@@ -29,6 +29,7 @@
 
 pub mod adapter;
 pub mod format;
+pub mod plugin;
 
 use wasm_bindgen::prelude::*;
 use protocol::ConfigIR;
@@ -68,10 +69,10 @@ pub fn format_css(source_bytes: &[u8], config_json: &str, language_id: &str) -> 
 pub fn config_schema() -> String { include_str!("../schema.json").to_string() }
 
 #[wasm_bindgen]
-pub fn version() -> &'static str { env!("CARGO_PKG_VERSION") }
+pub fn version() -> String { env!("CARGO_PKG_VERSION").to_string() }
 
 #[wasm_bindgen]
-pub fn language_id() -> &'static str { "css" }
+pub fn language_id() -> String { "css".to_string() }
 
 #[wasm_bindgen]
 pub fn aliases() -> Vec<JsValue> {

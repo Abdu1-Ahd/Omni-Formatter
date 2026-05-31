@@ -49,9 +49,46 @@ pub struct ZoneMap {
 /// For single-language files (no embedded zones), returns a `ZoneMap` with
 /// `has_embedded_zones = false` and one zone covering the entire file.
 pub fn detect_zones(source: &[u8], host_language_id: &str) -> ZoneMap {
-    // Phase 3 stub: return a single zone covering the entire file.
-    // Full Tree-sitter-based zone detection is implemented in Phase 4.
-    let single_zone = Zone {
+    if !may_have_embedded_zones(host_language_id) {
+        return ZoneMap {
+            zones: vec![single_zone(source, host_language_id)],
+            has_embedded_zones: false,
+        };
+    }
+
+    if host_language_id == "html" {
+        let mut parser = tree_sitter::Parser::new();
+        parser.set_language(&tree_sitter_html::language()).expect("Failed to load HTML grammar");
+        let tree = parser.parse(source, None).expect("Failed to parse HTML");
+        
+        let mut zones = Vec::new();
+        let mut cursor = tree.walk();
+        let mut has_embedded = false;
+        
+        traverse_html(&mut cursor, source, &mut zones, &mut has_embedded);
+        
+        if !has_embedded {
+            return ZoneMap {
+                zones: vec![single_zone(source, host_language_id)],
+                has_embedded_zones: false,
+            };
+        }
+        
+        return ZoneMap {
+            zones,
+            has_embedded_zones: true,
+        };
+    }
+    
+    // Phase 3 stub for other languages (svelte, vue, etc)
+    ZoneMap {
+        zones: vec![single_zone(source, host_language_id)],
+        has_embedded_zones: false,
+    }
+}
+
+fn single_zone(source: &[u8], host_language_id: &str) -> Zone {
+    Zone {
         language_id: host_language_id.to_string(),
         range: ByteRange {
             start: 0,
@@ -59,12 +96,50 @@ pub fn detect_zones(source: &[u8], host_language_id: &str) -> ZoneMap {
         },
         indent_column: 0,
         suppressed: false,
-        kind: ZoneKind::HtmlScript, // placeholder for single-language files
-    };
+        kind: ZoneKind::Language(host_language_id.to_string()),
+    }
+}
 
-    ZoneMap {
-        zones: vec![single_zone],
-        has_embedded_zones: false,
+fn traverse_html(cursor: &mut tree_sitter::TreeCursor, source: &[u8], zones: &mut Vec<Zone>, has_embedded: &mut bool) {
+    loop {
+        let node = cursor.node();
+        if node.kind() == "script_element" {
+            let mut c = node.walk();
+            for child in node.children(&mut c) {
+                if child.kind() == "raw_text" {
+                    *has_embedded = true;
+                    zones.push(Zone {
+                        language_id: "javascript".to_string(),
+                        range: ByteRange { start: child.start_byte(), end: child.end_byte() },
+                        indent_column: child.start_position().column as u16,
+                        suppressed: false,
+                        kind: ZoneKind::Language("javascript".to_string()),
+                    });
+                }
+            }
+        } else if node.kind() == "style_element" {
+            let mut c = node.walk();
+            for child in node.children(&mut c) {
+                if child.kind() == "raw_text" {
+                    *has_embedded = true;
+                    zones.push(Zone {
+                        language_id: "css".to_string(),
+                        range: ByteRange { start: child.start_byte(), end: child.end_byte() },
+                        indent_column: child.start_position().column as u16,
+                        suppressed: false,
+                        kind: ZoneKind::Language("css".to_string()),
+                    });
+                }
+            }
+        }
+
+        if cursor.goto_first_child() {
+            traverse_html(cursor, source, zones, has_embedded);
+            cursor.goto_parent();
+        }
+        if !cursor.goto_next_sibling() {
+            break;
+        }
     }
 }
 

@@ -25,6 +25,7 @@ use unicode_width::UnicodeWidthStr;
 /// # Examples
 ///
 /// ```rust
+/// use core::unicode::display_width;
 /// assert_eq!(display_width("hello"), 5);
 /// assert_eq!(display_width("你好"), 4);   // CJK: 2 columns each
 /// assert_eq!(display_width("e\u{0301}"), 1); // 'é' = e + combining accent

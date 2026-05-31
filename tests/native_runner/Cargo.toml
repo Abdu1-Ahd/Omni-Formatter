@@ -1,0 +1,16 @@
+[package]
+name = "native_runner"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+core = { path = "../../crates/core" }
+protocol = { path = "../../crates/protocol" }
+lang-js = { path = "../../crates/lang-js" }
+lang-css = { path = "../../crates/lang-css" }
+lang-python = { path = "../../crates/lang-python" }
+lang-rust = { path = "../../crates/lang-rust" }
+lang-go = { path = "../../crates/lang-go" }

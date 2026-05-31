@@ -39,6 +39,15 @@ Desktop.ini
 # Test artifacts
 /tests/fixtures/generated/
 /coverage/
+tests/fixtures/*.out
+tests/fixtures/*.out2
+tests/fixtures/*.ref
+tests/fixtures/script_block.js
+tests/fixtures/style_block.css
 
 # Registry uploads (local dev)
 registry/uploads/
+
+# Tooling & Analysis
+.code-review-graph/
+.kiro/

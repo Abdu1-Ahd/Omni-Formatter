@@ -31,6 +31,7 @@
 
 pub mod adapter;
 pub mod format;
+pub mod plugin;
 
 use wasm_bindgen::prelude::*;
 use protocol::ConfigIR;
@@ -48,10 +49,10 @@ pub fn format_rust(source_bytes: &[u8], config_json: &str) -> Result<Vec<u8>, Js
 pub fn config_schema() -> String { include_str!("../schema.json").to_string() }
 
 #[wasm_bindgen]
-pub fn version() -> &'static str { env!("CARGO_PKG_VERSION") }
+pub fn version() -> String { env!("CARGO_PKG_VERSION").to_string() }
 
 #[wasm_bindgen]
-pub fn language_id() -> &'static str { "rust" }
+pub fn language_id() -> String { "rust".to_string() }
 
 #[wasm_bindgen]
 pub fn aliases() -> Vec<JsValue> {

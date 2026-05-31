@@ -108,16 +108,41 @@ export class ModuleLoader {
     return wasmBytes;
   }
 
-  /** Download a module from the registry, verify SHA-256, save to cache. */
   private async downloadFromRegistry(moduleName: string): Promise<Buffer> {
     const resolveUrl = `${REGISTRY_BASE_URL}/resolve/${moduleName}`;
 
-    // Phase 1 stub: registry is not yet live.
-    // Return a clear error for community modules.
-    throw new Error(
-      `Module "${moduleName}" is not bundled and the OmniFormatter registry is not yet available. ` +
-      `This will be resolved in Phase 5. For now, only bundled languages (JS/TS/Python/Rust/Go/CSS) are supported.`
-    );
+    const res = await fetch(resolveUrl);
+    if (!res.ok) {
+      throw new Error(`Failed to resolve module ${moduleName} from registry: HTTP ${res.status}`);
+    }
+    const manifest = await res.json() as any;
+
+    const wasmRes = await fetch(manifest.download_url);
+    if (!wasmRes.ok) {
+      throw new Error(`Failed to download WASM for ${moduleName}: HTTP ${wasmRes.status}`);
+    }
+    
+    const arrayBuffer = await wasmRes.arrayBuffer();
+    const wasmBytes = Buffer.from(arrayBuffer);
+
+    if (!this.verifyHash(wasmBytes, manifest.sha256)) {
+      throw new Error(`Integrity check failed for ${moduleName}!`);
+    }
+
+    const moduleDir = path.join(this.cacheRoot, moduleName, manifest.version);
+    fs.mkdirSync(moduleDir, { recursive: true });
+    
+    fs.writeFileSync(path.join(moduleDir, "module.wasm"), wasmBytes);
+    fs.writeFileSync(path.join(moduleDir, "manifest.json"), JSON.stringify({
+      name: manifest.name,
+      version: manifest.version,
+      sha256: manifest.sha256,
+      language_id: moduleName,
+      aliases: [],
+      downloaded_at: new Date().toISOString(),
+    }, null, 2));
+
+    return wasmBytes;
   }
 
   /** Verify a WASM binary's SHA-256 hash. */

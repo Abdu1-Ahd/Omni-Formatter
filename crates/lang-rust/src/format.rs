@@ -72,7 +72,12 @@ impl<'a> RustFormatter<'a> {
                 for child in node.children(&mut cursor) {
                     if !child.is_named() { continue; }
                     // Blank line between top-level items (rustfmt rule)
-                    if !prev_kind.is_empty() && prev_kind != "attribute_item" && prev_kind != "line_comment" {
+                    // Only insert if the last emitted line is non-blank to preserve idempotency
+                    if !prev_kind.is_empty()
+                        && prev_kind != "attribute_item"
+                        && prev_kind != "line_comment"
+                        && out.last().map(|l| !l.content.is_empty()).unwrap_or(false)
+                    {
                         out.push(Line::new(0, ""));
                     }
                     self.walk(child, indent, out);
@@ -98,10 +103,23 @@ impl<'a> RustFormatter<'a> {
                 out.push(Line::new(indent, format!("{};", self.text_of(&node).trim_end_matches(';'))));
             }
             "expression_statement" => {
-                let inner = node.child(0)
-                    .map(|n| self.format_expr(n, indent))
-                    .unwrap_or_default();
-                out.push(Line::new(indent, format!("{};", inner)));
+                // Use named_child(0) to skip the anonymous `;` token
+                if let Some(inner) = node.named_child(0) {
+                    match inner.kind() {
+                        // Block-like expressions: emit structured, NO trailing `;`
+                        // (the `};` was a formatting artifact — rustfmt omits it for block exprs)
+                        "match_expression" => self.walk_match(inner, indent, out),
+                        "if_expression" => self.walk_if(inner, indent, out),
+                        "while_expression" | "loop_expression" => self.walk_loop(inner, indent, out),
+                        "for_expression" => self.walk_for(inner, indent, out),
+                        "block" => self.walk_block_inner(inner, indent, out),
+                        // All other expressions: emit as `expr;`
+                        _ => {
+                            let expr = self.format_expr(inner, indent);
+                            out.push(Line::new(indent, format!("{expr};")));
+                        }
+                    }
+                }
             }
             "let_declaration" => {
                 out.push(Line::new(indent, self.format_let(node, indent)));
@@ -162,19 +180,28 @@ impl<'a> RustFormatter<'a> {
 
     fn format_fn_params(&self, node: tree_sitter::Node, indent: usize) -> String {
         let raw = self.text_of(&node);
-        // Check for multi-line params
-        let print_width = self.config.print_width as usize;
-        if indent * 4 + raw.len() <= print_width {
-            return raw.to_string();
-        }
-        // Expand: one param per line
-        let inner = raw.trim_start_matches('(').trim_end_matches(')');
-        let params: Vec<&str> = inner.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
-        let indent_str = "    ".repeat(indent + 1);
-        let joined = params.iter()
-            .map(|p| format!("\n{}{},", indent_str, p))
-            .collect::<String>();
-        format!("({}\n{})", joined, "    ".repeat(indent))
+        // Normalize internal whitespace: remove extra spaces after ( and before ),
+        // around commas, and around `:` type annotations.
+        let normalized = {
+            let inner = raw.trim_start_matches('(').trim_end_matches(')');
+            // Split on commas, normalize each param
+            let params: Vec<&str> = inner.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+            if params.is_empty() {
+                return "()".to_string();
+            }
+            let flat = format!("({})", params.join(", "));
+            let print_width = self.config.print_width as usize;
+            if indent * 4 + flat.len() <= print_width {
+                return flat;
+            }
+            // Expand: one param per line
+            let indent_str = "    ".repeat(indent + 1);
+            let joined = params.iter()
+                .map(|p| format!("\n{}{},", indent_str, p))
+                .collect::<String>();
+            format!("({}\n{})", joined, "    ".repeat(indent))
+        };
+        normalized
     }
 
     fn walk_impl(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
@@ -288,7 +315,7 @@ impl<'a> RustFormatter<'a> {
             match alt.kind() {
                 "else_clause" => {
                     // Merge the closing } else {
-                    let last = out.pop().unwrap_or(Line::new(indent, "}".into()));
+                    let last = out.pop().unwrap_or(Line::new(indent, "}"));
                     if let Some(body) = alt.named_child(0) {
                         if body.kind() == "if_expression" {
                             // else if
@@ -405,34 +432,38 @@ fn format_chains(lines: Vec<Line>, max_width: usize) -> Vec<Line> {
 // ── Entry point ───────────────────────────────────────────────────────────
 
 /// Format Rust source bytes (rustfmt stable parity).
-pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+    let t_start = std::time::Instant::now();
     let language = rust_language();
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&language)
-        .map_err(|e| FormatError::Internal(format!("rust grammar load failed: {}", e)))?;
+        .map_err(|e| FormatError::Internal { message: format!("rust grammar load failed: {}", e) })?;
 
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| FormatError::ParseError("tree-sitter returned None for Rust".into()))?;
+        .ok_or_else(|| FormatError::ParseFailed { message: "tree-sitter returned None for Rust".into() })?;
 
     if tree.root_node().has_error() {
         log::warn!("lang-rust: parse error — emitting verbatim");
         return Ok(source.to_vec());
     }
+    let t_parse = t_start.elapsed();
 
+    let t_format_start = std::time::Instant::now();
     let formatter = RustFormatter::new(source, config);
     let lines = formatter.format_tree(tree.root_node());
     let max_width = config.print_width.max(100) as usize; // rustfmt default is 100
     let lines = format_chains(lines, max_width);
+    let t_format = t_format_start.elapsed();
 
+    let t_emit_start = std::time::Instant::now();
     let mut out = String::with_capacity(source.len());
     for line in &lines {
         out.push_str(&line.render());
         out.push('\n');
     }
 
-    // Trim excess blank lines (rustfmt allows at most 2 consecutive blank lines)
     let mut prev_blank = 0u8;
     let mut trimmed = String::with_capacity(out.len());
     for line in out.lines() {
@@ -451,18 +482,27 @@ pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> 
     if !trimmed.ends_with('\n') {
         trimmed.push('\n');
     }
+    let t_emit = t_emit_start.elapsed();
+
+    eprintln!("[Rust] Parse: {:.2}ms, Format: {:.2}ms, Emit: {:.2}ms", t_parse.as_secs_f64() * 1000.0, t_format.as_secs_f64() * 1000.0, t_emit.as_secs_f64() * 1000.0);
+
+    Ok(trimmed.into_bytes())
+}
+
+pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+    let out = format_internal(source, config)?;
 
     #[cfg(debug_assertions)]
     {
-        let second = format(trimmed.as_bytes(), config)?;
+        let second = format_internal(&out, config)?;
         debug_assert_eq!(
-            trimmed.as_bytes(),
+            out.as_slice(),
             second.as_slice(),
             "lang-rust: format is not idempotent!"
         );
     }
 
-    Ok(trimmed.into_bytes())
+    Ok(out)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────
