@@ -154,10 +154,14 @@ pub fn config_from_setup_cfg(cfg_str: &str) -> ConfigIR {
                         config.print_width = n;
                     }
                 }
-                "skip-string-normalization" | "skip_string_normalization" if val == "true" || val == "1" => {
+                "skip-string-normalization" | "skip_string_normalization"
+                    if val == "true" || val == "1" =>
+                {
                     config.quote_style = QuoteStyle::Single;
                 }
-                "skip-magic-trailing-comma" | "skip_magic_trailing_comma" if val == "true" || val == "1" => {
+                "skip-magic-trailing-comma" | "skip_magic_trailing_comma"
+                    if val == "true" || val == "1" =>
+                {
                     config.trailing_comma = false;
                 }
                 _ => {}

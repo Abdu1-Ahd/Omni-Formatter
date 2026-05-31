@@ -673,7 +673,10 @@ impl<'a> HtmlFormatter<'a> {
         }
         let mut first = true;
         for child in &children {
-            if !first && Self::is_block_or_special(*child, self.source) && out.last().is_some_and(|l| !l.content.is_empty()) {
+            if !first
+                && Self::is_block_or_special(*child, self.source)
+                && out.last().is_some_and(|l| !l.content.is_empty())
+            {
                 out.push(Line::new(0, ""));
             }
             self.walk_html(*child, indent + 1, out);
