@@ -67,17 +67,25 @@ pub unsafe extern "C" fn realloc(ptr: *mut c_void, size: usize) -> *mut c_void {
         free(ptr);
         return std::ptr::null_mut();
     }
-    let orig_ptr = (ptr as *mut u8).sub(HEADER_SIZE);
-    let old_size = *(orig_ptr as *mut usize);
-    let layout = Layout::from_size_align_unchecked(old_size + HEADER_SIZE, ALIGN);
 
-    let aligned = align_size(size);
-    let new_ptr = rs_realloc(orig_ptr, layout, aligned + HEADER_SIZE);
+    let orig_ptr = (ptr as *mut u8).sub(HEADER_SIZE);
+    let old_user_size = *(orig_ptr as *mut usize);
+
+    let new_ptr = malloc(size);
     if new_ptr.is_null() {
-        return new_ptr as *mut c_void;
+        return std::ptr::null_mut();
     }
-    *(new_ptr as *mut usize) = aligned;
-    new_ptr.add(HEADER_SIZE) as *mut c_void
+
+    let copy_size = if size < old_user_size {
+        size
+    } else {
+        old_user_size
+    };
+    std::ptr::copy_nonoverlapping(ptr as *const u8, new_ptr as *mut u8, copy_size);
+
+    free(ptr);
+
+    new_ptr
 }
 
 #[no_mangle]
