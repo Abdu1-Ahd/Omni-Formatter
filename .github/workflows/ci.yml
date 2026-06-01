@@ -135,8 +135,21 @@ jobs:
         with:
           version: 9
 
+      - name: Build WASM nodejs
+        run: |
+          cargo install wasm-pack --version "^0.13"
+          wasm-pack build crates/core --target nodejs --release
+        env:
+          CC_wasm32_unknown_unknown: clang
+
       - name: Build extension
         run: |
           pnpm install --frozen-lockfile
           pnpm build:all
         working-directory: extension
+
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-wasm
+          path: crates/core/pkg/

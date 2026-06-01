@@ -109,7 +109,11 @@ Native runner status: DONE.
 - crates/lang-js/src/compat.rs:25 → compat mode check is STUB
 - extension/src/moduleLoader.ts:112 → downloadFromRegistry is STUB
 
+## Deployment Blockers
+- **Cloudflare Authentication:** Deployment of the registry server failed because `wrangler` is not authenticated (`wrangler whoami` reports "You are not authenticated"). The `wrangler login` command requires an interactive browser session, which cannot be completed autonomously.
+- **D1 Database Configuration:** The `wrangler.toml` has `database_id = "REPLACE_WITH_D1_DATABASE_ID"`, which requires a successful `wrangler d1 create` run (also blocked by authentication).
+
 ## Next 3 Priorities
 1. **Resolve CLI and Script TODOs**. Read config in CLI, complete WASM calls in run-compat-check.sh.
 2. **Implement full core modules logic**. Replace AST stubs (comments, incremental parsing) with real parsing logic.
-3. **Deploy registry server**. Deploy Cloudflare D1/R2 and Hono app to enable runtime plugin downloads.
+3. **Deploy registry server**. Deploy Cloudflare D1/R2 and Hono app to enable runtime plugin downloads (Blocked by Deployment Blockers).
