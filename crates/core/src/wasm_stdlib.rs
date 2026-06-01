@@ -128,4 +128,3 @@ pub extern "C" fn __assert_fail(
 pub extern "C" fn rs_abort() -> ! {
     panic!("C abort() called via rs_abort()");
 }
-
