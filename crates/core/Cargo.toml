@@ -39,3 +39,6 @@ wasm-bindgen-test = "0.3"
 # Enable debug double-format idempotency check (L-09 mitigation)
 # Disabled in release builds for performance
 debug = []
+
+[build-dependencies]
+cc = "1.0"
