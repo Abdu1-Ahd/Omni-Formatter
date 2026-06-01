@@ -33,7 +33,7 @@ bumpalo     = { version = "3", features = ["collections"] }
 unicode-width = "0.1"
 
 # Tree-sitter parsing infrastructure
-tree-sitter = { version = "0.22", features = ["wasm"] }
+tree-sitter = "0.22"
 
 # Language grammars (vendored C bindings — wasm32 compatible via emscripten)
 tree-sitter-javascript = "0.21"

@@ -27,6 +27,32 @@ rustup target list --installed | grep -q "wasm32-unknown-unknown" || \
 
 log "Building from: $WORKSPACE_ROOT"
 
+# ─── Setup WASI SDK ─────────────────────────────────────────────────────────
+WASI_SDK_VERSION="20.0"
+WASI_SDK_DIR="$WORKSPACE_ROOT/wasi-sdk"
+
+if [ ! -d "$WASI_SDK_DIR" ]; then
+    log "Downloading WASI SDK..."
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        curl -L -o wasi-sdk.tar.gz "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-${WASI_SDK_VERSION}-linux.tar.gz"
+        tar xf wasi-sdk.tar.gz && mv "wasi-sdk-${WASI_SDK_VERSION}" "$WASI_SDK_DIR"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        curl -L -o wasi-sdk.tar.gz "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-${WASI_SDK_VERSION}-macos.tar.gz"
+        tar xf wasi-sdk.tar.gz && mv "wasi-sdk-${WASI_SDK_VERSION}" "$WASI_SDK_DIR"
+    elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+        curl -L -o wasi-sdk.tar.gz "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-${WASI_SDK_VERSION}-mingw.tar.gz"
+        tar xf wasi-sdk.tar.gz && mv "wasi-sdk-${WASI_SDK_VERSION}" "$WASI_SDK_DIR"
+    else
+        log "Unsupported OS for automatic WASI SDK download: $OSTYPE"
+    fi
+    rm -f wasi-sdk.tar.gz
+fi
+
+if [ -d "$WASI_SDK_DIR" ]; then
+    export CC_wasm32_unknown_unknown="$WASI_SDK_DIR/bin/clang"
+    export CFLAGS_wasm32_unknown_unknown="--sysroot=$WASI_SDK_DIR/share/wasi-sysroot -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS"
+fi
+
 # ─── Build core WASM ────────────────────────────────────────────────────────
 
 build_core() {
