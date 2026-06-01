@@ -14,15 +14,20 @@ pub fn init_stubs() {
 const HEADER_SIZE: usize = 16;
 const ALIGN: usize = 16;
 
+fn align_size(size: usize) -> usize {
+    (size + 15) & !15
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn malloc(size: usize) -> *mut c_void {
     let size = if size == 0 { 1 } else { size };
-    let layout = Layout::from_size_align_unchecked(size + HEADER_SIZE, ALIGN);
+    let aligned = align_size(size);
+    let layout = Layout::from_size_align_unchecked(aligned + HEADER_SIZE, ALIGN);
     let ptr = alloc(layout);
     if ptr.is_null() {
         return ptr as *mut c_void;
     }
-    *(ptr as *mut usize) = size;
+    *(ptr as *mut usize) = aligned;
     ptr.add(HEADER_SIZE) as *mut c_void
 }
 
@@ -43,12 +48,13 @@ pub unsafe extern "C" fn calloc(nmemb: usize, size: usize) -> *mut c_void {
     if total == 0 {
         total = 1;
     }
-    let layout = Layout::from_size_align_unchecked(total + HEADER_SIZE, ALIGN);
+    let aligned = align_size(total);
+    let layout = Layout::from_size_align_unchecked(aligned + HEADER_SIZE, ALIGN);
     let ptr = alloc_zeroed(layout);
     if ptr.is_null() {
         return ptr as *mut c_void;
     }
-    *(ptr as *mut usize) = total;
+    *(ptr as *mut usize) = aligned;
     ptr.add(HEADER_SIZE) as *mut c_void
 }
 
@@ -64,11 +70,13 @@ pub unsafe extern "C" fn realloc(ptr: *mut c_void, size: usize) -> *mut c_void {
     let orig_ptr = (ptr as *mut u8).sub(HEADER_SIZE);
     let old_size = *(orig_ptr as *mut usize);
     let layout = Layout::from_size_align_unchecked(old_size + HEADER_SIZE, ALIGN);
-    let new_ptr = rs_realloc(orig_ptr, layout, size + HEADER_SIZE);
+
+    let aligned = align_size(size);
+    let new_ptr = rs_realloc(orig_ptr, layout, aligned + HEADER_SIZE);
     if new_ptr.is_null() {
         return new_ptr as *mut c_void;
     }
-    *(new_ptr as *mut usize) = size;
+    *(new_ptr as *mut usize) = aligned;
     new_ptr.add(HEADER_SIZE) as *mut c_void
 }
 
