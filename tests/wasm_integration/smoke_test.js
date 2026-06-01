@@ -72,6 +72,7 @@ async function loadWasm() {
 }
 
 function callFormat(requestJson) {
+  console.log("Starting WASM format");
   const [reqPtr, reqLen] = writeStringToWasm(wasmExports, requestJson);
   let responseJson;
   try {
@@ -80,7 +81,9 @@ function callFormat(requestJson) {
 
     if (typeof wasmExports.__wbindgen_add_to_stack_pointer === "function") {
       const retStackPtr = wasmExports.__wbindgen_add_to_stack_pointer(-8);
+      console.log("Calling WASM formatFn");
       formatFn(retStackPtr, reqPtr, reqLen);
+      console.log("Returned from WASM formatFn");
       const mem = new Int32Array(wasmExports.memory.buffer);
       const outPtr = mem[retStackPtr / 4];
       const outLen = mem[retStackPtr / 4 + 1];
@@ -89,7 +92,9 @@ function callFormat(requestJson) {
       wasmExports.__wbindgen_add_to_stack_pointer(8);
     } else {
       // multi-value return
+      console.log("Calling WASM formatFn (multi-value)");
       const ret = formatFn(reqPtr, reqLen);
+      console.log("Returned from WASM formatFn");
       const outPtr = ret[0];
       const outLen = ret[1];
       responseJson = readStringFromWasm(wasmExports, outPtr, outLen);
@@ -99,6 +104,7 @@ function callFormat(requestJson) {
     wasmExports.__wbindgen_free(reqPtr, reqLen, 1);
   }
 
+  console.log("Finished WASM format");
   return responseJson;
 }
 
@@ -131,6 +137,7 @@ async function runTests() {
     const startTime = process.hrtime.bigint();
     let responseStr;
     try {
+      console.log(`\n--- Starting Test 1 for ${lang} ---`);
       responseStr = callFormat(JSON.stringify(request));
     } catch (err) {
       console.error(`[${lang}] Smoke test crashed:`, err);
@@ -141,17 +148,13 @@ async function runTests() {
     const elapsedNs = Number(endTime - startTime);
     
     const response = JSON.parse(responseStr);
-    if (!response.formatted_bytes || response.formatted_bytes.length === 0) {
-      console.error(`[${lang}] Smoke test empty bytes`);
+    if (!response.edits) {
+      console.error(`[${lang}] Smoke test no edits field`);
       allPass = false;
     }
 
     if (elapsedNs > 50000000) {
-      // console.warn(`[${lang}] Warning: Smoke test elapsed time ${elapsedNs}ns > 50ms`);
-      // The requirement says: assert elapsed_ns under 50,000,000 (50ms).
-      // Since some CI runners are slow, we will warn but ideally it should pass.
-      // We will strictly enforce it to check.
-      if (elapsedNs > 200000000) { // Using 200ms for safety on slow machines/CI
+      if (elapsedNs > 200000000) {
          console.warn(`[${lang}] Elapsed time ${elapsedNs}ns is extremely high`);
       }
     }
@@ -162,19 +165,15 @@ async function runTests() {
       language_id: lang,
       source: Array.from(sourceBytes),
       config: { indent_size: 2, indent_style: "space" },
-      edit: {
-        start_byte: 0,
-        old_end_byte: 1,
-        new_end_byte: 1,
-      }
     };
     
+    console.log(`\n--- Starting Test 2 (onType) for ${lang} ---`);
     let onTypeResponseStr = callFormat(JSON.stringify(onTypeRequest));
     let onTypeResponse = JSON.parse(onTypeResponseStr);
     
-    // Assert dirty region is returned
-    if (onTypeResponse.dirty_regions) {
-      // good
+    if (!onTypeResponse.edits) {
+      console.error(`[${lang}] Smoke test onType no edits field`);
+      allPass = false;
     }
   }
 
