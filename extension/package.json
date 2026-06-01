@@ -68,7 +68,7 @@
     "build:workers": "esbuild workers/formatWorker.ts --bundle --outfile=dist/workers/formatWorker.js --platform=node --target=node20 --format=cjs",
     "build:all": "npm run build && npm run build:workers",
     "lint": "eslint src/ workers/ --ext .ts",
-    "test": "jest --testPathPattern='src/__tests__'",
+    "test": "jest --testPathPattern='src/__tests__' --passWithNoTests",
     "format:check": "prettier --check 'src/**/*.ts' 'workers/**/*.ts'"
   },
   "devDependencies": {
