@@ -76,6 +76,11 @@ build_core() {
             --out-dir "$out_dir" \
             --out-name "omni_core" \
             --release
+
+        RUSTFLAGS="-C link-arg=--initial-memory=16777216 -C link-arg=--max-memory=67108864" wasm-pack build \
+            "$WORKSPACE_ROOT/crates/core" \
+            --target nodejs \
+            --release
     fi
 
     local wasm_size
