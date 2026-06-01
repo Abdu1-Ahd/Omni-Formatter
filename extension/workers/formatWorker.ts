@@ -74,17 +74,19 @@ async function loadWasm(): Promise<void> {
   
   for (const imp of importsList) {
     if (imp.kind === 'function') {
-      imports[imp.name] = function() {
+      imports[imp.name] = function(...args: any[]) {
         if (imp.name === '__wbindgen_throw') {
           try {
-            const ptr = arguments[0] as number;
-            const len = arguments[1] as number;
+            const ptr = args[0] as number;
+            const len = args[1] as number;
             if (wasmExports && ptr && len) {
               const mem = new Uint8Array(wasmExports.memory.buffer);
               const str = Buffer.from(mem.slice(ptr, ptr + len)).toString("utf8");
               console.error("WASM threw:", str);
             }
-          } catch(e) {}
+          } catch (e) {
+            // Ignore extraction errors
+          }
         }
       };
     } else if (imp.kind === 'memory') {
