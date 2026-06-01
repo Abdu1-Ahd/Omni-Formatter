@@ -16,6 +16,13 @@ pub mod comments;
 pub mod debug;
 pub mod incremental;
 pub mod memory;
+use talc::*;
+
+#[cfg(target_arch = "wasm32")]
+#[global_allocator]
+static ALLOCATOR: TalckWasm =
+    Talc::new(unsafe { ClaimOnOom::new(OomHandler::default()) }).with_wasm();
+
 pub mod range;
 pub mod registry;
 pub mod stitch;

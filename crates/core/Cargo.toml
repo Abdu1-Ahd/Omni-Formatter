@@ -32,6 +32,7 @@ tree-sitter-rust = { workspace = true }
 tree-sitter-go = { workspace = true }
 tree-sitter-css = { workspace = true }
 console_error_panic_hook = "0.1.7"
+talc = "5.0.3"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
