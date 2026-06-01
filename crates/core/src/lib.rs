@@ -16,6 +16,7 @@ pub mod comments;
 pub mod debug;
 pub mod incremental;
 pub mod memory;
+#[cfg(target_arch = "wasm32")]
 use talc::*;
 
 #[cfg(target_arch = "wasm32")]
