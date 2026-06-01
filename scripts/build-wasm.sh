@@ -50,7 +50,7 @@ fi
 
 if [ -d "$WASI_SDK_DIR" ]; then
     export CC_wasm32_unknown_unknown="$WASI_SDK_DIR/bin/clang"
-    export CFLAGS_wasm32_unknown_unknown="--sysroot=$WASI_SDK_DIR/share/wasi-sysroot -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS -D__wasi__ -DTREE_SITTER_FEATURE_WASM"
+    export CFLAGS_wasm32_unknown_unknown="--sysroot=$WASI_SDK_DIR/share/wasi-sysroot -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS -D__wasi__ -Ddup(x)=(x)"
 fi
 
 # ─── Build core WASM ────────────────────────────────────────────────────────
