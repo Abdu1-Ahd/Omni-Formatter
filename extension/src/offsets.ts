@@ -102,7 +102,6 @@ export function positionToUtf8ByteOffset(
 ): number {
   let currentLine = 0;
   let lineStartUtf8 = 0;
-  let i = 0;
 
   // Walk to the target line
   const utf8 = Buffer.from(text, "utf8");

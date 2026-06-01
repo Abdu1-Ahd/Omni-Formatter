@@ -146,7 +146,7 @@ function callFormat(exports: WasmExports, requestJson: string): string {
     //    and it writes the result (ptr, len) at ret_ptr.
     //    However, the exported `format` via wasm-bindgen may use a different
     //    calling convention. We call it via the raw export name.
-    (exports as unknown as Record<string, Function>)["__wbg_format_or_format"](
+    (exports as unknown as Record<string, (...args: any[]) => any>)["__wbg_format_or_format"](
       retStackPtr, reqPtr, reqLen
     );
 
@@ -164,7 +164,7 @@ function callFormat(exports: WasmExports, requestJson: string): string {
     // Fallback: try calling `format` directly as a JS-friendly export.
     // wasm-bindgen may expose it with JS shim that handles memory automatically.
     try {
-      const formatFn = (exports as unknown as Record<string, Function>)["format"];
+      const formatFn = (exports as unknown as Record<string, (...args: any[]) => any>)["format"];
       if (typeof formatFn === "function") {
         responseJson = formatFn(requestJson) as string;
       } else {
