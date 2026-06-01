@@ -125,6 +125,7 @@ pub extern "C" fn __assert_fail(
 }
 
 #[no_mangle]
-pub extern "C" fn abort() -> ! {
-    panic!("C abort() called");
+pub extern "C" fn rs_abort() -> ! {
+    panic!("C abort() called via rs_abort()");
 }
+

@@ -33,7 +33,8 @@ char* strncpy(char* dest, const char* src, size_t n) {
     return dest;
 }
 
-void abort(void) { while (1) {} }
+extern void rs_abort(void);
+void abort(void) { rs_abort(); }
 
 int iswalpha(int c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); }
 
