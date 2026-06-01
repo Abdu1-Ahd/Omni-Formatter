@@ -13,6 +13,8 @@
 
 pub mod arena;
 pub mod comments;
+#[cfg(target_arch = "wasm32")]
+pub mod wasm_stdlib;
 pub mod debug;
 pub mod incremental;
 pub mod memory;
