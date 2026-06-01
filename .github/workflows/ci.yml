@@ -138,5 +138,5 @@ jobs:
       - name: Build extension
         run: |
           pnpm install --frozen-lockfile
-          pnpm build
+          pnpm build:all
         working-directory: extension
