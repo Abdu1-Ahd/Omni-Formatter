@@ -487,7 +487,7 @@ fn wrap_long_lines(lines: Vec<Line>, print_width: usize, indent_size: usize) -> 
 
 /// Format Python source bytes (Black 24.x parity).
 fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
-    let t_start = std::time::Instant::now();
+    let t_start = protocol::Instant::now();
     let language = python_language();
     let mut parser = tree_sitter::Parser::new();
     parser
@@ -508,7 +508,7 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     }
     let t_parse = t_start.elapsed();
 
-    let t_format_start = std::time::Instant::now();
+    let t_format_start = protocol::Instant::now();
     let formatter = PythonFormatter::new(source, config);
     let lines = formatter.format_tree(tree.root_node());
     let lines = wrap_long_lines(
@@ -518,7 +518,7 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     );
     let t_format = t_format_start.elapsed();
 
-    let t_emit_start = std::time::Instant::now();
+    let t_emit_start = protocol::Instant::now();
     let mut out = String::with_capacity(source.len());
     for line in &lines {
         out.push_str(&line.render(config.indent_size as usize));

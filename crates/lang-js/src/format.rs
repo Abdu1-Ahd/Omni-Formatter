@@ -787,7 +787,7 @@ impl<'a> DocBuilder<'a> {
 /// Formatted UTF-8 bytes on success.
 /// Format JavaScript, TypeScript, JSX, or TSX source (Prettier 3.x parity).
 fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
-    let t_start = std::time::Instant::now();
+    let t_start = protocol::Instant::now();
     let language = if source.windows(2).any(|w| w == b": ") {
         typescript_language()
     } else {
@@ -814,12 +814,12 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     }
     let t_parse = t_start.elapsed();
 
-    let t_format_start = std::time::Instant::now();
+    let t_format_start = protocol::Instant::now();
     let builder = DocBuilder::new(source, config);
     let doc = builder.build_block(tree.root_node());
     let t_format = t_format_start.elapsed();
 
-    let t_emit_start = std::time::Instant::now();
+    let t_emit_start = protocol::Instant::now();
     let indent_char = match config.indent_style {
         IndentStyle::Tabs => '\t',
         IndentStyle::Spaces => ' ',

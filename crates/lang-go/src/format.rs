@@ -495,7 +495,7 @@ fn group_imports(output: &str) -> String {
 /// gofmt unconditionally uses tabs. The `config.indent_style` and
 /// `config.indent_size` fields are ignored for Go.
 fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
-    let t_start = std::time::Instant::now();
+    let t_start = protocol::Instant::now();
     let language = go_language();
     let mut parser = tree_sitter::Parser::new();
     parser
@@ -516,12 +516,12 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     }
     let t_parse = t_start.elapsed();
 
-    let t_format_start = std::time::Instant::now();
+    let t_format_start = protocol::Instant::now();
     let formatter = GoFormatter::new(source, config);
     let lines = formatter.format_tree(tree.root_node());
     let t_format = t_format_start.elapsed();
 
-    let t_emit_start = std::time::Instant::now();
+    let t_emit_start = protocol::Instant::now();
     let mut raw = String::with_capacity(source.len());
     for line in &lines {
         raw.push_str(&line.render());

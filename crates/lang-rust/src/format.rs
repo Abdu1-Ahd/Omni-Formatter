@@ -544,7 +544,7 @@ fn format_chains(lines: Vec<Line>, max_width: usize) -> Vec<Line> {
 
 /// Format Rust source bytes (rustfmt stable parity).
 fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
-    let t_start = std::time::Instant::now();
+    let t_start = protocol::Instant::now();
     let language = rust_language();
     let mut parser = tree_sitter::Parser::new();
     parser
@@ -565,14 +565,14 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     }
     let t_parse = t_start.elapsed();
 
-    let t_format_start = std::time::Instant::now();
+    let t_format_start = protocol::Instant::now();
     let formatter = RustFormatter::new(source, config);
     let lines = formatter.format_tree(tree.root_node());
     let max_width = config.print_width.max(100) as usize; // rustfmt default is 100
     let lines = format_chains(lines, max_width);
     let t_format = t_format_start.elapsed();
 
-    let t_emit_start = std::time::Instant::now();
+    let t_emit_start = protocol::Instant::now();
     let mut out = String::with_capacity(source.len());
     for line in &lines {
         out.push_str(&line.render());

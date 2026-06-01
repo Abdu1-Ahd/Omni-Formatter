@@ -15,6 +15,18 @@ pub use zone::Zone;
 
 use serde::{Deserialize, Serialize};
 
+#[cfg(target_arch = "wasm32")]
+pub struct Instant;
+
+#[cfg(target_arch = "wasm32")]
+impl Instant {
+    pub fn now() -> Self { Self }
+    pub fn elapsed(&self) -> std::time::Duration { std::time::Duration::from_secs(0) }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use std::time::Instant;
+
 /// A request sent from the extension host (TypeScript) into the WASM core.
 ///
 /// All positions are in **UTF-8 byte offsets**. The extension host is

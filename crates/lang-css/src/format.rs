@@ -824,7 +824,7 @@ fn format_internal(
     config: &ConfigIR,
     dialect: CssDialect,
 ) -> Result<Vec<u8>, FormatError> {
-    let t_start = std::time::Instant::now();
+    let t_start = protocol::Instant::now();
     let indent_size = config.indent_size as usize;
 
     let out = match dialect {
@@ -843,12 +843,12 @@ fn format_internal(
                 })?;
             let t_parse = t_start.elapsed();
 
-            let t_format_start = std::time::Instant::now();
+            let t_format_start = protocol::Instant::now();
             let fmt = HtmlFormatter::new(source, config);
             let lines = fmt.format(tree.root_node());
             let t_format = t_format_start.elapsed();
 
-            let t_emit_start = std::time::Instant::now();
+            let t_emit_start = protocol::Instant::now();
             let rendered = lines
                 .iter()
                 .map(|l| l.render(indent_size))
@@ -879,12 +879,12 @@ fn format_internal(
                 })?;
             let t_parse = t_start.elapsed();
 
-            let t_format_start = std::time::Instant::now();
+            let t_format_start = protocol::Instant::now();
             let fmt = CssFormatter::new(source, config, dialect);
             let lines = fmt.format_tree(tree.root_node());
             let t_format = t_format_start.elapsed();
 
-            let t_emit_start = std::time::Instant::now();
+            let t_emit_start = protocol::Instant::now();
             let rendered = lines
                 .iter()
                 .map(|l| l.render(indent_size))
