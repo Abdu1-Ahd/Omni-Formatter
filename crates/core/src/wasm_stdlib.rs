@@ -11,18 +11,19 @@ pub fn init_stubs() {
     }
 }
 
+const HEADER_SIZE: usize = 16;
+const ALIGN: usize = 16;
+
 #[no_mangle]
 pub unsafe extern "C" fn malloc(size: usize) -> *mut c_void {
-    if size == 0 {
-        return std::ptr::null_mut();
-    }
-    let layout = Layout::from_size_align_unchecked(size + 8, 8);
+    let size = if size == 0 { 1 } else { size };
+    let layout = Layout::from_size_align_unchecked(size + HEADER_SIZE, ALIGN);
     let ptr = alloc(layout);
     if ptr.is_null() {
         return ptr as *mut c_void;
     }
     *(ptr as *mut usize) = size;
-    ptr.add(8) as *mut c_void
+    ptr.add(HEADER_SIZE) as *mut c_void
 }
 
 #[no_mangle]
@@ -30,25 +31,25 @@ pub unsafe extern "C" fn free(ptr: *mut c_void) {
     if ptr.is_null() {
         return;
     }
-    let ptr = (ptr as *mut u8).sub(8);
+    let ptr = (ptr as *mut u8).sub(HEADER_SIZE);
     let size = *(ptr as *mut usize);
-    let layout = Layout::from_size_align_unchecked(size + 8, 8);
+    let layout = Layout::from_size_align_unchecked(size + HEADER_SIZE, ALIGN);
     dealloc(ptr, layout);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn calloc(nmemb: usize, size: usize) -> *mut c_void {
-    let total = nmemb * size;
+    let mut total = nmemb * size;
     if total == 0 {
-        return std::ptr::null_mut();
+        total = 1;
     }
-    let layout = Layout::from_size_align_unchecked(total + 8, 8);
+    let layout = Layout::from_size_align_unchecked(total + HEADER_SIZE, ALIGN);
     let ptr = alloc_zeroed(layout);
     if ptr.is_null() {
         return ptr as *mut c_void;
     }
     *(ptr as *mut usize) = total;
-    ptr.add(8) as *mut c_void
+    ptr.add(HEADER_SIZE) as *mut c_void
 }
 
 #[no_mangle]
@@ -60,15 +61,15 @@ pub unsafe extern "C" fn realloc(ptr: *mut c_void, size: usize) -> *mut c_void {
         free(ptr);
         return std::ptr::null_mut();
     }
-    let orig_ptr = (ptr as *mut u8).sub(8);
+    let orig_ptr = (ptr as *mut u8).sub(HEADER_SIZE);
     let old_size = *(orig_ptr as *mut usize);
-    let layout = Layout::from_size_align_unchecked(old_size + 8, 8);
-    let new_ptr = rs_realloc(orig_ptr, layout, size + 8);
+    let layout = Layout::from_size_align_unchecked(old_size + HEADER_SIZE, ALIGN);
+    let new_ptr = rs_realloc(orig_ptr, layout, size + HEADER_SIZE);
     if new_ptr.is_null() {
         return new_ptr as *mut c_void;
     }
     *(new_ptr as *mut usize) = size;
-    new_ptr.add(8) as *mut c_void
+    new_ptr.add(HEADER_SIZE) as *mut c_void
 }
 
 #[no_mangle]
