@@ -13,8 +13,6 @@
 
 pub mod arena;
 pub mod comments;
-#[cfg(target_arch = "wasm32")]
-pub mod wasm_stdlib;
 pub mod debug;
 pub mod incremental;
 pub mod memory;
@@ -22,6 +20,8 @@ pub mod range;
 pub mod registry;
 pub mod stitch;
 pub mod unicode;
+#[cfg(target_arch = "wasm32")]
+pub mod wasm_stdlib;
 pub mod zones;
 
 use wasm_bindgen::prelude::*;
