@@ -81,9 +81,22 @@ async function main() {
 
   // Instantiate the WASM module
   let wasmInstance;
+  let wasmModule;
   try {
-    const wasmModule = await WebAssembly.compile(wasmBytes);
-    wasmInstance = await WebAssembly.instantiate(wasmModule, {});
+    wasmModule = await WebAssembly.compile(wasmBytes);
+    const imports = WebAssembly.Module.imports(wasmModule);
+    const importObject = {};
+    for (const imp of imports) {
+      if (!importObject[imp.module]) importObject[imp.module] = {};
+      if (imp.kind === 'function') {
+        importObject[imp.module][imp.name] = function() {};
+      } else if (imp.kind === 'memory') {
+        importObject[imp.module][imp.name] = new WebAssembly.Memory({ initial: 256, maximum: 1024 });
+      } else if (imp.kind === 'global') {
+        importObject[imp.module][imp.name] = 0;
+      }
+    }
+    wasmInstance = await WebAssembly.instantiate(wasmModule, importObject);
   } catch (e) {
     console.error(`[ERROR] Failed to instantiate WASM: ${e.message}`);
     process.exit(1);
@@ -106,10 +119,19 @@ async function main() {
 
   // Time the instantiation for the startup latency check (L-03)
   const t0 = performance.now();
-  await WebAssembly.instantiate(
-    await WebAssembly.compile(wasmBytes),
-    {}
-  );
+  const imports2 = WebAssembly.Module.imports(wasmModule);
+  const importObject2 = {};
+  for (const imp of imports2) {
+    if (!importObject2[imp.module]) importObject2[imp.module] = {};
+    if (imp.kind === 'function') {
+      importObject2[imp.module][imp.name] = function() {};
+    } else if (imp.kind === 'memory') {
+      importObject2[imp.module][imp.name] = new WebAssembly.Memory({ initial: 256, maximum: 1024 });
+    } else if (imp.kind === 'global') {
+      importObject2[imp.module][imp.name] = 0;
+    }
+  }
+  await WebAssembly.instantiate(wasmModule, importObject2);
   const instantiateMs = performance.now() - t0;
   assert(
     instantiateMs < 500,
