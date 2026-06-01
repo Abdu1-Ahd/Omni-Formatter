@@ -55,7 +55,7 @@ impl CssDialect {
     }
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn format_css(
     source_bytes: &[u8],
     config_json: &str,
@@ -69,22 +69,22 @@ pub fn format_css(
     }
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn config_schema() -> String {
     include_str!("../schema.json").to_string()
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn language_id() -> String {
     "css".to_string()
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn aliases() -> Vec<JsValue> {
     vec![
         JsValue::from_str("scss"),

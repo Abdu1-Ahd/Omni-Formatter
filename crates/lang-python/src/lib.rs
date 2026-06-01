@@ -35,7 +35,7 @@ pub mod plugin;
 use protocol::ConfigIR;
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
+#[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn format_python(source_bytes: &[u8], config_json: &str) -> Result<Vec<u8>, JsValue> {
     let config: ConfigIR = serde_json::from_str(config_json).unwrap_or_default();
     match format::format(source_bytes, &config) {
@@ -44,22 +44,22 @@ pub fn format_python(source_bytes: &[u8], config_json: &str) -> Result<Vec<u8>, 
     }
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn config_schema() -> String {
     include_str!("../schema.json").to_string()
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn language_id() -> String {
     "python".to_string()
 }
 
-#[wasm_bindgen]
+#[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn aliases() -> Vec<JsValue> {
     vec![
         JsValue::from_str(".py"),
