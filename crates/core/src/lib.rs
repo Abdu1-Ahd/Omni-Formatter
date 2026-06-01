@@ -26,6 +26,12 @@ pub mod zones;
 
 use wasm_bindgen::prelude::*;
 
+#[wasm_bindgen(start)]
+pub fn init_wasm() {
+    #[cfg(target_arch = "wasm32")]
+    wasm_stdlib::init_stubs();
+}
+
 use protocol::{FormatRequest, FormatResponse, TextEdit};
 
 /// The single exported WASM function.

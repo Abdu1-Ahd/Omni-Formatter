@@ -1,6 +1,16 @@
 use std::alloc::{alloc, alloc_zeroed, dealloc, realloc as rs_realloc, Layout};
 use std::os::raw::{c_int, c_void};
 
+extern "C" {
+    fn _wasm_c_stubs_init();
+}
+
+pub fn init_stubs() {
+    unsafe {
+        _wasm_c_stubs_init();
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn malloc(size: usize) -> *mut c_void {
     if size == 0 {
