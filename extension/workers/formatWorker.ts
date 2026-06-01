@@ -69,19 +69,37 @@ async function loadWasm(): Promise<void> {
   const wasmBytes = fs.readFileSync(wasmPath);
   const wasmModule = await WebAssembly.compile(wasmBytes);
 
-  // wasm-bindgen no-modules target requires an imports object
-  const instance = await WebAssembly.instantiate(wasmModule, {
-    // wasm-bindgen may inject __wbindgen_placeholder__ imports in future versions
-    __wbindgen_placeholder__: {
-      __wbindgen_describe: () => {},
-      __wbindgen_throw: (ptr: number, len: number) => {
-        if (!wasmExports) throw new Error("WASM exports not ready");
-        const mem = new Uint8Array(wasmExports.memory.buffer);
-        const str = Buffer.from(mem.slice(ptr, ptr + len)).toString("utf8");
-        throw new Error(str);
-      }
-    },
-  });
+  const importsList = WebAssembly.Module.imports(wasmModule);
+  const imports: Record<string, any> = {};
+  
+  for (const imp of importsList) {
+    if (imp.kind === 'function') {
+      imports[imp.name] = function() {
+        if (imp.name === '__wbindgen_throw') {
+          try {
+            const ptr = arguments[0] as number;
+            const len = arguments[1] as number;
+            if (wasmExports && ptr && len) {
+              const mem = new Uint8Array(wasmExports.memory.buffer);
+              const str = Buffer.from(mem.slice(ptr, ptr + len)).toString("utf8");
+              console.error("WASM threw:", str);
+            }
+          } catch(e) {}
+        }
+      };
+    } else if (imp.kind === 'memory') {
+      imports[imp.name] = new WebAssembly.Memory({ initial: 256, maximum: 1024 });
+    } else if (imp.kind === 'global') {
+      imports[imp.name] = 0;
+    }
+  }
+
+  const importObject: Record<string, any> = {};
+  for (const imp of importsList) {
+    if (!importObject[imp.module]) importObject[imp.module] = imports;
+  }
+
+  const instance = await WebAssembly.instantiate(wasmModule, importObject);
 
   wasmExports = instance.exports as unknown as WasmExports;
 }

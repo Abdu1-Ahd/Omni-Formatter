@@ -29,7 +29,10 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(start)]
 pub fn init_wasm() {
     #[cfg(target_arch = "wasm32")]
-    wasm_stdlib::init_stubs();
+    {
+        wasm_stdlib::init_stubs();
+        console_error_panic_hook::set_once();
+    }
 }
 
 use protocol::{FormatRequest, FormatResponse, TextEdit};

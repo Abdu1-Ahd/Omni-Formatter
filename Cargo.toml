@@ -55,7 +55,6 @@ toml        = { version = "0.8", features = ["parse"] }
 opt-level   = "s"
 lto         = true
 codegen-units = 1
-panic       = "abort"
 
 [profile.dev]
 # Faster incremental builds during development
