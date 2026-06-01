@@ -17,12 +17,12 @@ pub mod debug;
 pub mod incremental;
 pub mod memory;
 #[cfg(target_arch = "wasm32")]
-use talc::*;
+use lol_alloc::{AssumeSingleThreaded, FreeListAllocator};
 
 #[cfg(target_arch = "wasm32")]
 #[global_allocator]
-static ALLOCATOR: TalckWasm =
-    Talc::new(unsafe { ClaimOnOom::new(OomHandler::default()) }).with_wasm();
+static ALLOCATOR: AssumeSingleThreaded<FreeListAllocator> =
+    unsafe { AssumeSingleThreaded::new(FreeListAllocator::new()) };
 
 pub mod range;
 pub mod registry;
