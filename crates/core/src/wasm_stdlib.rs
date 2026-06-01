@@ -108,10 +108,23 @@ pub extern "C" fn towupper(c: c_int) -> c_int {
 
 #[no_mangle]
 pub extern "C" fn __assert_fail(
-    _assertion: *const u8,
-    _file: *const u8,
-    _line: u32,
-    _function: *const u8,
+    assertion: *const u8,
+    file: *const u8,
+    line: u32,
+    function: *const u8,
 ) -> ! {
-    std::process::abort()
+    unsafe {
+        let assertion_str = std::ffi::CStr::from_ptr(assertion as *const i8).to_string_lossy();
+        let file_str = std::ffi::CStr::from_ptr(file as *const i8).to_string_lossy();
+        let function_str = std::ffi::CStr::from_ptr(function as *const i8).to_string_lossy();
+        panic!(
+            "Assertion failed: {} at {}:{} in {}",
+            assertion_str, file_str, line, function_str
+        );
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn abort() -> ! {
+    panic!("C abort() called");
 }
