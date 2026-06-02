@@ -71,12 +71,14 @@ use protocol::{FormatRequest, FormatResponse, TextEdit};
 /// the source and panics if `format(format(x)) != format(x)` (L-09 mitigation).
 #[wasm_bindgen]
 pub fn format(request_json: &str) -> String {
+    js_log("Entered format()...");
+    
     // Initialise the arena allocator for this request (L-01 mitigation).
-    // The arena is dropped at the end of this function, freeing all parse tree
-    // nodes in a single deallocation.
     let _arena = arena::RequestArena::new();
+    js_log("Arena initialized.");
 
     // Parse the incoming request.
+    js_log("Deserializing request...");
     let request: FormatRequest = match serde_json::from_str(request_json) {
         Ok(r) => r,
         Err(e) => {
@@ -89,6 +91,7 @@ pub fn format(request_json: &str) -> String {
             .to_string();
         }
     };
+    js_log("Request deserialized.");
 
     // Enforce 10MB file size limit (L-01 mitigation).
     const MAX_FILE_BYTES: usize = 10 * 1024 * 1024; // 10 MB
@@ -108,12 +111,16 @@ pub fn format(request_json: &str) -> String {
     // ── Language dispatch ──────────────────────────────────────────────────
     // Map language_id to a file extension the registry understands.
     // VS Code language IDs don't always match file extensions, so we normalise.
+    js_log("Normalizing language ID...");
     let ext = language_id_to_ext(&request.language_id);
+    js_log(&format!("Language mapped to ext: {}", ext));
 
+    js_log("Fetching default registry...");
     let registry = registry::default_registry();
     let config = &request.config;
     let source = &request.source;
 
+    js_log("Calling registry.format_by_ext...");
     let formatted = match registry.format_by_ext(ext, source, config) {
         Ok(bytes) => bytes,
         Err(e) => {
