@@ -28,38 +28,41 @@ async function loadWasm() {
   const wasmModule = await WebAssembly.compile(wasmBytes);
 
   const importsList = WebAssembly.Module.imports(wasmModule);
-  const imports = {};
-  
+  const importObject = {};
+
   for (const imp of importsList) {
+    if (!importObject[imp.module]) importObject[imp.module] = {};
     if (imp.kind === 'function') {
-      imports[imp.name] = function(...args) {
-        // Log all function calls for debugging
-        if (imp.name.includes('error') || imp.name.includes('log') || imp.name === '__wbindgen_throw') {
+      importObject[imp.module][imp.name] = function(...args) {
+        if (imp.name === '__wbindgen_throw') {
           try {
             const ptr = args[0];
             const len = args[1];
             if (wasmExports && ptr && len) {
               const mem = new Uint8Array(wasmExports.memory.buffer);
-              const str = Buffer.from(mem.slice(ptr, ptr + len)).toString("utf8");
-              console.error(`WASM call ${imp.name}:`, str);
-            } else {
-              console.error(`WASM call ${imp.name} args:`, args);
+              const str = Buffer.from(mem.slice(ptr, ptr + len)).toString('utf8');
+              console.error("WASM threw:", str);
             }
           } catch (e) {
-            console.error(`WASM call ${imp.name} args:`, args);
+          }
+        } else if (imp.name.includes('log')) {
+          try {
+            const ptr = args[0];
+            const len = args[1];
+            if (wasmExports && ptr && len) {
+              const mem = new Uint8Array(wasmExports.memory.buffer);
+              const str = Buffer.from(mem.slice(ptr, ptr + len)).toString('utf8');
+              console.log("WASM LOG:", str);
+            }
+          } catch (e) {
           }
         }
       };
     } else if (imp.kind === 'memory') {
-      imports[imp.name] = new WebAssembly.Memory({ initial: 256, maximum: 1024 });
+      importObject[imp.module][imp.name] = new WebAssembly.Memory({ initial: 256, maximum: 1024 });
     } else if (imp.kind === 'global') {
-      imports[imp.name] = 0;
+      importObject[imp.module][imp.name] = 0;
     }
-  }
-
-  const importObject = {};
-  for (const imp of importsList) {
-    if (!importObject[imp.module]) importObject[imp.module] = imports;
   }
 
   const instance = await WebAssembly.instantiate(wasmModule, importObject);

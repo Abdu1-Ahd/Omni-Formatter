@@ -36,8 +36,6 @@ char* strncpy(char* dest, const char* src, size_t n) {
 extern void rs_abort(void);
 void abort(void) { rs_abort(); }
 
-int iswalpha(int c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); }
-
 int fputs(const char* s, void* stream) { return 0; }
 int fputc(int c, void* stream) { return 0; }
 size_t fwrite(const void* ptr, size_t size, size_t nmemb, void* stream) { return nmemb; }
