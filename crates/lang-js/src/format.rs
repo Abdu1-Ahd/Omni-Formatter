@@ -802,11 +802,13 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
             message: format!("grammar load failed: {}", e),
         })?;
 
+    eprintln!("Calling parser.parse...");
     let tree = parser
         .parse(source, None)
         .ok_or_else(|| FormatError::ParseFailed {
             message: "tree-sitter returned None".into(),
         })?;
+    eprintln!("Finished parser.parse.");
 
     if tree.root_node().has_error() {
         log::warn!("lang-js: parse error in source — emitting verbatim");
@@ -814,10 +816,12 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
     }
     let t_parse = t_start.elapsed();
 
+    eprintln!("Calling build_block...");
     let t_format_start = protocol::Instant::now();
     let builder = DocBuilder::new(source, config);
     let doc = builder.build_block(tree.root_node());
     let t_format = t_format_start.elapsed();
+    eprintln!("Finished build_block.");
 
     let t_emit_start = protocol::Instant::now();
     let indent_char = match config.indent_style {
