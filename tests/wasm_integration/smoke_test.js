@@ -78,33 +78,29 @@ function callFormat(requestJson) {
   console.log("Starting WASM format");
   const [reqPtr, reqLen] = writeStringToWasm(wasmExports, requestJson);
   let responseJson;
-  try {
-    const formatFn = wasmExports.format;
-    if (!formatFn) throw new Error("WASM export 'format' not found");
+  const formatFn = wasmExports.format;
+  if (!formatFn) throw new Error("WASM export 'format' not found");
 
-    if (typeof wasmExports.__wbindgen_add_to_stack_pointer === "function") {
-      const retStackPtr = wasmExports.__wbindgen_add_to_stack_pointer(-8);
-      console.log("Calling WASM formatFn");
-      formatFn(retStackPtr, reqPtr, reqLen);
-      console.log("Returned from WASM formatFn");
-      const mem = new Int32Array(wasmExports.memory.buffer);
-      const outPtr = mem[retStackPtr / 4];
-      const outLen = mem[retStackPtr / 4 + 1];
-      responseJson = readStringFromWasm(wasmExports, outPtr, outLen);
-      wasmExports.__wbindgen_free(outPtr, outLen, 1);
-      wasmExports.__wbindgen_add_to_stack_pointer(8);
-    } else {
-      // multi-value return
-      console.log("Calling WASM formatFn (multi-value)");
-      const ret = formatFn(reqPtr, reqLen);
-      console.log("Returned from WASM formatFn");
-      const outPtr = ret[0];
-      const outLen = ret[1];
-      responseJson = readStringFromWasm(wasmExports, outPtr, outLen);
-      wasmExports.__wbindgen_free(outPtr, outLen, 1);
-    }
-  } finally {
-    wasmExports.__wbindgen_free(reqPtr, reqLen, 1);
+  if (typeof wasmExports.__wbindgen_add_to_stack_pointer === "function") {
+    const retStackPtr = wasmExports.__wbindgen_add_to_stack_pointer(-8);
+    console.log("Calling WASM formatFn");
+    formatFn(retStackPtr, reqPtr, reqLen);
+    console.log("Returned from WASM formatFn");
+    const mem = new Int32Array(wasmExports.memory.buffer);
+    const outPtr = mem[retStackPtr / 4];
+    const outLen = mem[retStackPtr / 4 + 1];
+    responseJson = readStringFromWasm(wasmExports, outPtr, outLen);
+    wasmExports.__wbindgen_free(outPtr, outLen, 1);
+    wasmExports.__wbindgen_add_to_stack_pointer(8);
+  } else {
+    // multi-value return
+    console.log("Calling WASM formatFn (multi-value)");
+    const ret = formatFn(reqPtr, reqLen);
+    console.log("Returned from WASM formatFn");
+    const outPtr = ret[0];
+    const outLen = ret[1];
+    responseJson = readStringFromWasm(wasmExports, outPtr, outLen);
+    wasmExports.__wbindgen_free(outPtr, outLen, 1);
   }
 
   console.log("Finished WASM format");
