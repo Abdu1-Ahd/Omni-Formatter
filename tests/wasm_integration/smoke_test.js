@@ -116,7 +116,7 @@ async function runTests() {
   }
 
   const fixturesDir = path.join(__dirname, '../fixtures');
-  const languages = ['js', 'ts'];
+  const languages = ['js', 'ts', 'json', 'html', 'css', 'go', 'rust', 'python'];
   let allPass = true;
 
   for (const lang of languages) {
