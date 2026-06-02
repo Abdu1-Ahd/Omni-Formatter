@@ -123,10 +123,9 @@ jobs:
         run: bash scripts/build-wasm.sh
 
       - name: WASM smoke test
-        working-directory: tests/wasm_integration
         timeout-minutes: 2
         run: |
-          npm install
+          cd tests/wasm_integration
           node smoke_test.js
 
       - name: Setup Node.js
