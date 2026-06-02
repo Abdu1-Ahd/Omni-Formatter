@@ -34,11 +34,15 @@ pub mod zones;
 
 use wasm_bindgen::prelude::*;
 
+#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     pub fn js_log(s: &str);
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn js_log(_s: &str) {}
 
 #[wasm_bindgen(start)]
 pub fn init_wasm() {
