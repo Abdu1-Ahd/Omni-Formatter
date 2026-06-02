@@ -803,14 +803,19 @@ impl<'a> DocBuilder<'a> {
 /// Format JavaScript, TypeScript, JSX, or TSX source (Prettier 3.x parity).
 fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
     let t_start = protocol::Instant::now();
+    js_log("Evaluating language id...");
     let language = if source.windows(2).any(|w| w == b": ") {
+        js_log("Getting TS language");
         typescript_language()
     } else {
+        js_log("Getting JS language");
         javascript_language()
     };
     let is_ts = source.windows(2).any(|w| w == b": ");
 
+    js_log("Creating Parser::new()...");
     let mut parser = tree_sitter::Parser::new();
+    js_log("Calling set_language...");
     parser
         .set_language(&language)
         .map_err(|e| FormatError::Internal {
