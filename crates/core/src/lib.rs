@@ -72,7 +72,7 @@ use protocol::{FormatRequest, FormatResponse, TextEdit};
 #[wasm_bindgen]
 pub fn format(request_json: &str) -> String {
     js_log("Entered format()...");
-    
+
     // Initialise the arena allocator for this request (L-01 mitigation).
     let _arena = arena::RequestArena::new();
     js_log("Arena initialized.");
