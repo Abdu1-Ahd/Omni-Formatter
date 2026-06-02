@@ -139,6 +139,45 @@ pub extern "C" fn towupper(c: c_int) -> c_int {
 }
 
 #[no_mangle]
+pub extern "C" fn iswalpha(c: c_int) -> c_int {
+    let ch = match std::char::from_u32(c as u32) {
+        Some(ch) => ch,
+        None => return 0,
+    };
+    if ch.is_alphabetic() {
+        1
+    } else {
+        0
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn iswdigit(c: c_int) -> c_int {
+    let ch = match std::char::from_u32(c as u32) {
+        Some(ch) => ch,
+        None => return 0,
+    };
+    if ch.is_numeric() {
+        1
+    } else {
+        0
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn iswlower(c: c_int) -> c_int {
+    let ch = match std::char::from_u32(c as u32) {
+        Some(ch) => ch,
+        None => return 0,
+    };
+    if ch.is_lowercase() {
+        1
+    } else {
+        0
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn __assert_fail(
     assertion: *const u8,
     file: *const u8,
