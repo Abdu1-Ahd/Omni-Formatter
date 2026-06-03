@@ -4,6 +4,21 @@ Internal engineering reference. Covers local setup, build commands, architecture
 
 ---
 
+## Table of Contents
+
+- [Minimum Required Versions](#minimum-required-versions)
+- [Local Setup](#local-setup)
+- [Build Commands](#build-commands)
+- [Test Execution](#test-execution)
+- [Lint Commands](#lint-commands)
+- [Docker Build](#docker-build)
+- [Directory → Architectural Function Matrix](#directory--architectural-function-matrix)
+- [Build Phases](#build-phases)
+- [Platform-Specific Notes](#platform-specific-notes)
+- [Release Procedure](#release-procedure)
+
+---
+
 ## Minimum Required Versions
 
 | Software | Version | Installation |
@@ -46,12 +61,16 @@ pnpm --filter extension build
 
 ---
 
-## Install Dependencies (Production vs. Dev)
+## Build Commands
 
-Production Rust deps are declared in each `crates/*/Cargo.toml`. Dev-only deps (fuzzing, test harnesses) are declared under `[dev-dependencies]`.
-
-Node production deps: `extension/package.json` (vscode API bindings only).
-Node dev deps: `extension/package-dev.json` (esbuild, jest, @types/vscode).
+| Command | Purpose |
+|---|---|
+| `cargo build --workspace` | Build all Rust crates (native targets) |
+| `bash scripts/build-wasm.sh` | Build all language module WASM binaries |
+| `wasm-pack build crates/lang-js --target nodejs` | Build a single language module |
+| `pnpm --filter extension build` | Compile extension TypeScript to `dist/` |
+| `pnpm --filter extension package` | Package the extension to a `.vsix` file |
+| `npx vsce package` | Package and produce `.vsix` for manual install |
 
 ---
 
@@ -61,16 +80,19 @@ Node dev deps: `extension/package-dev.json` (esbuild, jest, @types/vscode).
 # Run all Rust unit + integration tests
 cargo test --workspace
 
-# Run idempotency fuzz suite (requires cargo-fuzz)
+# Run idempotency fuzz suite (requires cargo-fuzz and nightly on Windows)
 cargo fuzz run idempotency_js -- -max_len=65536 -runs=10000
 
-# Run Node WASM smoke test
+# Run Node.js WASM smoke test
 node tests/node/test-core.js
 
-# Run TypeScript tests
+# Run TypeScript extension tests
 pnpm --filter extension test
 
-# Run format-on-type benchmark (16ms target)
+# Run the professional workspace test suite
+npm test --prefix tests/professional_workspace
+
+# Run format-on-type latency benchmark (16ms target)
 cargo bench -p core --bench format_on_type
 ```
 
@@ -85,8 +107,10 @@ cargo clippy --all-targets -- -D warnings
 # TypeScript
 pnpm --filter extension lint
 
-# Format check (does not modify files)
+# Rust format check (does not modify files)
 cargo fmt --all -- --check
+
+# TypeScript format check
 pnpm --filter extension format:check
 ```
 
@@ -103,7 +127,7 @@ docker run --rm omni-formatter:dev cargo test --workspace
 
 ## Directory → Architectural Function Matrix
 
-| Directory | Role | Input | Output |
+| Directory / File | Role | Input | Output |
 |---|---|---|---|
 | `crates/protocol/` | Shared type definitions | — | `Zone`, `ConfigIR`, `FormatError`, `FormatRequest`, `FormatResponse` |
 | `crates/core/` | WASM core binary | `FormatRequest` JSON | `FormatResponse` JSON |
@@ -115,7 +139,6 @@ docker run --rm omni-formatter:dev cargo test --workspace
 | `crates/core/src/unicode.rs` | Display column counting | UTF-8 bytes | Display column widths |
 | `crates/lang-*/` | Language module (one per language) | Zone bytes + `ConfigIR` | Formatted bytes |
 | `crates/lang-*/src/adapter.rs` | Config file reader + translator | Native config files | `ConfigIR` |
-| `crates/cli/` | `omnifmt-cli` binary | CLI args | Scaffolded module / published module / `.omnifmt.json` |
 | `extension/src/extension.ts` | Extension activation + provider | VS Code events | `DocumentFormattingEditProvider` registration |
 | `extension/src/workerPool.ts` | Worker thread pool | Format requests | Dispatched `FormatResponse` |
 | `extension/workers/formatWorker.ts` | Worker thread entry point | `postMessage FormatRequest` | `postMessage FormatResponse` |
@@ -123,11 +146,25 @@ docker run --rm omni-formatter:dev cargo test --workspace
 | `extension/src/moduleLoader.ts` | Registry client + disk cache | Language ID | Loaded WASM module |
 | `extension/src/conflictDetector.ts` | Competing formatter detection | Installed extensions | Conflict notification |
 | `extension/src/chain.ts` | Post-format chain runner | `"postFormat"` config + formatted doc | Final formatted doc |
-| `registry/` | npm-compatible module registry server | HTTP requests | Module metadata + WASM blobs |
+| `registry/src/index.ts` | Cloudflare Worker router | HTTP requests | Module metadata + WASM blobs |
 | `tests/idempotency/` | 10,000-fixture fuzz idempotency suite | Generated source files | Pass/fail assertion |
-| `tests/benchmarks/` | Format-on-type latency benchmarks | 2000-line fixture + 1-char edit | Latency measurement |
+| `tests/benchmarks/` | Format-on-type latency benchmarks | 2,000-line fixture + 1-char edit | Latency measurement |
 | `tests/compat/` | Reference formatter output comparison | Source fixture corpus | Byte diff vs. reference formatter |
 | `scripts/` | Build + package automation | — | `.wasm` artifacts, `.vsix` package |
+
+---
+
+## Build Phases
+
+The project is structured into five sequential build phases. Each phase must be complete and all tests passing before the next phase begins.
+
+| Phase | Goal | Key Deliverable |
+|---|---|---|
+| 1 | Core protocol + WASM scaffold | `format()` stub passes Node smoke test |
+| 2 | Extension host + worker pool | Pass-through format works in VS Code |
+| 3 | JS/TS language module | Prettier 3.x parity + 16ms format-on-type |
+| 4 | Python / Rust / Go / CSS modules | All 4 modules pass compat CI |
+| 5 | Registry + CLI + release | `.vsix` published; `omnifmt-cli` scaffolds a module |
 
 ---
 
@@ -150,15 +187,27 @@ docker run --rm omni-formatter:dev cargo test --workspace
 
 ---
 
-## Build Phases
+## Release Procedure
 
-The project is structured into five sequential build phases.
-Each phase must be complete and all tests passing before the next phase begins.
+OmniFormatter uses [Semantic Versioning](https://semver.org/). The publish workflow is fully automated via GitHub Actions.
 
-| Phase | Goal | Key Deliverable |
-|---|---|---|
-| 1 | Core protocol + WASM scaffold | `format()` stub passes Node smoke test |
-| 2 | Extension host + worker pool | Pass-through format works in VS Code |
-| 3 | JS/TS language module | Prettier 3.x parity + 16ms format-on-type |
-| 4 | Python/Rust/Go/CSS modules | All 4 modules pass compat CI |
-| 5 | Registry + CLI + release | `.vsix` published; `omnifmt-cli` scaffolds a module |
+### Steps
+
+1. Update the version in `extension/package.json` (e.g., `"version": "0.1.1"`).
+2. Update `CHANGELOG.md` — move all items from `[Unreleased]` into a new `[0.1.1] — YYYY-MM-DD` section.
+3. Commit the changes:
+   ```sh
+   git commit -am "chore: release v0.1.1"
+   git push
+   ```
+4. Tag the release:
+   ```sh
+   git tag v0.1.1
+   git push origin v0.1.1
+   ```
+5. The [Publish workflow](.github/workflows/publish.yml) will automatically:
+   - Build and package the `.vsix`
+   - Publish to VS Code Marketplace
+   - Publish to Open VSX Registry
+
+6. Create a GitHub Release at `https://github.com/Abdu1-Ahd/Omni-Formatter/releases/new` using the tag and paste the relevant CHANGELOG section as the body.
