@@ -378,6 +378,27 @@ Adding a new language is structurally designed to require no changes to the VS C
 
 ---
 
-## 13. Conclusion
+## 13. Deep Dive: Continuous Integration
+
+The `ci.yml` pipeline covers multiple layers to guarantee no regressions in the WASM payloads.
+
+### 13.1 Cross-Compilation
+The Rust compiler (`rustc`) seamlessly targets `wasm32-unknown-unknown`. The resulting binaries are small (usually ~400KB), but before they can be used, we run `wasm-opt -O3` to further strip debug symbols and inline functions, dropping the size closer to ~250KB per language module.
+
+### 13.2 Integration Validation
+Our `smoke_test.js` actually loads the generated `.wasm` files directly into Node.js via the `wasm-bindgen` loader. It pumps synthetic syntax errors and edge cases (like extremely large files) to guarantee the Rust error handling maps safely back to JavaScript without crashing the Node.js process.
+
+---
+
+## 14. Troubleshooting the Extension
+
+Common issues and their architectural roots:
+1. **Formatting fails silently:** This usually means the WASM module panicked. The WebWorker catches the trap and logs it to the VS Code Output Channel.
+2. **Missing Language Support:** The requested language file isn't mapped in `extension.ts` or `moduleLoader.ts`. Ensure that the VS Code `languageId` exists in the local map and that the registry actually has a published module for it.
+3. **Slow Formatting:** Format operations taking > 500ms indicate an extremely large file being formatted on save, bypassing the delta-based format-on-type optimization.
+
+---
+
+## 15. Conclusion
 
 OmniFormatter represents a paradigm shift in local tooling. By leveraging WebAssembly and Edge Computing, it strips away the heavy dependencies of traditional formatters, providing an ultra-fast, strictly secure, and universally compatible formatting engine that can run in any environment—from a local editor to a CI pipeline to a web browser. It solves the performance and security risks of formatters while ensuring an identical experience anywhere.
