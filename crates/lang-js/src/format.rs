@@ -340,9 +340,7 @@ impl<'a> DocBuilder<'a> {
         let cond = cond_node
             .map(|n| self.build_for_part(n))
             .unwrap_or(Doc::Nil);
-        let update = update_node
-            .map(|n| self.build(n))
-            .unwrap_or(Doc::Nil);
+        let update = update_node.map(|n| self.build(n)).unwrap_or(Doc::Nil);
         let body = node
             .child_by_field_name("body")
             .map(|n| self.build(n))
@@ -368,9 +366,7 @@ impl<'a> DocBuilder<'a> {
         match node.kind() {
             "expression_statement" => {
                 // Strip the trailing ';' that expression_statement normally adds
-                node.child(0)
-                    .map(|c| self.build(c))
-                    .unwrap_or(Doc::Nil)
+                node.child(0).map(|c| self.build(c)).unwrap_or(Doc::Nil)
             }
             "empty_statement" => Doc::Nil,
             _ => self.build(node),
@@ -410,9 +406,7 @@ impl<'a> DocBuilder<'a> {
             }
             "expression_statement" => {
                 // expression_statement normally adds ';', skip it for for-loop init
-                node.child(0)
-                    .map(|c| self.build(c))
-                    .unwrap_or(Doc::Nil)
+                node.child(0).map(|c| self.build(c)).unwrap_or(Doc::Nil)
             }
             "empty_statement" => Doc::Nil,
             _ => self.build(node),
@@ -452,8 +446,15 @@ impl<'a> DocBuilder<'a> {
                 declarators.push(self.build_declarator(child));
             }
         }
-        let is_in_for = node.parent().map(|p| p.kind() == "for_statement").unwrap_or(false);
-        let semi = if self.config.semicolons && !is_in_for { ";" } else { "" };
+        let is_in_for = node
+            .parent()
+            .map(|p| p.kind() == "for_statement")
+            .unwrap_or(false);
+        let semi = if self.config.semicolons && !is_in_for {
+            ";"
+        } else {
+            ""
+        };
         Doc::concat(
             Doc::text(format!("{} ", keyword)),
             Doc::concat(
@@ -994,7 +995,11 @@ mod tests {
         let result = format(source, &config).unwrap();
         let result_str = std::str::from_utf8(&result).unwrap();
         eprintln!("for-loop output: {:?}", result_str);
-        assert!(!result_str.contains(";;"), "double semicolons found: {:?}", result_str);
+        assert!(
+            !result_str.contains(";;"),
+            "double semicolons found: {:?}",
+            result_str
+        );
         // Must be idempotent
         let second = format(&result, &config).unwrap();
         assert_eq!(result, second, "for-loop format not idempotent");
@@ -1011,7 +1016,11 @@ mod tests {
         let result = format(source, &config).unwrap();
         let result_str = std::str::from_utf8(&result).unwrap();
         eprintln!("function+for output: {:?}", result_str);
-        assert!(!result_str.contains(";;"), "double semicolons in output: {:?}", result_str);
+        assert!(
+            !result_str.contains(";;"),
+            "double semicolons in output: {:?}",
+            result_str
+        );
         let second = format(&result, &config).unwrap();
         assert_eq!(result, second, "function+for format not idempotent");
     }
