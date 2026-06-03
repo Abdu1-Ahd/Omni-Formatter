@@ -24,7 +24,7 @@ import { timing } from "hono/timing";
 // ── Bindings ───────────────────────────────────────────────────────────────
 
 type Bindings = {
-  MODULES_BUCKET: R2Bucket;
+  MODULES_BUCKET?: R2Bucket;
   REGISTRY_DB: D1Database;
   REGISTRY_SIGNING_KEY: string;
 };
@@ -260,12 +260,12 @@ app.get("/download/:name/:version/module.wasm", async (c) => {
 
   // Look up the version record
   const row = await c.env.REGISTRY_DB.prepare(`
-    SELECT v.r2_key, v.sha256, v.status, v.wasm_size
+    SELECT v.r2_key, v.sha256, v.status, v.wasm_size, v.wasm_binary
     FROM modules m
     JOIN versions v ON v.module_id = m.id
     WHERE m.name = ? AND v.version = ?
     LIMIT 1
-  `).bind(name, version).first<{ r2_key: string; sha256: string; status: string; wasm_size: number }>();
+  `).bind(name, version).first<{ r2_key: string; sha256: string; status: string; wasm_size: number; wasm_binary: ArrayBuffer | null }>();
 
   if (!row) {
     return c.json({ error: `${name}@${version} not found` }, 404);
@@ -275,13 +275,19 @@ app.get("/download/:name/:version/module.wasm", async (c) => {
     return c.json({ error: `${name}@${version} has been yanked` }, 410);
   }
 
-  // Fetch from R2
-  const object = await c.env.MODULES_BUCKET.get(row.r2_key);
-  if (!object) {
+  // Fetch from D1 (free alternative) or R2 (if configured)
+  let body: ArrayBuffer;
+  if (row.wasm_binary) {
+    body = row.wasm_binary;
+  } else if (c.env.MODULES_BUCKET && row.r2_key) {
+    const object = await c.env.MODULES_BUCKET.get(row.r2_key);
+    if (!object) {
+      return c.json({ error: "Binary not found in storage" }, 503);
+    }
+    body = await object.arrayBuffer();
+  } else {
     return c.json({ error: "Binary not found in storage" }, 503);
   }
-
-  const body = await object.arrayBuffer();
 
   // Verify SHA-256 before serving (defence-in-depth)
   const hashBuffer = await crypto.subtle.digest("SHA-256", body);
@@ -406,17 +412,23 @@ app.post("/publish", async (c) => {
     return c.json({ error: `${body.name}@${body.version} already exists` }, 409);
   }
 
-  // Store WASM in R2
+  // Store WASM in R2 (optional, if configured)
   const r2Key = `${body.name}/${body.version}/module.wasm`;
-  await c.env.MODULES_BUCKET.put(r2Key, wasmBytes, {
-    httpMetadata: { contentType: "application/wasm" },
-    customMetadata: { sha256: body.sha256, publisher: publisher.username },
-  });
+  if (c.env.MODULES_BUCKET) {
+    try {
+      await c.env.MODULES_BUCKET.put(r2Key, wasmBytes, {
+        httpMetadata: { contentType: "application/wasm" },
+        customMetadata: { sha256: body.sha256, publisher: publisher.username },
+      });
+    } catch (e) {
+      console.warn("R2 upload skipped:", e);
+    }
+  }
 
-  // Insert version record
+  // Insert version record (with D1 blob storage)
   await c.env.REGISTRY_DB.prepare(`
-    INSERT INTO versions (module_id, version, sha256, signature, r2_key, wasm_size, publisher_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO versions (module_id, version, sha256, signature, r2_key, wasm_size, publisher_id, wasm_binary)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     moduleRow.id,
     body.version,
@@ -425,6 +437,7 @@ app.post("/publish", async (c) => {
     r2Key,
     wasmBytes.byteLength,
     publisher.id,
+    wasmBytes,
   ).run();
 
   // Audit log

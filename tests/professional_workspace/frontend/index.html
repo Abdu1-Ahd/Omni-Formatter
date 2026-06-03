@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>OmniFormatter Test</title>
+
+    <style>
+      /* CSS zone */
+
+      body {
+        margin: 0;
+        background: #eee;
+      }
+
+      .main {
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      class="extremely-long-class-name-exceeding-100-characters-in-html-attribute-value-to-test-wrapping"
+    >
+    </div>
+
+    <!-- prettier-ignore -->
+
+    <div class="ignore-me">
+      <p>Messy but ignored</p>
+    </div>
+
+    <script>
+      // JS zone
+
+      function init() {
+        console.log("Started",);
+        const root = document.getElementById("root",);
+        root.innerHTML = "<h1>Hello</h1>";
+      }
+      init();
+    </script>
+  </body>
+</html>

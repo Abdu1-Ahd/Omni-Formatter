@@ -132,6 +132,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand("omniFormatter.showStatus", () => {
       outputChannel?.show();
+    }),
+    vscode.commands.registerCommand("omnifmt.formatWorkspace", async () => {
+      // Only format known source file types; exclude large non-source directories
+      const INCLUDE_GLOB = '**/*.{js,ts,tsx,jsx,py,rs,go,css,scss,less,html,svelte,vue}';
+      const EXCLUDE_GLOB = '**/{node_modules,.vscode-test,.vscode-test-user-data,.git,dist,out,target}/**';
+      const uris = await vscode.workspace.findFiles(INCLUDE_GLOB, EXCLUDE_GLOB);
+      log(`Formatting ${uris.length} files in workspace...`);
+      for (const uri of uris) {
+        try {
+          const doc = await vscode.workspace.openTextDocument(uri);
+          await vscode.window.showTextDocument(doc, { preview: false });
+          await vscode.commands.executeCommand("editor.action.formatDocument");
+          await doc.save();
+        } catch (e) {
+          log(`Failed to format ${uri.fsPath}: ${e}`);
+        }
+      }
     })
   );
 
@@ -232,14 +249,14 @@ async function handleFormatRequest(
  * host boundary (L-14 mitigation).
  */
 function utf8ByteOffsetToUtf16CodeUnit(text: string, byteOffset: number): number {
-  // Encode to UTF-8, slice to the byte offset, decode back, then measure UTF-16 length
   const utf8 = Buffer.from(text, "utf8");
   const slice = utf8.slice(0, byteOffset);
-  return Buffer.from(slice).toString("utf16le").length / 2;
+  return slice.toString("utf8").length;
 }
 
 /** Write to the OmniFormatter output channel. */
 function log(message: string): void {
+  console.log(`[OmniFormatter] ${message}`);
   outputChannel?.appendLine(`[${new Date().toISOString()}] ${message}`);
 }
 

@@ -23,87 +23,35 @@ if (!parentPort) {
 
 const { wasmDir } = workerData as { wasmDir: string };
 
-/** WASM core exports interface */
-interface WasmExports {
-  format: (requestJsonPtr: number, requestJsonLen: number) => number;
-  memory: WebAssembly.Memory;
-  // wasm-bindgen generated helpers
-  __wbindgen_malloc: (size: number, align: number) => number;
-  __wbindgen_realloc: (ptr: number, oldSize: number, newSize: number, align: number) => number;
-  __wbindgen_free: (ptr: number, size: number, align: number) => void;
-  __wbindgen_add_to_stack_pointer: (delta: number) => number;
-}
-
-let wasmExports: WasmExports | null = null;
-
-/**
- * Write a JavaScript string into the WASM linear memory.
- * Returns [ptr, len] in bytes.
- */
-function writeStringToWasm(exports: WasmExports, str: string): [number, number] {
-  const encoded = Buffer.from(str, "utf8");
-  const len = encoded.length;
-  const ptr = exports.__wbindgen_malloc(len, 1);
-  const mem = new Uint8Array(exports.memory.buffer);
-  mem.set(encoded, ptr);
-  return [ptr, len];
-}
-
-/**
- * Read a null-terminated string from WASM linear memory at ptr.
- * wasm-bindgen passes return values as a (ptr, len) pair written
- * to the stack pointer location.
- */
-function readStringFromWasm(exports: WasmExports, ptr: number, len: number): string {
-  const mem = new Uint8Array(exports.memory.buffer);
-  return Buffer.from(mem.slice(ptr, ptr + len)).toString("utf8");
-}
+let wasmBindgenApi: any = null;
 
 async function loadWasm(): Promise<void> {
   const wasmPath = path.join(wasmDir, "omni_core_bg.wasm");
+  const jsPath = path.join(wasmDir, "omni_core.js");
 
-  if (!fs.existsSync(wasmPath)) {
-    throw new Error(`WASM binary not found at: ${wasmPath}. Run: bash scripts/build-wasm.sh`);
+  if (!fs.existsSync(wasmPath) || !fs.existsSync(jsPath)) {
+    throw new Error(`WASM binary or JS wrapper not found in: ${wasmDir}`);
   }
 
   const wasmBytes = fs.readFileSync(wasmPath);
-  const wasmModule = await WebAssembly.compile(wasmBytes);
+  const jsCode = fs.readFileSync(jsPath, "utf8");
 
-  const importsList = WebAssembly.Module.imports(wasmModule);
-  const imports: Record<string, any> = {};
+  const patchedJsCode = jsCode.replace(
+    /"\.\/omni_core_bg\.js": import0,/g,
+    '"./omni_core_bg.js": import0, "./core_bg.js": import0,'
+  );
+
+  // Evaluate the generated JS wrapper in this worker context
+  const getWasmBindgen = new Function(`
+    ${patchedJsCode}
+    return wasm_bindgen;
+  `);
   
-  for (const imp of importsList) {
-    if (imp.kind === 'function') {
-      imports[imp.name] = function(...args: any[]) {
-        if (imp.name === '__wbindgen_throw') {
-          try {
-            const ptr = args[0] as number;
-            const len = args[1] as number;
-            if (wasmExports && ptr && len) {
-              const mem = new Uint8Array(wasmExports.memory.buffer);
-              const str = Buffer.from(mem.slice(ptr, ptr + len)).toString("utf8");
-              console.error("WASM threw:", str);
-            }
-          } catch (e) {
-            // Ignore extraction errors
-          }
-        }
-      };
-    } else if (imp.kind === 'memory') {
-      imports[imp.name] = new WebAssembly.Memory({ initial: 256, maximum: 1024 });
-    } else if (imp.kind === 'global') {
-      imports[imp.name] = 0;
-    }
-  }
-
-  const importObject: Record<string, any> = {};
-  for (const imp of importsList) {
-    if (!importObject[imp.module]) importObject[imp.module] = imports;
-  }
-
-  const instance = await WebAssembly.instantiate(wasmModule, importObject);
-
-  wasmExports = instance.exports as unknown as WasmExports;
+  const initWasmBindgen = getWasmBindgen();
+  await initWasmBindgen(wasmBytes);
+  
+  wasmBindgenApi = initWasmBindgen;
+  wasmBindgenApi.init_wasm();
 }
 
 async function init(): Promise<void> {
@@ -117,7 +65,7 @@ async function init(): Promise<void> {
 }
 
 parentPort.on("message", (msg: { id: number; requestJson: string }) => {
-  if (!wasmExports) {
+  if (!wasmBindgenApi) {
     parentPort!.postMessage({
       id: msg.id,
       error: "WASM not initialised",
@@ -126,11 +74,8 @@ parentPort.on("message", (msg: { id: number; requestJson: string }) => {
   }
 
   try {
-    // The wasm-bindgen no-modules build wraps the format function.
-    // For the Phase 1 stub, we call a simplified interface.
-    // In Phase 3+, the full wasm-bindgen JS glue handles memory management.
     console.time("format");
-    const responseJson = callFormat(wasmExports, msg.requestJson);
+    const responseJson = wasmBindgenApi.format(msg.requestJson);
     console.timeEnd("format");
     parentPort!.postMessage({ id: msg.id, responseJson });
   } catch (err) {
@@ -140,66 +85,5 @@ parentPort.on("message", (msg: { id: number; requestJson: string }) => {
     });
   }
 });
-
-/**
- * Call the WASM `format()` function with a JSON string request.
- *
- * wasm-bindgen (no-modules target) string ABI:
- *   - Input:  caller writes UTF-8 bytes via __wbindgen_malloc, passes (ptr, len).
- *   - Output: `format()` writes a (ptr, len) pair to the stack pointer location,
- *             then returns the stack pointer. Caller reads 2x i32 from that address.
- *   - Caller must free the input buffer with __wbindgen_free after the call.
- *   - The output buffer is owned by WASM and must also be freed after reading.
- */
-function callFormat(exports: WasmExports, requestJson: string): string {
-  // 1. Write the request JSON string into WASM memory.
-  const [reqPtr, reqLen] = writeStringToWasm(exports, requestJson);
-
-  // 2. Reserve 8 bytes on the WASM stack for the (ptr, len) return value.
-  //    __wbindgen_add_to_stack_pointer(-8) allocates stack space.
-  const retStackPtr = exports.__wbindgen_add_to_stack_pointer(-8);
-
-  let responseJson: string;
-  try {
-    // 3. Call format(). For wasm-bindgen string return, the real function
-    //    signature is: format(ret_ptr: i32, ptr: i32, len: i32) -> void
-    //    and it writes the result (ptr, len) at ret_ptr.
-    //    However, the exported `format` via wasm-bindgen may use a different
-    //    calling convention. We call it via the raw export name.
-    (exports as unknown as Record<string, (...args: any[]) => any>)["__wbg_format_or_format"](
-      retStackPtr, reqPtr, reqLen
-    );
-
-    // 4. Read the output (ptr, len) from the stack.
-    const mem = new Int32Array(exports.memory.buffer);
-    const outPtr = mem[retStackPtr / 4];
-    const outLen = mem[retStackPtr / 4 + 1];
-
-    // 5. Read the response string from WASM memory.
-    responseJson = readStringFromWasm(exports, outPtr, outLen);
-
-    // 6. Free the output buffer (WASM owns it, we must release it).
-    exports.__wbindgen_free(outPtr, outLen, 1);
-  } catch (_abi_err) {
-    // Fallback: try calling `format` directly as a JS-friendly export.
-    // wasm-bindgen may expose it with JS shim that handles memory automatically.
-    try {
-      const formatFn = (exports as unknown as Record<string, (...args: any[]) => any>)["format"];
-      if (typeof formatFn === "function") {
-        responseJson = formatFn(requestJson) as string;
-      } else {
-        throw new Error("WASM export 'format' not found");
-      }
-    } catch (fallback_err) {
-      throw new Error(`WASM format call failed: ${fallback_err}`);
-    }
-  } finally {
-    // 7. Always restore the stack pointer and free the input buffer.
-    exports.__wbindgen_add_to_stack_pointer(8);
-    exports.__wbindgen_free(reqPtr, reqLen, 1);
-  }
-
-  return responseJson!;
-}
 
 init();

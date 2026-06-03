@@ -1,0 +1,19 @@
+$primary: #007bff;
+
+$spacing: 16px;
+
+@at {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button {
+  @include flex-center;
+  padding: $spacing;
+  background: $primary;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}

@@ -329,16 +329,18 @@ impl<'a> DocBuilder<'a> {
     }
 
     fn build_for(&self, node: tree_sitter::Node) -> Doc {
+        // Build the initializer without a trailing semicolon — we emit '; ' ourselves.
         let init = node
             .child_by_field_name("initializer")
-            .map(|n| self.build(n))
+            .map(|n| self.build_for_init(n))
             .unwrap_or(Doc::Nil);
-        let cond = node
-            .child_by_field_name("condition")
-            .map(|n| self.build(n))
+        let cond_node = node.child_by_field_name("condition");
+        let update_node = node.child_by_field_name("increment");
+
+        let cond = cond_node
+            .map(|n| self.build_for_part(n))
             .unwrap_or(Doc::Nil);
-        let update = node
-            .child_by_field_name("increment")
+        let update = update_node
             .map(|n| self.build(n))
             .unwrap_or(Doc::Nil);
         let body = node
@@ -359,6 +361,62 @@ impl<'a> DocBuilder<'a> {
                 Doc::concat(Doc::text(") "), body),
             ),
         )
+    }
+
+    /// Build a for-loop condition — strips trailing semicolons from expression_statement.
+    fn build_for_part(&self, node: tree_sitter::Node) -> Doc {
+        match node.kind() {
+            "expression_statement" => {
+                // Strip the trailing ';' that expression_statement normally adds
+                node.child(0)
+                    .map(|c| self.build(c))
+                    .unwrap_or(Doc::Nil)
+            }
+            "empty_statement" => Doc::Nil,
+            _ => self.build(node),
+        }
+    }
+
+    /// Build a for-loop initializer, always suppressing the trailing semicolon.
+    /// This avoids relying on node.parent() which can be unreliable in WASM.
+    fn build_for_init(&self, node: tree_sitter::Node) -> Doc {
+        match node.kind() {
+            "variable_declaration" | "lexical_declaration" => {
+                // Reconstruct: `keyword declarators` (no semicolon)
+                let keyword = node
+                    .child_by_field_name("kind")
+                    .map(|n| self.text_of(&n).to_string())
+                    .unwrap_or_else(|| {
+                        self.text_of(&node)
+                            .split_whitespace()
+                            .next()
+                            .unwrap_or("var")
+                            .to_string()
+                    });
+                let mut declarators: Vec<Doc> = Vec::new();
+                let mut cursor = node.walk();
+                for child in node.children(&mut cursor) {
+                    if child.kind() == "variable_declarator" {
+                        declarators.push(self.build_declarator(child));
+                    }
+                }
+                Doc::concat(
+                    Doc::text(format!("{} ", keyword)),
+                    Doc::group(Doc::join(
+                        Doc::concat(Doc::text(","), Doc::line()),
+                        declarators,
+                    )),
+                )
+            }
+            "expression_statement" => {
+                // expression_statement normally adds ';', skip it for for-loop init
+                node.child(0)
+                    .map(|c| self.build(c))
+                    .unwrap_or(Doc::Nil)
+            }
+            "empty_statement" => Doc::Nil,
+            _ => self.build(node),
+        }
     }
 
     fn build_while(&self, node: tree_sitter::Node) -> Doc {
@@ -394,7 +452,8 @@ impl<'a> DocBuilder<'a> {
                 declarators.push(self.build_declarator(child));
             }
         }
-        let semi = if self.config.semicolons { ";" } else { "" };
+        let is_in_for = node.parent().map(|p| p.kind() == "for_statement").unwrap_or(false);
+        let semi = if self.config.semicolons && !is_in_for { ";" } else { "" };
         Doc::concat(
             Doc::text(format!("{} ", keyword)),
             Doc::concat(
@@ -922,5 +981,38 @@ mod tests {
         // Should round-trip cleanly
         let second = format(&result, &config).unwrap();
         assert_eq!(result, second, "idempotency violated");
+    }
+
+    #[test]
+    fn format_for_loop_no_double_semicolons() {
+        let config = ConfigIR {
+            semicolons: true,
+            trailing_comma: true,
+            ..Default::default()
+        };
+        let source = b"for (let i = 0; i < items.length; i++) total += items[i].price;\n";
+        let result = format(source, &config).unwrap();
+        let result_str = std::str::from_utf8(&result).unwrap();
+        eprintln!("for-loop output: {:?}", result_str);
+        assert!(!result_str.contains(";;"), "double semicolons found: {:?}", result_str);
+        // Must be idempotent
+        let second = format(&result, &config).unwrap();
+        assert_eq!(result, second, "for-loop format not idempotent");
+    }
+
+    #[test]
+    fn format_for_loop_with_function() {
+        let config = ConfigIR {
+            semicolons: true,
+            trailing_comma: true,
+            ..Default::default()
+        };
+        let source = b"export function calculateTotal(items) {\n  let total = 0;\n  for (let i = 0; i < items.length; i++) total += items[i].price;\n  return total;\n}\n";
+        let result = format(source, &config).unwrap();
+        let result_str = std::str::from_utf8(&result).unwrap();
+        eprintln!("function+for output: {:?}", result_str);
+        assert!(!result_str.contains(";;"), "double semicolons in output: {:?}", result_str);
+        let second = format(&result, &config).unwrap();
+        assert_eq!(result, second, "function+for format not idempotent");
     }
 }

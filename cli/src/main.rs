@@ -14,7 +14,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use wasmtime::*;
 
-const REGISTRY_URL: &str = "https://registry.omnifmt.dev";
+const REGISTRY_URL: &str = "https://omnifmt-registry.omniformat.workers.dev";
 
 #[derive(Parser, Debug)]
 #[command(

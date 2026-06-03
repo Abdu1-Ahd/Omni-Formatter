@@ -57,6 +57,10 @@
       {
         "command": "omniFormatter.showStatus",
         "title": "OmniFormatter: Show Status"
+      },
+      {
+        "command": "omnifmt.formatWorkspace",
+        "title": "OmniFormatter: Format Workspace"
       }
     ]
   },

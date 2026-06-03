@@ -195,7 +195,16 @@ pub extern "C" fn __assert_fail(
     }
 }
 
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    pub fn js_log(s: &str);
+}
+
 #[no_mangle]
 pub extern "C" fn rs_abort() -> ! {
-    panic!("C abort() called via rs_abort()");
+    js_log("C abort() called via rs_abort()");
+    std::process::abort();
 }

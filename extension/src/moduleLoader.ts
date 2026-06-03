@@ -19,8 +19,9 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
+import * as vscode from "vscode";
 
-const REGISTRY_BASE_URL = "https://registry.omnifmt.dev";
+const REGISTRY_BASE_URL = "https://omnifmt-registry.omniformat.workers.dev";
 
 /** Module manifest stored alongside the cached WASM binary. */
 interface ModuleManifest {
@@ -113,6 +114,9 @@ export class ModuleLoader {
 
     const res = await fetch(resolveUrl);
     if (!res.ok) {
+      vscode.window.showWarningMessage(
+        `OmniFormatter: No formatter module found for language "${moduleName}". Install a module from the registry.`
+      );
       throw new Error(`Failed to resolve module ${moduleName} from registry: HTTP ${res.status}`);
     }
     const manifest = await res.json() as any;

@@ -10,44 +10,26 @@
 #   wrangler secret put REGISTRY_SIGNING_KEY   # Ed25519 private key (base64)
 
 name = "omnifmt-registry"
-main = "dist/index.js"
+main = "dist/worker.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# ── R2 bucket bindings ────────────────────────────────────────────────────
-[[r2_buckets]]
-binding = "MODULES_BUCKET"
-bucket_name = "omnifmt-modules"
 
 # ── D1 database bindings ──────────────────────────────────────────────────
 [[d1_databases]]
 binding     = "REGISTRY_DB"
-database_name = "omnifmt-registry"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"   # set after `wrangler d1 create`
-
-# ── Route configuration ───────────────────────────────────────────────────
-route = { pattern = "registry.omnifmt.dev/*", zone_name = "omnifmt.dev" }
+database_name = "omni-formatter-db"
+database_id = "43a343af-39ad-4bf8-af2a-354812bacfb4"   # set after `wrangler d1 create`
 
 # ── Staging environment ───────────────────────────────────────────────────
 [env.staging]
 name = "omnifmt-registry-staging"
 route = { pattern = "registry-staging.omnifmt.dev/*", zone_name = "omnifmt.dev" }
 
-[[env.staging.r2_buckets]]
-binding = "MODULES_BUCKET"
-bucket_name = "omnifmt-modules-staging"
-
 [[env.staging.d1_databases]]
 binding       = "REGISTRY_DB"
 database_name = "omnifmt-registry-staging"
 database_id   = "REPLACE_WITH_STAGING_D1_ID"
-
-# ── Build configuration ───────────────────────────────────────────────────
-[build]
-command = "npm run build"
-
-[build.upload]
-format = "modules"
 
 # ── Observability ─────────────────────────────────────────────────────────
 [observability]

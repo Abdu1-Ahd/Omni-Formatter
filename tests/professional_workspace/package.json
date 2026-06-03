@@ -1,0 +1,13 @@
+{
+  "name": "professional-workspace-tests",
+  "version": "1.0.0",
+  "description": "Integration tests for OmniFormatter",
+  "scripts": {
+    "test": "node runTests.js",
+    "generate": "node generate_large_file.js"
+  },
+  "devDependencies": {
+    "@vscode/test-electron": "^2.3.9",
+    "mocha": "^10.4.0"
+  }
+}

@@ -1,0 +1,22 @@
+:root {
+  --primary-color: #007bff;
+  --bg-color: #f4f4f4;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+}
+
+.container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+/* very long line over 100 characters in css to test wrapping behavior and indentation of the css formatter */
+
+.extremely-long-class-name-that-goes-on-and-on-and-on-and-on-and-on-and-on {
+  color: var(--primary-color);
+}

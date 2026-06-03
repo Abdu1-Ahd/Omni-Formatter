@@ -1,0 +1,13 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter",
+  "files.exclude": {
+    "extension.test.js": true,
+    "runTests.js": true,
+    "index.js": true,
+    "generate_large_file.js": true
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  }
+}

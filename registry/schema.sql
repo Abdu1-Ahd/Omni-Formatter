@@ -53,10 +53,12 @@ CREATE TABLE IF NOT EXISTS versions (
     sha256        TEXT    NOT NULL,
     -- Ed25519 signature over (name || "@" || version || ":" || sha256), base64url
     signature     TEXT    NOT NULL,
-    -- R2 object key where the WASM binary is stored
-    r2_key        TEXT    NOT NULL,
+    -- R2 object key where the WASM binary is stored (optional/empty if stored in D1)
+    r2_key        TEXT    NOT NULL DEFAULT '',
     -- Size of the WASM binary in bytes
     wasm_size     INTEGER NOT NULL DEFAULT 0,
+    -- The WASM binary itself (100% free D1 storage alternative)
+    wasm_binary   BLOB,
     -- "active" | "yanked" — yanked versions are not served (but not deleted)
     status        TEXT    NOT NULL DEFAULT 'active',
     -- Timestamp of the publish event
