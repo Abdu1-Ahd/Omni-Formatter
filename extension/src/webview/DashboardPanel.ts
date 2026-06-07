@@ -78,13 +78,14 @@ export class DashboardPanel {
   }
 
   private _update(): void {
-    this._panel.webview.html = this._getHtmlContent();
+    const version = vscode.extensions.getExtension("Abdu1-Ahd.omni-formatter")?.packageJSON.version || "0.1.3";
+    this._panel.webview.html = this._getHtmlContent(version);
   }
 
-  private _getHtmlContent(): string {
+  private _getHtmlContent(version: string): string {
     // Nonce for Content Security Policy
     const nonce = getNonce();
-    return getDashboardHtml(nonce);
+    return getDashboardHtml(nonce, version);
   }
 
   public dispose(): void {
@@ -108,7 +109,7 @@ function getNonce(): string {
   return text;
 }
 
-function getDashboardHtml(nonce: string): string {
+function getDashboardHtml(nonce: string, version: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -492,7 +493,7 @@ function getDashboardHtml(nonce: string): string {
 </main>
 
 <footer>
-  OmniFormatter v0.1.0 · Universal WASM Formatter
+  OmniFormatter v${version} · Universal WASM Formatter
   <span id="footer-clock"></span>
 </footer>
 
