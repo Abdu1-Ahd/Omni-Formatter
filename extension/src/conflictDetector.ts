@@ -43,7 +43,6 @@ const KNOWN_CONFLICTING_EXTENSIONS: Array<{
   },
 ];
 
-const NOTIFICATION_STATE_KEY = "omniFormatter.conflictNotificationShown";
 
 export class ConflictDetector {
   /**

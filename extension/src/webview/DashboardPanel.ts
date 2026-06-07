@@ -1,6 +1,4 @@
 import * as vscode from "vscode";
-import * as path from "path";
-import * as fs from "fs";
 
 /**
  * Manages the OmniFormatter Interactive Config Dashboard Webview.
@@ -80,10 +78,10 @@ export class DashboardPanel {
   }
 
   private _update(): void {
-    this._panel.webview.html = this._getHtmlContent(this._panel.webview);
+    this._panel.webview.html = this._getHtmlContent();
   }
 
-  private _getHtmlContent(webview: vscode.Webview): string {
+  private _getHtmlContent(): string {
     // Nonce for Content Security Policy
     const nonce = getNonce();
     return getDashboardHtml(nonce);
@@ -538,9 +536,9 @@ function getDashboardHtml(nonce: string): string {
     }
     // Basic cosmetic preview — real formatting uses the extension host
     const formatted = input
-      .replace(/;(\S)/g, ';\n$1')
-      .replace(/\{(\S)/g, '{\n  $1')
-      .replace(/(\S)\}/g, '\n$1\n}')
+      .replace(/;(\\S)/g, ';\\n$1')
+      .replace(/\\{(\\S)/g, '{\\n  $1')
+      .replace(/(\\S)\\}/g, '\\n$1\\n}')
       .split('\n').map(l => l.trimEnd()).join('\n');
     output.textContent = formatted;
     output.className = 'output-box';

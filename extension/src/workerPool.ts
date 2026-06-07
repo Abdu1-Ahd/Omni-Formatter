@@ -17,14 +17,6 @@ import { Worker } from "worker_threads";
 import * as os from "os";
 import * as vscode from "vscode";
 
-/** A pending format request waiting for a worker. */
-interface PendingRequest {
-  requestJson: string;
-  resolve: (responseJson: string) => void;
-  reject: (err: Error) => void;
-  cancellationToken: vscode.CancellationToken;
-}
-
 /** Internal state for a single worker in the pool. */
 interface WorkerEntry {
   worker: Worker;

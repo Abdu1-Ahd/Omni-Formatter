@@ -22,7 +22,6 @@ import { ModuleLoader } from "./moduleLoader";
 import { WasmCompiler } from "./wasmCompiler";
 import { DashboardPanel } from "./webview/DashboardPanel";
 import { ConflictDetector } from "./conflictDetector";
-import { toUtf8ByteOffset } from "./offsets";
 import { FormattingState } from "./formattingState";
 import { FormatterInfoCodeLensProvider } from "./providers/FormatterInfoCodeLensProvider";
 import { FormatterHoverProvider } from "./providers/FormatterHoverProvider";
@@ -200,8 +199,8 @@ async function handleFormatRequest(
   document: vscode.TextDocument,
   _options: vscode.FormattingOptions,
   token: vscode.CancellationToken,
-  moduleLoader: ModuleLoader,
-  context: vscode.ExtensionContext
+  _moduleLoader: ModuleLoader,
+  _context: vscode.ExtensionContext
 ): Promise<vscode.TextEdit[]> {
   const langId = document.languageId;
   const moduleName = LANGUAGE_MODULE_MAP[langId];
