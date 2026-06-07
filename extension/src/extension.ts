@@ -20,8 +20,13 @@ import { WorkerPool } from "./workerPool";
 import { StatusBar } from "./statusBar";
 import { ModuleLoader } from "./moduleLoader";
 import { WasmCompiler } from "./wasmCompiler";
+import { DashboardPanel } from "./webview/DashboardPanel";
 import { ConflictDetector } from "./conflictDetector";
 import { toUtf8ByteOffset } from "./offsets";
+import { FormattingState } from "./formattingState";
+import { FormatterInfoCodeLensProvider } from "./providers/FormatterInfoCodeLensProvider";
+import { FormatterHoverProvider } from "./providers/FormatterHoverProvider";
+
 
 /** VS Code language IDs that OmniFormatter handles. */
 const SUPPORTED_LANGUAGE_IDS = [
@@ -125,6 +130,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(provider);
   }
 
+  // Register CodeLens and Hover providers for premium UX
+  const codeLensProvider = new FormatterInfoCodeLensProvider();
+  const hoverProvider = new FormatterHoverProvider();
+  for (const langId of SUPPORTED_LANGUAGE_IDS) {
+    context.subscriptions.push(
+      vscode.languages.registerCodeLensProvider({ language: langId }, codeLensProvider),
+      vscode.languages.registerHoverProvider({ language: langId }, hoverProvider)
+    );
+  }
+
+  // Format on save — triggered whenever a supported file is about to be saved.
+  // This fires independently of editor.formatOnSave so users don't need to
+  // configure that setting manually.
+  context.subscriptions.push(
+    vscode.workspace.onWillSaveTextDocument((event) => {
+      const { document } = event;
+      if (!SUPPORTED_LANGUAGE_IDS.includes(document.languageId as any)) return;
+      const config = vscode.workspace.getConfiguration("omniFormatter", document.uri);
+      if (!config.get<boolean>("enable", true)) return;
+
+      event.waitUntil(
+        handleFormatRequest(document, { tabSize: 2, insertSpaces: true }, new vscode.CancellationTokenSource().token, moduleLoader, context)
+      );
+    })
+  );
+
   // Register commands
   context.subscriptions.push(
     vscode.commands.registerCommand("omniFormatter.formatDocument", () => {
@@ -132,6 +163,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand("omniFormatter.showStatus", () => {
       outputChannel?.show();
+    }),
+    vscode.commands.registerCommand("omniFormatter.openDashboard", () => {
+      DashboardPanel.createOrShow(context);
     }),
     vscode.commands.registerCommand("omnifmt.formatWorkspace", async () => {
       // Only format known source file types; exclude large non-source directories
@@ -217,6 +251,12 @@ async function handleFormatRequest(
 
     statusBar?.update(langId, response.formatter_chain, elapsedMs);
     log(`Formatted ${langId} in ${elapsedMs}ms via ${response.formatter_chain}`);
+
+    FormattingState.getInstance().updateState(document.uri, {
+      formatterChain: response.formatter_chain,
+      elapsedMs,
+      timestamp: Date.now(),
+    });
 
     if (response.is_noop || response.edits.length === 0) {
       return [];

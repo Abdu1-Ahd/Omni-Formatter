@@ -2,8 +2,9 @@
   "name": "omni-formatter",
   "displayName": "OmniFormatter",
   "description": "Universal code formatter — single WASM binary, all languages, zero config migration",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "publisher": "Abdu1-Ahd",
+  "icon": "media/logo.png",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -12,26 +13,65 @@
   "engines": {
     "vscode": "^1.90.0"
   },
-  "categories": ["Formatters"],
-  "keywords": ["formatter", "prettier", "black", "rustfmt", "gofmt", "wasm"],
-  "activationEvents": ["onStartupFinished"],
+  "categories": [
+    "Formatters"
+  ],
+  "keywords": [
+    "formatter",
+    "prettier",
+    "black",
+    "rustfmt",
+    "gofmt",
+    "wasm"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "languages": [
-      { "id": "javascript" },
-      { "id": "typescript" },
-      { "id": "javascriptreact" },
-      { "id": "typescriptreact" },
-      { "id": "python" },
-      { "id": "rust" },
-      { "id": "go" },
-      { "id": "css" },
-      { "id": "scss" },
-      { "id": "less" },
-      { "id": "html" },
-      { "id": "svelte" },
-      { "id": "vue" },
-      { "id": "astro" }
+      {
+        "id": "javascript"
+      },
+      {
+        "id": "typescript"
+      },
+      {
+        "id": "javascriptreact"
+      },
+      {
+        "id": "typescriptreact"
+      },
+      {
+        "id": "python"
+      },
+      {
+        "id": "rust"
+      },
+      {
+        "id": "go"
+      },
+      {
+        "id": "css"
+      },
+      {
+        "id": "scss"
+      },
+      {
+        "id": "less"
+      },
+      {
+        "id": "html"
+      },
+      {
+        "id": "svelte"
+      },
+      {
+        "id": "vue"
+      },
+      {
+        "id": "astro"
+      }
     ],
     "configuration": {
       "title": "OmniFormatter",
@@ -43,10 +83,59 @@
         },
         "omniFormatter.logLevel": {
           "type": "string",
-          "enum": ["error", "warn", "info", "debug"],
+          "enum": [
+            "error",
+            "warn",
+            "info",
+            "debug"
+          ],
           "default": "warn",
           "description": "Log verbosity level for the OmniFormatter output channel."
         }
+      }
+    },
+    "configurationDefaults": {
+      "[javascript]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[typescript]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[javascriptreact]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[typescriptreact]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[python]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[rust]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[go]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[css]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[scss]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[less]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[html]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[svelte]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[vue]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[astro]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
       }
     },
     "commands": [
@@ -61,6 +150,10 @@
       {
         "command": "omnifmt.formatWorkspace",
         "title": "OmniFormatter: Format Workspace"
+      },
+      {
+        "command": "omniFormatter.openDashboard",
+        "title": "OmniFormatter: Open Settings Dashboard"
       }
     ]
   },
