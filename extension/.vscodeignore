@@ -8,3 +8,23 @@ tsconfig.json
 **/*.ts
 !dist/**/*.js
 !dist/**/*.wasm
+
+# The out/ directory is a duplicate of dist/src/ — not needed at runtime
+out/**
+
+# WAT is the human-readable TEXT version of the WASM binary, never loaded at runtime
+dist/wasm/*.wat
+dist/wasm/out.txt
+
+# Python dev-tooling scripts bundled by accident
+dist/wasm/*.py
+
+# Lock files have no value inside a packaged extension
+pnpm-lock.yaml
+package-lock.json
+
+# Stray .gitignore files inside dist/
+dist/**/.gitignore
+
+# Only media/logo.png is referenced by package.json — extras not needed
+media/logos/**
