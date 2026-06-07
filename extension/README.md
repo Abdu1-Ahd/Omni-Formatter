@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="extension/media/logo.png" alt="OmniFormatter Logo" width="180" />
+  <img src="media/logo.png" alt="OmniFormatter Logo" width="180" />
   <br/>
 
 # OmniFormatter
