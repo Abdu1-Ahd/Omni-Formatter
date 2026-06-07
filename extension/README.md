@@ -1,6 +1,4 @@
 <div align="center">
-  <img src="media/logo.png" alt="OmniFormatter Logo" width="180" />
-  <br/>
 
 # OmniFormatter
 
