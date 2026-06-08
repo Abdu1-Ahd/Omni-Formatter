@@ -1,5 +1,4 @@
 <div align="center">
-
 # OmniFormatter
 
 **One extension. Every language. Zero configuration.**
@@ -73,30 +72,43 @@ That's it. Keep using your existing configuration files (e.g., `.prettierrc`, `r
 
 ## üèóÔ∏è Architecture
 
-```mermaid
-graph TD
-    %% Custom Styles %%
-    classDef vscode fill:#0066b8,stroke:#005599,stroke-width:2px,color:#fff,rx:8,ry:8
-    classDef nodejs fill:#339933,stroke:#2a802a,stroke-width:2px,color:#fff,rx:8,ry:8
-    classDef rust fill:#ce422b,stroke:#a63522,stroke-width:3px,color:#fff,rx:8,ry:8
-    classDef module fill:#654ff0,stroke:#513fc0,stroke-width:2px,color:#fff,rx:15,ry:15
-    classDef edge fill:#f38020,stroke:#d46a16,stroke-width:2px,color:#fff,rx:20,ry:20
-    classDef config fill:#6c757d,stroke:#495057,stroke-width:2px,color:#fff,rx:5,ry:5
-
-    %% Nodes %%
-    A["üîå VS Code Extension<br/><small>(TypeScript)</small>"]:::vscode
-    B["‚ö° Worker Pool<br/><small>(Node.js)</small>"]:::nodejs
-    C{"‚öôÔ∏è WASM Core<br/><small>(Rust)</small>"}:::rust
-    D(["üì¶ Language Modules<br/><small>(.wasm binary)</small>"]):::module
-    E[/"üõ†Ô∏è Config Adapter<br/><small>(Native Format)</small>"/]:::config
-    F(("‚òÅÔ∏è Edge Registry<br/><small>(Cloudflare D1+R2)</small>")):::edge
-
-    %% Connections %%
-    A ==>|Zero-Copy IPC| B
-    B ==>|Fast WASM Call| C
-    C -->|Loads on demand| D
-    C -->|Reads workspace rules| E
-    D -.->|Fetched once & cached| F
+```text
+     +---------------------------------------+
+     ¶         ?? VS Code Extension          ¶
+     ¶            (TypeScript)               ¶
+     +---------------------------------------+
+                        ¶
+                [ Zero-Copy IPC ]
+                        ¶
+                        ?
+     +---------------------------------------+
+     ¶           ? Worker Pool              ¶
+     ¶              (Node.js)                ¶
+     +---------------------------------------+
+                        ¶
+               [ Fast WASM Call ]
+                        ¶
+                        ?
+     +---------------------------------------+
+     ¶            ?? WASM Core               ¶
+     ¶               (Rust)                  ¶
+     +---------------------------------------+
+               ¶                   ¶
+      [ Loads on Demand ]  [ Reads Workspace ]
+               ¶                   ¶
+               ?                   ?
+     +-------------------+ +-----------------+
+     ¶ ?? Lang Modules   ¶ ¶??? Config Adapter¶
+     ¶  (.wasm binary)   ¶ ¶ (Native Format) ¶
+     +-------------------+ +-----------------+
+               ¶
+       [ Fetched & Cached ]
+               ¶
+               ?
+     +-------------------+
+     ¶  ?? Edge Registry ¶
+     ¶(Cloudflare D1/R2) ¶
+     +-------------------+
 ```
 
 ## ü§ù Contributing
