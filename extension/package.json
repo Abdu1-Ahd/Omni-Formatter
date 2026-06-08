@@ -2,7 +2,7 @@
   "name": "omni-formatter",
   "displayName": "OmniFormatter",
   "description": "Universal code formatter — single WASM binary, 80+ languages, zero config migration",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "Abdu1-Ahd",
   "icon": "media/logo.png",
   "license": "MIT",
@@ -32,78 +32,222 @@
   "main": "./dist/extension.js",
   "contributes": {
     "languages": [
-      { "id": "javascript" },
-      { "id": "typescript" },
-      { "id": "javascriptreact" },
-      { "id": "typescriptreact" },
-      { "id": "css" },
-      { "id": "scss" },
-      { "id": "sass" },
-      { "id": "less" },
-      { "id": "html" },
-      { "id": "svelte" },
-      { "id": "vue" },
-      { "id": "astro" },
-      { "id": "c" },
-      { "id": "cpp" },
-      { "id": "objective-c" },
-      { "id": "objective-cpp" },
-      { "id": "cuda-cpp" },
-      { "id": "rust" },
-      { "id": "go" },
-      { "id": "zig" },
-      { "id": "nim" },
-      { "id": "d" },
-      { "id": "java" },
-      { "id": "kotlin" },
-      { "id": "scala" },
-      { "id": "groovy" },
-      { "id": "csharp" },
-      { "id": "fsharp" },
-      { "id": "python" },
-      { "id": "ruby" },
-      { "id": "php" },
-      { "id": "perl" },
-      { "id": "r" },
-      { "id": "julia" },
-      { "id": "lua" },
-      { "id": "shellscript" },
-      { "id": "powershell" },
-      { "id": "zsh" },
-      { "id": "swift" },
-      { "id": "dart" },
-      { "id": "json" },
-      { "id": "json5" },
-      { "id": "yaml" },
-      { "id": "toml" },
-      { "id": "xml" },
-      { "id": "ini" },
-      { "id": "sql" },
-      { "id": "graphql" },
-      { "id": "terraform" },
-      { "id": "dockerfile" },
-      { "id": "makefile" },
-      { "id": "nix" },
-      { "id": "haskell" },
-      { "id": "elixir" },
-      { "id": "erlang" },
-      { "id": "ocaml" },
-      { "id": "clojure" },
-      { "id": "lisp" },
-      { "id": "scheme" },
-      { "id": "markdown" },
-      { "id": "latex" },
-      { "id": "solidity" },
-      { "id": "gdscript" },
-      { "id": "ahk" },
-      { "id": "cobol" },
-      { "id": "fortran" },
-      { "id": "asm" },
-      { "id": "jinja" },
-      { "id": "liquid" },
-      { "id": "ejs" },
-      { "id": "handlebars" },
-      { "id": "twig" }
+      {
+        "id": "javascript"
+      },
+      {
+        "id": "typescript"
+      },
+      {
+        "id": "javascriptreact"
+      },
+      {
+        "id": "typescriptreact"
+      },
+      {
+        "id": "css"
+      },
+      {
+        "id": "scss"
+      },
+      {
+        "id": "sass"
+      },
+      {
+        "id": "less"
+      },
+      {
+        "id": "html"
+      },
+      {
+        "id": "svelte"
+      },
+      {
+        "id": "vue"
+      },
+      {
+        "id": "astro"
+      },
+      {
+        "id": "c"
+      },
+      {
+        "id": "cpp"
+      },
+      {
+        "id": "objective-c"
+      },
+      {
+        "id": "objective-cpp"
+      },
+      {
+        "id": "cuda-cpp"
+      },
+      {
+        "id": "rust"
+      },
+      {
+        "id": "go"
+      },
+      {
+        "id": "zig"
+      },
+      {
+        "id": "nim"
+      },
+      {
+        "id": "d"
+      },
+      {
+        "id": "java"
+      },
+      {
+        "id": "kotlin"
+      },
+      {
+        "id": "scala"
+      },
+      {
+        "id": "groovy"
+      },
+      {
+        "id": "csharp"
+      },
+      {
+        "id": "fsharp"
+      },
+      {
+        "id": "python"
+      },
+      {
+        "id": "ruby"
+      },
+      {
+        "id": "php"
+      },
+      {
+        "id": "perl"
+      },
+      {
+        "id": "r"
+      },
+      {
+        "id": "julia"
+      },
+      {
+        "id": "lua"
+      },
+      {
+        "id": "shellscript"
+      },
+      {
+        "id": "powershell"
+      },
+      {
+        "id": "zsh"
+      },
+      {
+        "id": "swift"
+      },
+      {
+        "id": "dart"
+      },
+      {
+        "id": "json"
+      },
+      {
+        "id": "json5"
+      },
+      {
+        "id": "yaml"
+      },
+      {
+        "id": "toml"
+      },
+      {
+        "id": "xml"
+      },
+      {
+        "id": "ini"
+      },
+      {
+        "id": "sql"
+      },
+      {
+        "id": "graphql"
+      },
+      {
+        "id": "terraform"
+      },
+      {
+        "id": "dockerfile"
+      },
+      {
+        "id": "makefile"
+      },
+      {
+        "id": "nix"
+      },
+      {
+        "id": "haskell"
+      },
+      {
+        "id": "elixir"
+      },
+      {
+        "id": "erlang"
+      },
+      {
+        "id": "ocaml"
+      },
+      {
+        "id": "clojure"
+      },
+      {
+        "id": "lisp"
+      },
+      {
+        "id": "scheme"
+      },
+      {
+        "id": "markdown"
+      },
+      {
+        "id": "latex"
+      },
+      {
+        "id": "solidity"
+      },
+      {
+        "id": "gdscript"
+      },
+      {
+        "id": "ahk"
+      },
+      {
+        "id": "cobol"
+      },
+      {
+        "id": "fortran"
+      },
+      {
+        "id": "asm"
+      },
+      {
+        "id": "jinja"
+      },
+      {
+        "id": "liquid"
+      },
+      {
+        "id": "ejs"
+      },
+      {
+        "id": "handlebars"
+      },
+      {
+        "id": "twig"
+      }
     ],
     "configuration": {
       "title": "OmniFormatter",
@@ -115,85 +259,234 @@
         },
         "omniFormatter.logLevel": {
           "type": "string",
-          "enum": ["error", "warn", "info", "debug"],
+          "enum": [
+            "error",
+            "warn",
+            "info",
+            "debug"
+          ],
           "default": "warn",
           "description": "Log verbosity level for the OmniFormatter output channel."
         }
       }
     },
     "configurationDefaults": {
-      "[javascript]":        { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[typescript]":        { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[javascriptreact]":   { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[typescriptreact]":   { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[css]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[scss]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[sass]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[less]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[html]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[svelte]":            { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[vue]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[astro]":             { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[c]":                 { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[cpp]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[objective-c]":       { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[objective-cpp]":     { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[cuda-cpp]":          { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[rust]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[go]":                { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[zig]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[nim]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[d]":                 { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[java]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[kotlin]":            { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[scala]":             { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[groovy]":            { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[csharp]":            { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[fsharp]":            { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[python]":            { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[ruby]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[php]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[perl]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[r]":                 { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[julia]":             { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[lua]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[shellscript]":       { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[powershell]":        { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[zsh]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[swift]":             { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[dart]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[json]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[json5]":             { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[yaml]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[toml]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[xml]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[ini]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[sql]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[graphql]":           { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[terraform]":         { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[dockerfile]":        { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[makefile]":          { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[nix]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[haskell]":           { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[elixir]":            { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[erlang]":            { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[ocaml]":             { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[clojure]":           { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[lisp]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[scheme]":            { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[markdown]":          { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[latex]":             { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[solidity]":          { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[gdscript]":          { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[ahk]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[cobol]":             { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[fortran]":           { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[asm]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[jinja]":             { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[liquid]":            { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[ejs]":               { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[handlebars]":        { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" },
-      "[twig]":              { "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter" }
+      "[javascript]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[typescript]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[javascriptreact]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[typescriptreact]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[css]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[scss]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[sass]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[less]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[html]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[svelte]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[vue]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[astro]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[c]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[cpp]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[objective-c]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[objective-cpp]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[cuda-cpp]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[rust]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[go]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[zig]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[nim]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[d]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[java]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[kotlin]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[scala]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[groovy]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[csharp]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[fsharp]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[python]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[ruby]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[php]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[perl]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[r]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[julia]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[lua]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[shellscript]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[powershell]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[zsh]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[swift]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[dart]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[json]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[json5]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[yaml]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[toml]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[xml]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[ini]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[sql]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[graphql]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[terraform]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[dockerfile]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[makefile]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[nix]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[haskell]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[elixir]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[erlang]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[ocaml]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[clojure]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[lisp]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[scheme]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[markdown]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[latex]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[solidity]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[gdscript]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[ahk]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[cobol]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[fortran]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[asm]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[jinja]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[liquid]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[ejs]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[handlebars]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      },
+      "[twig]": {
+        "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
+      }
     },
     "commands": [
       {
