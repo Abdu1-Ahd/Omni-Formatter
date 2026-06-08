@@ -111,8 +111,6 @@ impl FormatRequest {
     }
 }
 
-
-
 /// A response from the WASM core back to the extension host.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FormatResponse {

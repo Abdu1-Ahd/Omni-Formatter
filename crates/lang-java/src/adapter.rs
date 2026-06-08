@@ -12,13 +12,23 @@ pub struct JavaConfig {
     pub brace_style: String,
 }
 
-fn default_indent_size()  -> usize  { 4 }
-fn default_column_limit() -> usize  { 100 }
-fn default_brace_style()  -> String { "Attach".to_string() }
+fn default_indent_size() -> usize {
+    4
+}
+fn default_column_limit() -> usize {
+    100
+}
+fn default_brace_style() -> String {
+    "Attach".to_string()
+}
 
 impl Default for JavaConfig {
     fn default() -> Self {
-        Self { indent_size: default_indent_size(), column_limit: default_column_limit(), brace_style: default_brace_style() }
+        Self {
+            indent_size: default_indent_size(),
+            column_limit: default_column_limit(),
+            brace_style: default_brace_style(),
+        }
     }
 }
 

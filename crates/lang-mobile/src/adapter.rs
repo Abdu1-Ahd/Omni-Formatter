@@ -9,11 +9,20 @@ pub struct Config {
     pub column_limit: usize,
 }
 
-fn default_indent_size()  -> usize { 2 }
-fn default_column_limit() -> usize { 80 }
+fn default_indent_size() -> usize {
+    2
+}
+fn default_column_limit() -> usize {
+    80
+}
 
 impl Default for Config {
-    fn default() -> Self { Self { indent_size: default_indent_size(), column_limit: default_column_limit() } }
+    fn default() -> Self {
+        Self {
+            indent_size: default_indent_size(),
+            column_limit: default_column_limit(),
+        }
+    }
 }
 
 pub fn config_from_json(json: &str) -> Config {

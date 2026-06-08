@@ -1,2 +1,5 @@
 - All temp/useless files go `temp/` folder.
 - After update, run `scripts/publish-extension.ps1`. Trigger GitHub workflow. Auto publish both markets.
+
+# CI Verification Rule
+Always run cargo check --workspace or cargo clippy and cargo fmt --all before pushing or releasing to ensure you haven't left broken code or unformatted files behind after refactoring or stripping dependencies. This prevents CI failures.

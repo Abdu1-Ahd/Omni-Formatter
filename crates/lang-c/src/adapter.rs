@@ -29,19 +29,29 @@ pub struct CConfig {
     pub pointer_alignment: String,
 }
 
-fn default_indent_style()      -> String { "spaces".to_string() }
-fn default_indent_size()       -> usize  { 4 }
-fn default_column_limit()      -> usize  { 80 }
-fn default_brace_style()       -> String { "Attach".to_string() }
-fn default_pointer_alignment() -> String { "Right".to_string() }
+fn default_indent_style() -> String {
+    "spaces".to_string()
+}
+fn default_indent_size() -> usize {
+    4
+}
+fn default_column_limit() -> usize {
+    80
+}
+fn default_brace_style() -> String {
+    "Attach".to_string()
+}
+fn default_pointer_alignment() -> String {
+    "Right".to_string()
+}
 
 impl Default for CConfig {
     fn default() -> Self {
         Self {
-            indent_style:      default_indent_style(),
-            indent_size:       default_indent_size(),
-            column_limit:      default_column_limit(),
-            brace_style:       default_brace_style(),
+            indent_style: default_indent_style(),
+            indent_size: default_indent_size(),
+            column_limit: default_column_limit(),
+            brace_style: default_brace_style(),
             pointer_alignment: default_pointer_alignment(),
         }
     }

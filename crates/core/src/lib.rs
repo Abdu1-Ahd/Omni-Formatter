@@ -185,90 +185,90 @@ pub fn format(request_json: &str) -> String {
 fn language_id_to_ext(language_id: &str) -> &str {
     match language_id {
         // ── Frontend & Web ───────────────────────────────────────────────
-        "javascript" | "javascriptreact"      => "js",
-        "typescript" | "typescriptreact"      => "ts",
-        "svelte"                               => "svelte",
-        "vue"                                  => "vue",
-        "astro"                                => "astro",
-        "css"                                  => "css",
-        "scss"                                 => "scss",
-        "sass"                                 => "sass",
-        "less"                                 => "less",
-        "html"                                 => "html",
+        "javascript" | "javascriptreact" => "js",
+        "typescript" | "typescriptreact" => "ts",
+        "svelte" => "svelte",
+        "vue" => "vue",
+        "astro" => "astro",
+        "css" => "css",
+        "scss" => "scss",
+        "sass" => "sass",
+        "less" => "less",
+        "html" => "html",
         // ── Systems ──────────────────────────────────────────────────────
-        "c"                                    => "c",
-        "cpp" | "cuda-cpp"                     => "cpp",
-        "objective-c"                          => "m",
-        "objective-cpp"                        => "mm",
-        "rust"                                 => "rs",
-        "go"                                   => "go",
-        "zig"                                  => "zig",
-        "nim"                                  => "nim",
-        "d"                                    => "d",
+        "c" => "c",
+        "cpp" | "cuda-cpp" => "cpp",
+        "objective-c" => "m",
+        "objective-cpp" => "mm",
+        "rust" => "rs",
+        "go" => "go",
+        "zig" => "zig",
+        "nim" => "nim",
+        "d" => "d",
         // ── JVM & .NET ───────────────────────────────────────────────────
-        "java"                                 => "java",
-        "kotlin"                               => "kt",
-        "scala"                                => "scala",
-        "groovy"                               => "groovy",
-        "csharp"                               => "cs",
-        "fsharp"                               => "fs",
+        "java" => "java",
+        "kotlin" => "kt",
+        "scala" => "scala",
+        "groovy" => "groovy",
+        "csharp" => "cs",
+        "fsharp" => "fs",
         // ── Scripting ────────────────────────────────────────────────────
-        "python"                               => "py",
-        "ruby"                                 => "rb",
-        "php"                                  => "php",
-        "perl"                                 => "pl",
-        "r"                                    => "r",
-        "julia"                                => "jl",
-        "lua"                                  => "lua",
+        "python" => "py",
+        "ruby" => "rb",
+        "php" => "php",
+        "perl" => "pl",
+        "r" => "r",
+        "julia" => "jl",
+        "lua" => "lua",
         // ── Shell ────────────────────────────────────────────────────────
-        "shellscript"                          => "sh",
-        "powershell"                           => "ps1",
-        "zsh"                                  => "zsh",
+        "shellscript" => "sh",
+        "powershell" => "ps1",
+        "zsh" => "zsh",
         // ── Mobile ───────────────────────────────────────────────────────
-        "swift"                                => "swift",
-        "dart"                                 => "dart",
+        "swift" => "swift",
+        "dart" => "dart",
         // ── Data & Config ────────────────────────────────────────────────
-        "json" | "json5" | "jsonc"             => "json",
-        "yaml"                                 => "yaml",
-        "toml"                                 => "toml",
-        "xml"                                  => "xml",
-        "ini"                                  => "ini",
+        "json" | "json5" | "jsonc" => "json",
+        "yaml" => "yaml",
+        "toml" => "toml",
+        "xml" => "xml",
+        "ini" => "ini",
         // ── Query ────────────────────────────────────────────────────────
-        "sql"                                  => "sql",
-        "graphql"                              => "graphql",
+        "sql" => "sql",
+        "graphql" => "graphql",
         // ── DevOps ───────────────────────────────────────────────────────
-        "terraform"                            => "tf",
-        "dockerfile"                           => "dockerfile",
-        "makefile"                             => "makefile",
-        "nix"                                  => "nix",
+        "terraform" => "tf",
+        "dockerfile" => "dockerfile",
+        "makefile" => "makefile",
+        "nix" => "nix",
         // ── Functional ───────────────────────────────────────────────────
-        "haskell"                              => "hs",
-        "elixir"                               => "ex",
-        "erlang"                               => "erl",
-        "ocaml"                                => "ml",
-        "clojure"                              => "clj",
-        "lisp"                                 => "lisp",
-        "scheme"                               => "scm",
+        "haskell" => "hs",
+        "elixir" => "ex",
+        "erlang" => "erl",
+        "ocaml" => "ml",
+        "clojure" => "clj",
+        "lisp" => "lisp",
+        "scheme" => "scm",
         // ── Docs ─────────────────────────────────────────────────────────
-        "markdown"                             => "md",
-        "latex"                                => "tex",
+        "markdown" => "md",
+        "latex" => "tex",
         // ── Blockchain ───────────────────────────────────────────────────
-        "solidity"                             => "sol",
+        "solidity" => "sol",
         // ── Game & Automation ────────────────────────────────────────────
-        "gdscript"                             => "gd",
-        "ahk"                                  => "ahk",
+        "gdscript" => "gd",
+        "ahk" => "ahk",
         // ── Stubs ────────────────────────────────────────────────────────
-        "cobol"                                => "cob",
-        "fortran"                              => "f90",
-        "asm"                                  => "asm",
+        "cobol" => "cob",
+        "fortran" => "f90",
+        "asm" => "asm",
         // ── Templates ────────────────────────────────────────────────────
-        "jinja"                                => "jinja",
-        "liquid"                               => "liquid",
-        "ejs"                                  => "ejs",
-        "handlebars"                           => "hbs",
-        "twig"                                 => "twig",
+        "jinja" => "jinja",
+        "liquid" => "liquid",
+        "ejs" => "ejs",
+        "handlebars" => "hbs",
+        "twig" => "twig",
         // ── Fallback: pass language_id verbatim ──────────────────────────
-        other                                  => other,
+        other => other,
     }
 }
 
@@ -290,7 +290,7 @@ mod tests {
         let result = format(&request.to_string());
         let parsed: serde_json::Value =
             serde_json::from_str(&result).expect("format() must return valid JSON");
-        assert!(parsed.get("edits").is_some(),   "must have 'edits'");
+        assert!(parsed.get("edits").is_some(), "must have 'edits'");
         assert!(parsed.get("is_noop").is_some(), "must have 'is_noop'");
     }
 
@@ -308,7 +308,7 @@ mod tests {
         let result = format(&request.to_string());
         let parsed: serde_json::Value =
             serde_json::from_str(&result).expect("format() must return valid JSON");
-        assert!(parsed.get("edits").is_some(),   "must have 'edits'");
+        assert!(parsed.get("edits").is_some(), "must have 'edits'");
         assert!(parsed.get("is_noop").is_some(), "must have 'is_noop'");
     }
 

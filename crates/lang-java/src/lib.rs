@@ -10,15 +10,20 @@ pub mod plugin;
 use wasm_bindgen::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum JvmDialect { Java, Kotlin, Scala, Groovy }
+pub enum JvmDialect {
+    Java,
+    Kotlin,
+    Scala,
+    Groovy,
+}
 
 impl JvmDialect {
     pub fn from_language_id(id: &str) -> Self {
         match id {
-            "kotlin"  => JvmDialect::Kotlin,
-            "scala"   => JvmDialect::Scala,
-            "groovy"  => JvmDialect::Groovy,
-            _         => JvmDialect::Java,
+            "kotlin" => JvmDialect::Kotlin,
+            "scala" => JvmDialect::Scala,
+            "groovy" => JvmDialect::Groovy,
+            _ => JvmDialect::Java,
         }
     }
 }
@@ -32,17 +37,23 @@ pub fn format_java(
     let config = adapter::config_from_json(config_json);
     let dialect = JvmDialect::from_language_id(language_id);
     match format::format(source_bytes, &config, dialect) {
-        Ok(f)  => Ok(f),
+        Ok(f) => Ok(f),
         Err(e) => Err(JsValue::from_str(&e.to_string())),
     }
 }
 
 #[cfg_attr(feature = "standalone", wasm_bindgen)]
-pub fn config_schema() -> String { include_str!("../schema.json").to_string() }
+pub fn config_schema() -> String {
+    include_str!("../schema.json").to_string()
+}
 #[cfg_attr(feature = "standalone", wasm_bindgen)]
-pub fn version() -> String { env!("CARGO_PKG_VERSION").to_string() }
+pub fn version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
 #[cfg_attr(feature = "standalone", wasm_bindgen)]
-pub fn language_id() -> String { "java".to_string() }
+pub fn language_id() -> String {
+    "java".to_string()
+}
 
 #[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn aliases() -> Vec<JsValue> {

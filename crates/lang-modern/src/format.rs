@@ -11,7 +11,7 @@ use protocol::FormatError;
 /// Returns source verbatim if it cannot be decoded as UTF-8.
 pub fn format(source: &[u8], config: &Config) -> Result<Vec<u8>, FormatError> {
     let text = match std::str::from_utf8(source) {
-        Ok(s)  => s,
+        Ok(s) => s,
         Err(_) => return Ok(source.to_vec()), // binary file: return verbatim
     };
 
@@ -22,7 +22,7 @@ pub fn format(source: &[u8], config: &Config) -> Result<Vec<u8>, FormatError> {
         let trimmed = line.trim();
 
         // Count net brace change to decide if this line decreases depth first
-        let opens  = trimmed.chars().filter(|&c| c == '{').count();
+        let opens = trimmed.chars().filter(|&c| c == '{').count();
         let closes = trimmed.chars().filter(|&c| c == '}').count();
 
         if closes > opens && depth >= (closes - opens) {
@@ -42,7 +42,9 @@ pub fn format(source: &[u8], config: &Config) -> Result<Vec<u8>, FormatError> {
         }
     }
 
-    if !out.ends_with('\n') { out.push('\n'); }
+    if !out.ends_with('\n') {
+        out.push('\n');
+    }
     Ok(out.into_bytes())
 }
 
@@ -59,7 +61,7 @@ mod tests {
     #[test]
     fn format_idempotent() {
         let src = b"fn main() {\n    let x = 1;\n}\n";
-        let first  = format(src, &Config::default()).unwrap();
+        let first = format(src, &Config::default()).unwrap();
         let second = format(&first, &Config::default()).unwrap();
         assert_eq!(first, second, "lang-modern must be idempotent");
     }

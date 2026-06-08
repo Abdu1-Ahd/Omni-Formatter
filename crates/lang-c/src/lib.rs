@@ -42,9 +42,9 @@ impl CDialect {
     pub fn from_language_id(id: &str) -> Self {
         match id {
             "cpp" | "cuda-cpp" => CDialect::Cpp,
-            "objective-c"       => CDialect::ObjC,
-            "objective-cpp"     => CDialect::ObjCpp,
-            _                   => CDialect::C,
+            "objective-c" => CDialect::ObjC,
+            "objective-cpp" => CDialect::ObjCpp,
+            _ => CDialect::C,
         }
     }
 }
@@ -59,7 +59,7 @@ pub fn format_c(
     let config = adapter::config_from_json(config_json);
     let dialect = CDialect::from_language_id(language_id);
     match format::format(source_bytes, &config, dialect) {
-        Ok(f)  => Ok(f),
+        Ok(f) => Ok(f),
         Err(e) => Err(JsValue::from_str(&e.to_string())),
     }
 }
