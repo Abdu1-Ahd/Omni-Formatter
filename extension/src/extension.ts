@@ -29,38 +29,192 @@ import { FormatterHoverProvider } from "./providers/FormatterHoverProvider";
 
 /** VS Code language IDs that OmniFormatter handles. */
 const SUPPORTED_LANGUAGE_IDS = [
+  // ── Frontend & Web ────────────────────────────────────────────────────────
   "javascript",
   "typescript",
   "javascriptreact",
   "typescriptreact",
-  "python",
-  "rust",
-  "go",
   "css",
   "scss",
+  "sass",
   "less",
   "html",
   "svelte",
   "vue",
   "astro",
+  // ── Systems & Compiled ───────────────────────────────────────────────────
+  "c",
+  "cpp",
+  "objective-c",
+  "objective-cpp",
+  "cuda-cpp",
+  "rust",
+  "go",
+  "zig",
+  "nim",
+  "d",
+  // ── JVM & .NET ───────────────────────────────────────────────────────────
+  "java",
+  "kotlin",
+  "scala",
+  "groovy",
+  "csharp",
+  "fsharp",
+  // ── Scripting & General Purpose ──────────────────────────────────────────
+  "python",
+  "ruby",
+  "php",
+  "perl",
+  "r",
+  "julia",
+  "lua",
+  // ── Shell & Automation ───────────────────────────────────────────────────
+  "shellscript",
+  "powershell",
+  "zsh",
+  // ── Mobile Development ───────────────────────────────────────────────────
+  "swift",
+  "objective-c",     // handled in lang-swift
+  "dart",
+  // ── Data Serialization & Config ──────────────────────────────────────────
+  "json",
+  "json5",
+  "yaml",
+  "toml",
+  "xml",
+  "ini",
+  // ── Query Languages ───────────────────────────────────────────────────────
+  "sql",
+  "graphql",
+  // ── DevOps & Systems Config ──────────────────────────────────────────────
+  "terraform",
+  "dockerfile",
+  "makefile",
+  "nix",
+  // ── Functional Languages ─────────────────────────────────────────────────
+  "haskell",
+  "elixir",
+  "erlang",
+  "ocaml",
+  "clojure",
+  "lisp",
+  "scheme",
+  // ── Documentation ────────────────────────────────────────────────────────
+  "markdown",
+  "latex",
+  // ── Blockchain ───────────────────────────────────────────────────────────
+  "solidity",
+  // ── Game Scripting ───────────────────────────────────────────────────────
+  "gdscript",
+  // ── Embedded & Automation ────────────────────────────────────────────────
+  "ahk",
+  // ── Stubs (no grammar — identity pass-through) ───────────────────────────
+  "cobol",
+  "fortran",
+  "asm",
+  // ── Template Languages ───────────────────────────────────────────────────
+  "jinja",
+  "liquid",
+  "ejs",
+  "handlebars",
+  "twig",
 ] as const;
 
 /** Map from languageId to the module name that handles it. */
 const LANGUAGE_MODULE_MAP: Record<string, string> = {
-  javascript: "lang-js",
-  typescript: "lang-js",
-  javascriptreact: "lang-js",
-  typescriptreact: "lang-js",
-  python: "lang-python",
-  rust: "lang-rust",
-  go: "lang-go",
-  css: "lang-css",
-  scss: "lang-css",
-  less: "lang-css",
-  html: "lang-css",
-  svelte: "lang-js", // Svelte uses the JS module + zone detection
-  vue: "lang-js",    // Vue SFC uses the JS module + zone detection
-  astro: "lang-js",  // Astro uses the JS module + zone detection
+  // lang-js
+  javascript:       "lang-js",
+  typescript:       "lang-js",
+  javascriptreact:  "lang-js",
+  typescriptreact:  "lang-js",
+  svelte:           "lang-js",
+  vue:              "lang-js",
+  astro:            "lang-js",
+  // lang-css
+  css:              "lang-css",
+  scss:             "lang-css",
+  less:             "lang-css",
+  html:             "lang-css",
+  // lang-sass
+  sass:             "lang-sass",
+  // lang-python
+  python:           "lang-python",
+  // lang-rust
+  rust:             "lang-rust",
+  // lang-go
+  go:               "lang-go",
+  // lang-c
+  c:                "lang-c",
+  cpp:              "lang-c",
+  "objective-c":    "lang-c",
+  "objective-cpp":  "lang-c",
+  "cuda-cpp":       "lang-c",
+  // lang-java
+  java:             "lang-java",
+  kotlin:           "lang-java",
+  scala:            "lang-java",
+  groovy:           "lang-java",
+  // lang-csharp
+  csharp:           "lang-csharp",
+  fsharp:           "lang-csharp",
+  // lang-ruby
+  ruby:             "lang-ruby",
+  php:              "lang-ruby",
+  perl:             "lang-ruby",
+  lua:              "lang-ruby",
+  // lang-shell
+  shellscript:      "lang-shell",
+  powershell:       "lang-shell",
+  zsh:              "lang-shell",
+  // lang-swift
+  swift:            "lang-swift",
+  // lang-mobile
+  dart:             "lang-mobile",
+  // lang-data
+  json:             "lang-data",
+  json5:            "lang-data",
+  yaml:             "lang-data",
+  toml:             "lang-data",
+  xml:              "lang-data",
+  ini:              "lang-data",
+  // lang-sql
+  sql:              "lang-sql",
+  graphql:          "lang-sql",
+  // lang-devops
+  terraform:        "lang-devops",
+  dockerfile:       "lang-devops",
+  makefile:         "lang-devops",
+  nix:              "lang-devops",
+  // lang-functional
+  haskell:          "lang-functional",
+  elixir:           "lang-functional",
+  erlang:           "lang-functional",
+  ocaml:            "lang-functional",
+  clojure:          "lang-functional",
+  lisp:             "lang-functional",
+  scheme:           "lang-functional",
+  r:                "lang-functional",
+  julia:            "lang-functional",
+  // lang-markdown
+  markdown:         "lang-markdown",
+  latex:            "lang-markdown",
+  // lang-modern
+  zig:              "lang-modern",
+  nim:              "lang-modern",
+  d:                "lang-modern",
+  // lang-other
+  solidity:         "lang-other",
+  gdscript:         "lang-other",
+  ahk:              "lang-other",
+  cobol:            "lang-other",
+  fortran:          "lang-other",
+  asm:              "lang-other",
+  // lang-template
+  jinja:            "lang-template",
+  liquid:           "lang-template",
+  ejs:              "lang-template",
+  handlebars:       "lang-template",
+  twig:             "lang-template",
 };
 
 /** Extension-level globals — initialised in activate(), torn down in deactivate(). */
@@ -168,7 +322,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand("omnifmt.formatWorkspace", async () => {
       // Only format known source file types; exclude large non-source directories
-      const INCLUDE_GLOB = '**/*.{js,ts,tsx,jsx,py,rs,go,css,scss,less,html,svelte,vue}';
+      const INCLUDE_GLOB = '**/*.{js,mjs,cjs,ts,mts,cts,tsx,jsx,py,pyw,rs,go,css,scss,sass,less,html,htm,svelte,vue,astro,c,h,cpp,hpp,cc,cxx,hh,mm,m,java,kt,kts,scala,sc,groovy,cs,fs,fsi,fsx,rb,php,pl,pm,lua,sh,bash,zsh,ps1,psm1,swift,dart,json,json5,yaml,yml,toml,xml,ini,sql,graphql,gql,tf,hcl,Dockerfile,nix,hs,lhs,ex,exs,erl,hrl,ml,mli,clj,cljs,r,R,jl,md,markdown,tex,zig,nim,sol,gd,ahk,lisp,lsp,scm,ss,jinja,jinja2,liquid,ejs,hbs,handlebars,twig}';
+
       const EXCLUDE_GLOB = '**/{node_modules,.vscode-test,.vscode-test-user-data,.git,dist,out,target}/**';
       const uris = await vscode.workspace.findFiles(INCLUDE_GLOB, EXCLUDE_GLOB);
       log(`Formatting ${uris.length} files in workspace...`);

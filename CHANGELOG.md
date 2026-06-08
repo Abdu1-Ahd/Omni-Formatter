@@ -9,14 +9,35 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
+---
 
-- `SECURITY.md` — vulnerability disclosure policy and security architecture documentation
-- `.github/CONTRIBUTING.md` — full contributor guide with branch, commit, PR, and testing standards
-- `.github/ISSUE_TEMPLATE/bug_report.md` — structured bug report template
-- `.github/ISSUE_TEMPLATE/language_request.md` — language module request template
-- `.github/workflows/publish.yml` — automated CI publishing to VS Code Marketplace and Open VSX Registry on version tag push
-- `docs/ADD_LANGUAGE_TEMPLATE.md` — step-by-step blueprint for adding a new language module
+## [0.2.0] — 2026-06-08
+
+### Added — Language Expansion (16 new modules, 70+ languages total)
+
+- `crates/lang-c` — C / C++ / Objective-C / Objective-C++ formatter (clang-format style)
+- `crates/lang-java` — Java / Kotlin / Scala / Groovy formatter (google-java-format / ktfmt style)
+- `crates/lang-csharp` — C# / F# formatter (dotnet format style)
+- `crates/lang-data` — JSON / JSON5 / YAML / TOML / XML / INI formatter (prettier / taplo style)
+- `crates/lang-shell` — Bash / PowerShell / Zsh formatter (shfmt style)
+- `crates/lang-markdown` — Markdown / LaTeX formatter (prettier parity / pass-through)
+- `crates/lang-sql` — SQL / GraphQL formatter (sqlfluff style / prettier parity)
+- `crates/lang-ruby` — Ruby / PHP / Perl / Lua formatter (rubocop / php-cs-fixer / stylua style)
+- `crates/lang-swift` — Swift / Objective-C / Objective-C++ formatter (swift-format style)
+- `crates/lang-mobile` — Dart formatter (dart format style)
+- `crates/lang-devops` — HCL/Terraform / Dockerfile / Makefile / Nix (terraform fmt style)
+- `crates/lang-functional` — Haskell / Elixir / Erlang / OCaml / Clojure / R / Julia / Lisp / Scheme
+- `crates/lang-modern` — Zig / Nim / D (zig fmt style)
+- `crates/lang-other` — Solidity / GDScript / AutoHotkey / COBOL / Fortran / Assembly (stubs + Solidity format)
+- `crates/lang-template` — Jinja / Liquid / EJS / Handlebars / Twig (identity stubs)
+- `crates/lang-sass` — Sass indented syntax (`.sass`) normalizer
+
+### Changed
+
+- Workspace version bumped `0.1.0` → `0.2.0`
+- Extension description updated to reflect 80+ language support
+- `omnifmt.formatWorkspace` glob expanded to cover all new file extensions
+- `package.json` `contributes.languages` and `configurationDefaults` updated for all 70+ language IDs
 
 ---
 

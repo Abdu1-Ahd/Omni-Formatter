@@ -1,0 +1,2 @@
+- All temp/useless files go `temp/` folder.
+- After update, run `scripts/publish-extension.ps1`. Trigger GitHub workflow. Auto publish both markets.

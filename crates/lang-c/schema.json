@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OmniFormatter C/C++ Config",
+  "type": "object",
+  "properties": {
+    "indent_style": {
+      "type": "string",
+      "enum": ["spaces", "tabs"],
+      "default": "spaces",
+      "description": "Indentation style (clang-format BasedOnStyle)"
+    },
+    "indent_size": {
+      "type": "integer",
+      "default": 4,
+      "description": "Indentation width (clang-format IndentWidth)"
+    },
+    "column_limit": {
+      "type": "integer",
+      "default": 80,
+      "description": "Maximum line width (clang-format ColumnLimit)"
+    },
+    "brace_style": {
+      "type": "string",
+      "enum": ["Attach", "Linux", "Allman", "GNU"],
+      "default": "Attach",
+      "description": "Brace placement style"
+    },
+    "pointer_alignment": {
+      "type": "string",
+      "enum": ["Left", "Right", "Middle"],
+      "default": "Right",
+      "description": "Pointer (*) alignment relative to type/name"
+    }
+  }
+}
