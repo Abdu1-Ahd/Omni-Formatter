@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "   OmniFormatter Release Workflow (CI/CD)" -ForegroundColor Cyan
@@ -10,7 +10,53 @@ cd extension
 # Dynamically sync README and LICENSE from workspace root
 Write-Host "[1/3] Syncing documentation and LICENSE..." -ForegroundColor Yellow
 if (Test-Path "../README.md") {
-    (Get-Content ../README.md) | Where-Object { $_ -notmatch '<img src=".*media/Omni-Formatter-Logo\.svg"' -and $_ -notmatch '^\s*<br/>\s*$' } | Set-Content README.md -Force
+    $readme = Get-Content ../README.md -Raw -Encoding utf8
+    # Filter out the logo image line and any consecutive blank lines/linebreaks associated with it
+    $readme = $readme -replace '(?m)^\s*<img src=".*media/Omni-Formatter-Logo\.svg".*$\r?\n?', ''
+    $readme = $readme -replace '(?m)^\s*<br/>\s*$\r?\n?', ''
+
+    # Replace the mermaid block with the unicode box diagram
+    $mermaidBlock = '(?s)```mermaid\s*\r?\n.*?\r?\n```'
+    $unicodeDiagram = '```text
+     ┌───────────────────────────────────────┐
+     │         🔌 VS Code Extension          │
+     │            (TypeScript)               │
+     └──────────────────┬────────────────────┘
+                        │
+                [ Zero-Copy IPC ]
+                        │
+                        ▼
+     ┌───────────────────────────────────────┐
+     │           ⚡ Worker Pool              │
+     │              (Node.js)                │
+     └──────────────────┬────────────────────┘
+                        │
+               [ Fast WASM Call ]
+                        │
+                        ▼
+     ┌───────────────────────────────────────┐
+     │            ⚙️ WASM Core               │
+     │               (Rust)                  │
+     └─────────┬───────────────────┬─────────┘
+               │                   │
+      [ Loads on Demand ]  [ Reads Workspace ]
+               │                   │
+               ▼                   ▼
+     ┌───────────────────┐ ┌─────────────────┐
+     │ 📦 Lang Modules   │ │🛠️ Config Adapter│
+     │  (.wasm binary)   │ │ (Native Format) │
+     └─────────┬─────────┘ └─────────────────┘
+               │
+       [ Fetched & Cached ]
+               │
+               ▼
+     ┌───────────────────┐
+     │  ☁️ Edge Registry │
+     │(Cloudflare D1/R2) │
+     └───────────────────┘
+```'
+    $readme = $readme -replace $mermaidBlock, $unicodeDiagram
+    $readme | Set-Content README.md -Force -Encoding utf8
 }
 if (Test-Path "../LICENSE") {
     Copy-Item ../LICENSE LICENSE -Force
