@@ -1,39 +1,35 @@
-# Adding a New Language to OmniFormatter
+# ➕ Add a Language to OmniFormatter
 
-This document is the authoritative blueprint for implementing and publishing a new language module. OmniFormatter is designed so that adding a language requires **zero changes** to the core extension, registry, or CLI. All new language support is delivered as a standalone WASM plugin.
+> **No core changes needed. Ever.** Your formatter ships as a standalone `.wasm` plugin. The extension, CLI, and registry are completely untouched.
 
 ---
 
-## 1. Design Principles
+## ⚡ The 10-Minute Overview
 
-| Principle | Implementation |
+| What you build | How it integrates |
 |---|---|
-| **Isolation** | A language module is a standalone Rust crate compiled to `.wasm`. It has no access to the filesystem, network, or OS. |
-| **Dynamic Loading** | Modules are loaded on demand from the local `extension/dist/modules/` bundle or the Cloudflare edge registry. |
-| **Protocol Boundary** | All communication between the host and the module uses the JSON-serializable `ConfigIR` type from the `protocol` crate. |
-| **Parity Contract** | The module must produce byte-for-byte identical output to the canonical formatter for the language (e.g., `zig fmt`, `gleam format`). |
-| **Idempotency** | `format(format(source)) === format(source)` must hold for all valid inputs. |
+| A single Rust crate → compiled to `.wasm` | Auto-detected from `extension/dist/modules/` or pulled live from the Cloudflare edge registry |
+| 5 exported WASM functions | The extension host calls them — no glue code on your side |
+| One JSON schema file | Powers autocomplete in VS Code for your formatter options |
+| One config adapter | Reads existing user configs (`.prettierrc`, `pyproject.toml`, etc.) — zero migration friction |
 
 ---
 
-## 2. Required Directory Structure
-
-Create a new crate in `crates/` following this layout:
+## 📁 Directory Layout
 
 ```
 crates/lang-[name]/
-├── Cargo.toml           # Crate manifest — must declare cdylib output and required deps
-├── schema.json          # JSON Schema for language-specific config options
+├── Cargo.toml       ← crate manifest
+├── schema.json      ← JSON Schema for your config options
 └── src/
-    ├── lib.rs           # WASM entry points and FFI exports (5 required functions)
-    ├── adapter.rs       # ConfigIR translator — reads native config format
-    ├── format.rs        # Core formatting algorithm (Tree-sitter CST → formatted string)
-    └── plugin.rs        # (optional) LanguagePlugin trait impl for shared logic
+    ├── lib.rs       ← 5 required WASM exports
+    ├── adapter.rs   ← reads native config → ConfigIR
+    └── format.rs    ← Tree-sitter CST → formatted string
 ```
 
 ---
 
-## 3. `Cargo.toml` Requirements
+## 🔧 `Cargo.toml`
 
 ```toml
 [package]
@@ -45,15 +41,14 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-standalone = ["wasm-bindgen"]  # Only expose wasm-bindgen exports in standalone WASM builds
+standalone = ["wasm-bindgen"]
 
 [dependencies]
-protocol = { path = "../../crates/protocol" }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+protocol    = { path = "../../crates/protocol" }
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
 wasm-bindgen = { version = "0.2", optional = true }
-# Add your Tree-sitter grammar here:
-# tree-sitter-[name] = "x.y.z"
+# tree-sitter-[name] = "x.y.z"   ← add your grammar here
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
@@ -61,92 +56,76 @@ wasm-bindgen-test = "0.3"
 
 ---
 
-## 4. Required WASM Interface (`src/lib.rs`)
+## 🦀 The 5 Required WASM Exports (`src/lib.rs`)
 
-Your module **must** export exactly five functions. Replace `[name]` with the VS Code language ID (e.g., `zig`, `gleam`, `wgsl`).
+Replace `[name]` with the VS Code language ID (e.g. `zig`, `gleam`, `wgsl`).
 
 ```rust
 use protocol::ConfigIR;
 use wasm_bindgen::prelude::*;
 
-/// 1. Main formatting entry point.
+/// 1. Format the source code.
 #[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn format_[name](source_bytes: &[u8], config_json: &str) -> Result<Vec<u8>, JsValue> {
     let config: ConfigIR = serde_json::from_str(config_json).unwrap_or_default();
-    match format::format(source_bytes, &config) {
-        Ok(formatted) => Ok(formatted),
-        Err(e) => Err(JsValue::from_str(&e.to_string())),
-    }
+    format::format(source_bytes, &config)
+        .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
-/// 2. Returns the contents of schema.json as a string.
+/// 2. Return the contents of schema.json.
 #[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn config_schema() -> String {
     include_str!("../schema.json").to_string()
 }
 
-/// 3. Returns the module's version string (from Cargo.toml).
+/// 3. Return the module version.
 #[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-/// 4. Returns the VS Code language ID this module handles.
+/// 4. Return the VS Code language ID.
 #[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn language_id() -> String {
     "[name]".to_string()
 }
 
-/// 5. Returns a list of all file extensions this module handles.
+/// 5. Return all handled file extensions.
 #[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn aliases() -> Vec<JsValue> {
-    vec![
-        JsValue::from_str(".[ext]"),
-        // Add additional extensions here.
-    ]
+    vec![JsValue::from_str(".[ext]")]
 }
 ```
 
+> **Contract:** `format(format(src)) == format(src)` — idempotency is mandatory, not optional.
+
 ---
 
-## 5. Config Adapter (`src/adapter.rs`)
+## 🔌 Config Adapter (`src/adapter.rs`)
 
-The adapter reads the language's canonical native config file and translates it into `ConfigIR`. This is what enables zero-config migration — users do not need to change or delete their existing formatter configuration.
+This is the key to zero-config migration. Read the language's native config file and map it to `ConfigIR`. If none exists, return the default.
 
 ```rust
 use protocol::ConfigIR;
 use std::path::Path;
 
-/// Reads the native config file for this language (e.g., `.somefmt.toml`)
-/// and returns a populated ConfigIR. Falls back to ConfigIR::default() if
-/// no config file is found.
 pub fn read_config(workspace_root: &Path) -> ConfigIR {
     let config_path = workspace_root.join(".somefmt.toml");
-
     if !config_path.exists() {
         return ConfigIR::default();
     }
-
-    // Parse the native config and map fields to ConfigIR.
-    // ...
-
-    ConfigIR {
-        print_width: 80,
-        indent_size: 4,
-        ..ConfigIR::default()
-    }
+    // Parse and map to ConfigIR fields...
+    ConfigIR { print_width: 80, indent_size: 4, ..ConfigIR::default() }
 }
 ```
 
-**Required native config files to support:**
-
-Look at the language's official tooling. If the language has a canonical config file (e.g., `zig.zon`, `.gleam.toml`), the adapter must read it. If the language has no standard config, `adapter.rs` may return `ConfigIR::default()` directly.
+**Rule:** If the language has a canonical config file (e.g. `zig.zon`, `.gleam.toml`), the adapter **must** read it.
 
 ---
 
-## 6. `schema.json`
+## 📋 `schema.json`
 
-Document all language-specific configuration options as a JSON Schema object:
+Documents your formatter's config options. Powers IntelliSense in the editor.
 
 ```json
 {
@@ -157,7 +136,7 @@ Document all language-specific configuration options as a JSON Schema object:
     "printWidth": {
       "type": "integer",
       "default": 80,
-      "description": "Maximum line length before the formatter wraps."
+      "description": "Maximum line length before wrapping."
     }
   }
 }
@@ -165,70 +144,57 @@ Document all language-specific configuration options as a JSON Schema object:
 
 ---
 
-## 7. Integration Workflow
+## 🚀 Build & Ship
 
-The module integrates with OmniFormatter without touching any core files.
-
-### Step 1 — Build
-
+### Build
 ```sh
 wasm-pack build crates/lang-[name] --target nodejs --out-name lang_[name]
 ```
+Produces `pkg/lang_[name]_bg.wasm` + `pkg/lang_[name].js`.
 
-This produces:
-- `pkg/lang_[name]_bg.wasm` — the WASM binary
-- `pkg/lang_[name].js` — generated JS bindings
-
-### Step 2a — Local Bundle (for development and testing)
-
-Copy the `.wasm` file into the extension's local module directory:
-
+### Test Locally
 ```sh
 cp pkg/lang_[name]_bg.wasm extension/dist/modules/lang-[name]/module.wasm
+# Reload the extension development host — it auto-detects the module.
 ```
 
-The extension auto-detects bundled modules and loads them without hitting the registry. Reload the extension development host to pick up the new module.
-
-### Step 2b — Publish to the Edge Registry
-
+### Publish to the Edge Registry
 ```sh
-# Sign and publish your module to the OmniFormatter registry
 npx omnifmt-cli publish --module lang-[name] --version 0.1.0
 ```
-
-Once published, the extension will download the module on demand the first time a user opens a file of that language.
-
----
-
-## 8. Development Checklist
-
-Work through these steps in order. Do not proceed to the next step until the current one is fully passing.
-
-- [ ] Create `crates/lang-[name]` via `cargo new --lib`
-- [ ] Add `crate-type = ["cdylib", "rlib"]` and all required dependencies to `Cargo.toml`
-- [ ] Write `schema.json` documenting all config options
-- [ ] Implement `src/adapter.rs` — parse native config and return `ConfigIR`
-- [ ] Implement `src/format.rs` — Tree-sitter CST walk → Wadler Doc IR → formatted string
-- [ ] Implement `src/lib.rs` — export all 5 required WASM functions
-- [ ] Run `cargo test -p lang-[name]` — all unit tests pass
-- [ ] Run `cargo test -p lang-[name] --test idempotency` — 1,000 idempotency fixtures pass
-- [ ] Build via `wasm-pack build` — no errors
-- [ ] Load into extension development host — formatter activates for the target language
-- [ ] Run compat CI against reference formatter output — byte-for-byte parity verified
-- [ ] Publish to registry and test live download flow
+Users get the module downloaded on demand the first time they open a file of that language.
 
 ---
 
-## 9. Registry Acceptance Criteria
+## ✅ Checklist
 
-A module submitted to the public OmniFormatter Registry will be rejected if any of the following is not met:
+Work through these **in order**:
+
+- [ ] `cargo new --lib crates/lang-[name]`
+- [ ] Set `crate-type = ["cdylib", "rlib"]` and add dependencies in `Cargo.toml`
+- [ ] Write `schema.json`
+- [ ] Implement `adapter.rs` — parse native config → `ConfigIR`
+- [ ] Implement `format.rs` — Tree-sitter CST → formatted string
+- [ ] Implement `lib.rs` — all 5 exports
+- [ ] `cargo test -p lang-[name]` — unit tests green
+- [ ] `cargo test -p lang-[name] --test idempotency` — 1,000 fixtures pass
+- [ ] `wasm-pack build` — clean
+- [ ] Load in dev host — formatter activates for the target language
+- [ ] Compat CI — byte-for-byte parity with the reference formatter
+- [ ] Publish + verify live download
+
+---
+
+## 🏛️ Registry Acceptance Criteria
+
+Modules that fail any of these are **rejected automatically** by the registry:
 
 | Criterion | Requirement |
 |---|---|
-| Interface compliance | All 5 required WASM exports present |
+| Interface | All 5 WASM exports present |
 | Idempotency | Zero failures across 1,000 fixture files |
-| Config adapter | Reads the language's canonical native config format |
-| Schema | `schema.json` documents all config options |
-| Parity | Output matches the reference formatter on the parity corpus |
-| Safety | All `unsafe` blocks annotated with `// SAFETY:` comments |
-| License | Module source is MIT or Apache-2.0 licensed |
+| Config adapter | Reads the language's canonical config format |
+| Schema | All config options documented |
+| Parity | Byte-for-byte match with the reference formatter |
+| Safety | Every `unsafe` block annotated with `// SAFETY:` |
+| License | MIT or Apache-2.0 |
