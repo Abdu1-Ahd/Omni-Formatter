@@ -365,22 +365,32 @@ async function handleFormatRequest(
     return [];
   }
 
-  // Enforce 10MB file size limit at the extension host (L-01 mitigation)
-  const sourceText = document.getText();
-  const sourceBytes = Buffer.from(sourceText, "utf8");
-  const MAX_FILE_BYTES = 10 * 1024 * 1024;
+  // ── Build format request (zero-copy path) ──────────────────────────
+  // `source_text` sends the raw UTF-8 string directly into the JSON payload.
+  // No Buffer conversion. No Array.from(). No base64. No size cap.
+  // WASM deserialises it as a Rust String — one JSON parse, done.
+  // File size is unlimited: the only bound is available memory.
+  const byteEstimate = sourceText.length * 3; // worst-case UTF-8 bytes
 
-  if (sourceBytes.length > MAX_FILE_BYTES) {
-    vscode.window.showWarningMessage(
-      `OmniFormatter: File exceeds 10MB limit (${Math.round(sourceBytes.length / 1024 / 1024)}MB). Formatting skipped.`
+  // Progress notification for files over 1 MB (purely cosmetic — the actual
+  // IPC is fast; the WASM formatter is what takes time on huge files).
+  let progressDispose: vscode.Disposable | undefined;
+  if (byteEstimate > 1_048_576) {
+    vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Window,
+        title: `OmniFormatter: formatting ${langId} (≈${Math.round(byteEstimate / 1024)} KB)…`,
+        cancellable: false,
+      },
+      () => new Promise<void>((res) => { progressDispose = { dispose: res }; })
     );
-    return [];
   }
 
   const request = {
-    source: Array.from(sourceBytes),
+    source_text:       sourceText,   // ← raw string, WASM reads as Rust String
+    source_byte_length: byteEstimate, // ← worker uses this to size its timeout
     language_id: langId,
-    config: {},       // Config adapter reads from disk in Phase 3+
+    config: {},
     range: null,
     previous_tree: null,
     edit: null,
@@ -390,6 +400,9 @@ async function handleFormatRequest(
     const startMs = Date.now();
     const responseJson = await workerPool!.dispatch(JSON.stringify(request), token);
     const elapsedMs = Date.now() - startMs;
+
+    // Dismiss progress notification if shown
+    progressDispose?.dispose();
 
     const response = JSON.parse(responseJson) as {
       edits: Array<{ range: { start: number; end: number }; new_text: string }>;

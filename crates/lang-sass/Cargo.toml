@@ -14,9 +14,8 @@ crate-type = ["cdylib", "rlib"]
 standalone = []
 
 [dependencies]
-protocol     = { path = "../protocol" }
+protocol         = { path = "../protocol" }
 serde.workspace      = true
 serde_json.workspace = true
 wasm-bindgen.workspace = true
 log.workspace        = true
-tree-sitter.workspace = true

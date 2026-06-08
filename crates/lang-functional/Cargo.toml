@@ -14,15 +14,8 @@ crate-type = ["cdylib", "rlib"]
 standalone = []
 
 [dependencies]
-protocol     = { path = "../protocol" }
+protocol         = { path = "../protocol" }
 serde.workspace      = true
 serde_json.workspace = true
 wasm-bindgen.workspace = true
 log.workspace        = true
-tree-sitter.workspace = true
-tree-sitter-haskell.workspace = true
-tree-sitter-elixir.workspace = true
-tree-sitter-erlang.workspace = true
-tree-sitter-ocaml.workspace = true
-tree-sitter-julia.workspace = true
-tree-sitter-r.workspace = true

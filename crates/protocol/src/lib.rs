@@ -36,10 +36,31 @@ pub use std::time::Instant;
 /// All positions are in **UTF-8 byte offsets**. The extension host is
 /// responsible for converting VS Code's UTF-16 code unit positions to
 /// UTF-8 before constructing this struct (see L-14 mitigation).
+///
+/// # Source encoding — two paths, one protocol
+///
+/// The source may be provided in one of two ways (checked in order):
+///
+/// 1. **`source_text`** *(preferred)* — the raw UTF-8 source as a JSON string.
+///    The extension host simply passes `document.getText()` directly.
+///    No encoding, no decoding, one JSON parse. Fastest path for any file size.
+///
+/// 2. **`source`** *(legacy)* — UTF-8 bytes as a JSON `number[]`.
+///    Kept for backward compatibility with older clients / CLI usage.
+///
+/// Call [`FormatRequest::source_bytes()`] to get the bytes regardless of which
+/// field was populated.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FormatRequest {
-    /// UTF-8 encoded source text.
-    pub source: Vec<u8>,
+    /// UTF-8 source as a raw string — preferred zero-copy path.
+    /// If both `source_text` and `source` are present, `source_text` wins.
+    #[serde(default)]
+    pub source_text: Option<String>,
+
+    /// UTF-8 encoded source as a byte array — legacy path.
+    /// Use `source_text` for new clients; this field will be deprecated.
+    #[serde(default)]
+    pub source: Option<Vec<u8>>,
 
     /// VS Code language identifier (e.g. `"typescript"`, `"python"`).
     pub language_id: String,
@@ -59,6 +80,38 @@ pub struct FormatRequest {
     /// Present only when `previous_tree` is Some.
     pub edit: Option<EditDelta>,
 }
+
+impl FormatRequest {
+    /// Return the source as UTF-8 bytes, regardless of which field was used.
+    ///
+    /// Preference order: `source_text` → `source` → empty vec.
+    ///
+    /// # Panics
+    /// Never panics. Returns an empty `Vec` if neither field is set.
+    pub fn source_bytes(&self) -> Vec<u8> {
+        if let Some(ref text) = self.source_text {
+            text.as_bytes().to_vec()
+        } else if let Some(ref bytes) = self.source {
+            bytes.clone()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Return the source as a UTF-8 `&str` if `source_text` was used,
+    /// or decode `source` bytes. Returns an owned `String` in all cases.
+    pub fn source_string(&self) -> String {
+        if let Some(ref text) = self.source_text {
+            text.clone()
+        } else if let Some(ref bytes) = self.source {
+            String::from_utf8_lossy(bytes).into_owned()
+        } else {
+            String::new()
+        }
+    }
+}
+
+
 
 /// A response from the WASM core back to the extension host.
 #[derive(Debug, Clone, Serialize, Deserialize)]

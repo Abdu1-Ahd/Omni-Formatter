@@ -66,24 +66,55 @@ async function init(): Promise<void> {
 
 parentPort.on("message", (msg: { id: number; requestJson: string }) => {
   if (!wasmBindgenApi) {
-    parentPort!.postMessage({
-      id: msg.id,
-      error: "WASM not initialised",
-    });
+    parentPort!.postMessage({ id: msg.id, error: "WASM not initialised" });
     return;
   }
 
+  // ── Per-request timeout ────────────────────────────────────────────────
+  // Scales with file size: 30s base + 1s per 100 KB of estimated source size.
+  // Prevents a pathological file from permanently hanging the worker thread.
+  let byteEstimate = 0;
   try {
-    console.time("format");
-    const responseJson = wasmBindgenApi.format(msg.requestJson);
-    console.timeEnd("format");
-    parentPort!.postMessage({ id: msg.id, responseJson });
-  } catch (err) {
+    const meta = JSON.parse(msg.requestJson) as { source_byte_length?: number };
+    byteEstimate = meta.source_byte_length ?? 0;
+  } catch { /* ignore — timeout will use the 30s base */ }
+
+  const timeoutMs = 30_000 + Math.ceil(byteEstimate / 102_400) * 1_000;
+
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
     parentPort!.postMessage({
-      id: msg.id,
-      error: `Worker error: ${err}`,
+      id:    msg.id,
+      error: `OmniFormatter: format timed out after ${Math.round(timeoutMs / 1000)}s ` +
+             `(≈${Math.round(byteEstimate / 1024)} KB file)`,
     });
+  }, timeoutMs);
+
+  // ── Call WASM ─────────────────────────────────────────────────────────
+  // `msg.requestJson` already contains `source_text` as a plain JSON string
+  // field. The WASM core (FormatRequest) reads it as a Rust String directly.
+  // Zero decoding. Zero re-encoding. One JSON parse inside WASM, done.
+  try {
+    const sizeTag = byteEstimate > 0 ? `[≈${Math.round(byteEstimate / 1024)}KB]` : "";
+    console.time(`omni:format${sizeTag}`);
+
+    const responseJson = wasmBindgenApi.format(msg.requestJson);
+
+    console.timeEnd(`omni:format${sizeTag}`);
+
+    if (!timedOut) {
+      clearTimeout(timer);
+      parentPort!.postMessage({ id: msg.id, responseJson });
+    }
+  } catch (err) {
+    clearTimeout(timer);
+    if (!timedOut) {
+      parentPort!.postMessage({ id: msg.id, error: `Worker error: ${err}` });
+    }
   }
 });
+
+
 
 init();

@@ -5,11 +5,13 @@
 //! via the worker thread pool.
 //!
 //! Architecture (Tier 3):
-//!   Extension Host → postMessage → Worker → WASM `format()` → Worker → postMessage → Extension Host
+//!   Extension Host → postMessage → Worker → WASM `format()` → postMessage → Extension Host
 //!
-//! All input/output crosses the WASM boundary as JSON strings.
-//! Binary data (source bytes, WASM module bytes) crosses as base64-encoded
-//! JSON string values inside the JSON payload.
+//! ## Zero-copy source path
+//!
+//! The extension host sends `source_text: String` (raw UTF-8 JSON string).
+//! No byte-array encoding. No base64. WASM receives one JSON parse, done.
+//! Unlimited file size — no artificial caps.
 
 pub mod arena;
 pub mod comments;
@@ -97,24 +99,13 @@ pub fn format(request_json: &str) -> String {
     };
     js_log("Request deserialized.");
 
-    // Enforce 10MB file size limit (L-01 mitigation).
-    const MAX_FILE_BYTES: usize = 10 * 1024 * 1024; // 10 MB
-    if request.source.len() > MAX_FILE_BYTES {
-        return serde_json::json!({
-            "error": {
-                "kind": "file_too_large",
-                "detail": {
-                    "size_bytes": request.source.len(),
-                    "limit_bytes": MAX_FILE_BYTES
-                }
-            }
-        })
-        .to_string();
-    }
+    // ── Resolve source bytes — no size cap, no encoding overhead ──────────
+    // `source_bytes()` checks `source_text` first (zero-copy string path from
+    // the extension host), then falls back to the legacy `source: Vec<u8>` for
+    // CLI / test compatibility. File size is unlimited.
+    let source = request.source_bytes();
 
     // ── Language dispatch ──────────────────────────────────────────────────
-    // Map language_id to a file extension the registry understands.
-    // VS Code language IDs don't always match file extensions, so we normalise.
     js_log("Normalizing language ID...");
     let ext = language_id_to_ext(&request.language_id);
     js_log(&format!("Language mapped to ext: {}", ext));
@@ -122,10 +113,9 @@ pub fn format(request_json: &str) -> String {
     js_log("Fetching default registry...");
     let registry = registry::default_registry();
     let config = &request.config;
-    let source = &request.source;
 
     js_log("Calling registry.format_by_ext...");
-    let formatted = match registry.format_by_ext(ext, source, config) {
+    let formatted = match registry.format_by_ext(ext, &source, config) {
         Ok(bytes) => bytes,
         Err(e) => {
             return serde_json::json!({
@@ -139,8 +129,8 @@ pub fn format(request_json: &str) -> String {
     };
 
     // ── Diff generation ────────────────────────────────────────────────────
-    // Produce a single whole-document edit if the output differs, or is_noop.
-    let (edits, is_noop) = if formatted == *source {
+    // Emit a single whole-document replacement edit when the output differs.
+    let (edits, is_noop) = if formatted == source {
         (Vec::new(), true)
     } else {
         let new_text = match std::str::from_utf8(&formatted) {
@@ -187,19 +177,98 @@ pub fn format(request_json: &str) -> String {
 }
 
 /// Map VS Code language identifiers to the extension keys the registry uses.
+///
+/// VS Code language IDs don't always match file extensions, so we normalise
+/// before looking up the registry. The fallback (`other => other`) means any
+/// new language added to `LANGUAGE_MODULE_MAP` in the extension host works
+/// automatically without a Rust rebuild.
 fn language_id_to_ext(language_id: &str) -> &str {
     match language_id {
-        "javascript" | "javascriptreact" => "js",
-        "typescript" | "typescriptreact" => "ts",
-        "python" => "py",
-        "rust" => "rs",
-        "go" => "go",
-        "css" => "css",
-        "scss" => "scss",
-        "less" => "less",
-        "html" => "html",
-        // Fallback: use the language_id verbatim (covers future plugins)
-        other => other,
+        // ── Frontend & Web ───────────────────────────────────────────────
+        "javascript" | "javascriptreact"      => "js",
+        "typescript" | "typescriptreact"      => "ts",
+        "svelte"                               => "svelte",
+        "vue"                                  => "vue",
+        "astro"                                => "astro",
+        "css"                                  => "css",
+        "scss"                                 => "scss",
+        "sass"                                 => "sass",
+        "less"                                 => "less",
+        "html"                                 => "html",
+        // ── Systems ──────────────────────────────────────────────────────
+        "c"                                    => "c",
+        "cpp" | "cuda-cpp"                     => "cpp",
+        "objective-c"                          => "m",
+        "objective-cpp"                        => "mm",
+        "rust"                                 => "rs",
+        "go"                                   => "go",
+        "zig"                                  => "zig",
+        "nim"                                  => "nim",
+        "d"                                    => "d",
+        // ── JVM & .NET ───────────────────────────────────────────────────
+        "java"                                 => "java",
+        "kotlin"                               => "kt",
+        "scala"                                => "scala",
+        "groovy"                               => "groovy",
+        "csharp"                               => "cs",
+        "fsharp"                               => "fs",
+        // ── Scripting ────────────────────────────────────────────────────
+        "python"                               => "py",
+        "ruby"                                 => "rb",
+        "php"                                  => "php",
+        "perl"                                 => "pl",
+        "r"                                    => "r",
+        "julia"                                => "jl",
+        "lua"                                  => "lua",
+        // ── Shell ────────────────────────────────────────────────────────
+        "shellscript"                          => "sh",
+        "powershell"                           => "ps1",
+        "zsh"                                  => "zsh",
+        // ── Mobile ───────────────────────────────────────────────────────
+        "swift"                                => "swift",
+        "dart"                                 => "dart",
+        // ── Data & Config ────────────────────────────────────────────────
+        "json" | "json5" | "jsonc"             => "json",
+        "yaml"                                 => "yaml",
+        "toml"                                 => "toml",
+        "xml"                                  => "xml",
+        "ini"                                  => "ini",
+        // ── Query ────────────────────────────────────────────────────────
+        "sql"                                  => "sql",
+        "graphql"                              => "graphql",
+        // ── DevOps ───────────────────────────────────────────────────────
+        "terraform"                            => "tf",
+        "dockerfile"                           => "dockerfile",
+        "makefile"                             => "makefile",
+        "nix"                                  => "nix",
+        // ── Functional ───────────────────────────────────────────────────
+        "haskell"                              => "hs",
+        "elixir"                               => "ex",
+        "erlang"                               => "erl",
+        "ocaml"                                => "ml",
+        "clojure"                              => "clj",
+        "lisp"                                 => "lisp",
+        "scheme"                               => "scm",
+        // ── Docs ─────────────────────────────────────────────────────────
+        "markdown"                             => "md",
+        "latex"                                => "tex",
+        // ── Blockchain ───────────────────────────────────────────────────
+        "solidity"                             => "sol",
+        // ── Game & Automation ────────────────────────────────────────────
+        "gdscript"                             => "gd",
+        "ahk"                                  => "ahk",
+        // ── Stubs ────────────────────────────────────────────────────────
+        "cobol"                                => "cob",
+        "fortran"                              => "f90",
+        "asm"                                  => "asm",
+        // ── Templates ────────────────────────────────────────────────────
+        "jinja"                                => "jinja",
+        "liquid"                               => "liquid",
+        "ejs"                                  => "ejs",
+        "handlebars"                           => "hbs",
+        "twig"                                 => "twig",
+        // ── Fallback: pass language_id verbatim ──────────────────────────
+        other                                  => other,
     }
 }
 
@@ -207,8 +276,27 @@ fn language_id_to_ext(language_id: &str) -> &str {
 mod tests {
     use super::*;
 
+    /// Preferred path: source_text string — zero-copy, unlimited size.
     #[test]
-    fn format_returns_valid_json() {
+    fn format_source_text_path() {
+        let request = serde_json::json!({
+            "source_text": "hello",
+            "language_id": "typescript",
+            "config": {},
+            "range": null,
+            "previous_tree": null,
+            "edit": null
+        });
+        let result = format(&request.to_string());
+        let parsed: serde_json::Value =
+            serde_json::from_str(&result).expect("format() must return valid JSON");
+        assert!(parsed.get("edits").is_some(),   "must have 'edits'");
+        assert!(parsed.get("is_noop").is_some(), "must have 'is_noop'");
+    }
+
+    /// Legacy path: source as byte array — kept for CLI / backwards compat.
+    #[test]
+    fn format_legacy_source_bytes_path() {
         let request = serde_json::json!({
             "source": [104, 101, 108, 108, 111], // b"hello"
             "language_id": "typescript",
@@ -217,38 +305,32 @@ mod tests {
             "previous_tree": null,
             "edit": null
         });
-
         let result = format(&request.to_string());
         let parsed: serde_json::Value =
             serde_json::from_str(&result).expect("format() must return valid JSON");
-
-        assert!(
-            parsed.get("edits").is_some(),
-            "response must have 'edits' field"
-        );
-        assert!(
-            parsed.get("is_noop").is_some(),
-            "response must have 'is_noop' field"
-        );
+        assert!(parsed.get("edits").is_some(),   "must have 'edits'");
+        assert!(parsed.get("is_noop").is_some(), "must have 'is_noop'");
     }
 
+    /// Large file: no size cap. 20 MB of 'a' must format (or pass-through) cleanly.
     #[test]
-    fn format_rejects_oversized_file() {
-        let big_source: Vec<u8> = vec![b'a'; 11 * 1024 * 1024]; // 11 MB
+    fn format_large_file_no_cap() {
+        let big_source = "a".repeat(20 * 1024 * 1024); // 20 MB
         let request = serde_json::json!({
-            "source": big_source,
+            "source_text": big_source,
             "language_id": "typescript",
             "config": {},
             "range": null,
             "previous_tree": null,
             "edit": null
         });
-
         let result = format(&request.to_string());
         let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
-        assert_eq!(
-            parsed["error"]["kind"], "file_too_large",
-            "must reject files over 10MB"
+        // Must NOT return file_too_large
+        assert_ne!(
+            parsed.get("error").and_then(|e| e.get("kind")),
+            Some(&serde_json::Value::String("file_too_large".to_string())),
+            "large files must not be rejected"
         );
     }
 }

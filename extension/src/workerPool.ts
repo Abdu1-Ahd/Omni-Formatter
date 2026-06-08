@@ -53,27 +53,55 @@ export class WorkerPool {
    *
    * Returns the JSON-serialised FormatResponse from the WASM core.
    * Rejects if the cancellation token fires before a response arrives.
+   *
+   * Timeout: mirrors the worker-side timeout (30s + 1s per 100 KB) with a
+   * small buffer so the worker always replies first with a clean error.
    */
   dispatch(requestJson: string, token: vscode.CancellationToken): Promise<string> {
     return new Promise<string>((resolve, reject) => {
-      // Pick the worker with the smallest queue depth
       const entry = this.leastLoadedWorker();
 
       const messageId = this.nextMessageId++;
       entry.queueDepth++;
       entry.pending.set(messageId, { resolve, reject });
 
-      // Listen for cancellation
+      // ── Cancellation support ──────────────────────────────────────────
       const cancelListener = token.onCancellationRequested(() => {
         entry.pending.delete(messageId);
         entry.queueDepth = Math.max(0, entry.queueDepth - 1);
-        reject(new Error("Format request cancelled"));
+        reject(new Error("Format request cancelled by user"));
         cancelListener.dispose();
+        extensionTimer && clearTimeout(extensionTimer);
       });
+
+      // ── Extension-side safety timeout ─────────────────────────────────
+      // Slightly longer than the worker timeout so the worker always wins
+      // the race and can return a clean error message.
+      let byteLength = 0;
+      try {
+        const parsed = JSON.parse(requestJson) as { source_byte_length?: number };
+        byteLength = parsed.source_byte_length ?? 0;
+      } catch { /* ignore */ }
+
+      const workerTimeoutMs   = 30_000 + Math.ceil(byteLength / 102_400) * 1_000;
+      const extensionTimeoutMs = workerTimeoutMs + 5_000; // 5s buffer
+
+      const extensionTimer = setTimeout(() => {
+        if (entry.pending.has(messageId)) {
+          entry.pending.delete(messageId);
+          entry.queueDepth = Math.max(0, entry.queueDepth - 1);
+          cancelListener.dispose();
+          reject(new Error(
+            `OmniFormatter: format timed out after ${Math.round(extensionTimeoutMs / 1000)}s ` +
+            `(${Math.round(byteLength / 1024)} KB file)`
+          ));
+        }
+      }, extensionTimeoutMs);
 
       entry.worker.postMessage({ id: messageId, requestJson });
     });
   }
+
 
   /** Gracefully shut down all workers. */
   async shutdown(): Promise<void> {
