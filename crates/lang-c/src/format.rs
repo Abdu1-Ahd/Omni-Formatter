@@ -6,7 +6,11 @@
 use crate::{adapter::CConfig, CDialect};
 use protocol::FormatError;
 
-pub fn format(source: &[u8], _config: &CConfig, _dialect: CDialect) -> Result<Vec<u8>, FormatError> {
+pub fn format(
+    source: &[u8],
+    _config: &CConfig,
+    _dialect: CDialect,
+) -> Result<Vec<u8>, FormatError> {
     Ok(source.to_vec())
 }
 
