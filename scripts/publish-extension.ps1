@@ -10,7 +10,7 @@ cd extension
 # Dynamically sync README and LICENSE from workspace root
 Write-Host "[1/3] Syncing documentation and LICENSE..." -ForegroundColor Yellow
 if (Test-Path "../README.md") {
-    (Get-Content ../README.md) | Where-Object { $_ -notmatch '<img src="extension/media/logo\.png"' -and $_ -notmatch '^\s*<br/>\s*$' } | Set-Content README.md -Force
+    (Get-Content ../README.md) | Where-Object { $_ -notmatch '<img src=".*media/Omni-Formatter-Logo\.svg"' -and $_ -notmatch '^\s*<br/>\s*$' } | Set-Content README.md -Force
 }
 if (Test-Path "../LICENSE") {
     Copy-Item ../LICENSE LICENSE -Force
