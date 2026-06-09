@@ -11,12 +11,12 @@ cd extension
 Write-Host "[1/3] Syncing documentation and LICENSE..." -ForegroundColor Yellow
 if (Test-Path "../README.md") {
     $readme = Get-Content ../README.md -Raw -Encoding utf8
-    # Filter out the logo image line and any consecutive blank lines/linebreaks associated with it
-    $readme = $readme -replace '(?m)^\s*<img src=".*media/Omni-Formatter-Logo\.svg".*$\r?\n?', ''
-    $readme = $readme -replace '(?m)^\s*<br/>\s*$\r?\n?', ''
+    # Filter out the logo image and its trailing <br/>
+    $readme = $readme -replace '(?s)<img src=".*media/Omni-Formatter-Logo\.svg"[^>]*>\s*\r?\n?\s*<br/>\s*\r?\n?', ''
     $readme = $readme -replace '(?m)^\s*# OmniFormatter\s*$\r?\n?', ''
     $readme = $readme -replace '(?m)^\s*\[\!\[VS Code Marketplace Downloads\].*$\r?\n?', ''
     $readme = $readme -replace '(?m)^\s*\[\!\[Open VSX Downloads\].*$\r?\n?', ''
+    $readme = $readme -replace '\*\*One extension\. Every language\. Zero configuration\.\*\*', '**One extension. Every language. Zero configuration.**<br/>'
 
     # Replace the mermaid block with the unicode box diagram
     $mermaidBlock = '(?s)```mermaid\s*\r?\n.*?\r?\n```'
