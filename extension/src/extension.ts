@@ -5,18 +5,26 @@
  * preventing any startup latency impact (L-03 mitigation).
  *
  * Responsibilities:
+ * - Initialises the structured logger (attached to the OutputChannel).
  * - Registers the single DocumentFormattingEditProvider for all language IDs.
- * - Initialises the WorkerPool.
+ * - Initialises the WorkerPool (WASM-backed formatting engine).
  * - Initiates background WASM compilation for top-5 languages (L-03).
  * - Detects conflicting formatter extensions (L-11).
  * - Shows the status bar item (L-11 status communication).
+ *
+ * Error handling philosophy:
+ * - Commands are registered BEFORE any potentially-failing initialisation so
+ *   the status bar item remains clickable even if the worker pool fails.
+ * - All format errors are surfaced to the status bar and the output channel.
+ * - No swallowed exceptions anywhere in the activation path.
  */
 
 import * as vscode from "vscode";
 import * as path from "path";
 import * as os from "os";
 
-import { WorkerPool } from "./workerPool";
+import { logger } from "./logger";
+import { WorkerPool, OmniFormatterError } from "./workerPool";
 import { StatusBar } from "./statusBar";
 import { ModuleLoader } from "./moduleLoader";
 import { WasmCompiler } from "./wasmCompiler";
@@ -25,7 +33,13 @@ import { ConflictDetector } from "./conflictDetector";
 import { FormattingState } from "./formattingState";
 import { FormatterInfoCodeLensProvider } from "./providers/FormatterInfoCodeLensProvider";
 import { FormatterHoverProvider } from "./providers/FormatterHoverProvider";
+import { toUtf16CodeUnitOffset } from "./offsets";
 
+// ── Logger (module-level so it is accessible in handleFormatRequest) ──────
+
+const log = logger.withContext("Extension");
+
+// ── Language configuration ────────────────────────────────────────────────
 
 /** VS Code language IDs that OmniFormatter handles. */
 const SUPPORTED_LANGUAGE_IDS = [
@@ -74,7 +88,6 @@ const SUPPORTED_LANGUAGE_IDS = [
   "zsh",
   // ── Mobile Development ───────────────────────────────────────────────────
   "swift",
-  "objective-c",     // handled in lang-swift
   "dart",
   // ── Data Serialization & Config ──────────────────────────────────────────
   "json",
@@ -119,8 +132,7 @@ const SUPPORTED_LANGUAGE_IDS = [
   "handlebars",
   "twig",
 ] as const;
-
-/** Map from languageId to the module name that handles it. */
+/** Map from languageId to the WASM module name that handles it. */
 const LANGUAGE_MODULE_MAP: Record<string, string> = {
   // lang-js
   javascript:       "lang-js",
@@ -217,10 +229,44 @@ const LANGUAGE_MODULE_MAP: Record<string, string> = {
   twig:             "lang-template",
 };
 
-/** Extension-level globals — initialised in activate(), torn down in deactivate(). */
-let workerPool: WorkerPool | undefined;
-let statusBar: StatusBar | undefined;
-let outputChannel: vscode.OutputChannel | undefined;
+// ── WASM response types ───────────────────────────────────────────────────
+
+interface WasmEdit {
+  range:    { start: number; end: number };
+  new_text: string;
+}
+
+interface WasmFormatResponse {
+  edits:           WasmEdit[];
+  formatter_chain: string;
+  is_noop:         boolean;
+  error?:          unknown;
+}
+
+function isWasmFormatResponse(v: unknown): v is WasmFormatResponse {
+  if (typeof v !== "object" || v === null) { return false; }
+  const r = v as Record<string, unknown>;
+  return Array.isArray(r["edits"]) && typeof r["is_noop"] === "boolean";
+}
+
+function isWasmEdit(v: unknown): v is WasmEdit {
+  if (typeof v !== "object" || v === null) { return false; }
+  const e = v as Record<string, unknown>;
+  return (
+    typeof e["new_text"] === "string" &&
+    typeof e["range"]    === "object" && e["range"] !== null &&
+    typeof (e["range"] as Record<string, unknown>)["start"] === "number" &&
+    typeof (e["range"] as Record<string, unknown>)["end"]   === "number"
+  );
+}
+
+// ── Extension-level globals ───────────────────────────────────────────────
+
+let workerPool:     WorkerPool | undefined;
+let statusBar:      StatusBar  | undefined;
+let wasmCompiler:   WasmCompiler | undefined;
+
+// ── activate() ───────────────────────────────────────────────────────────
 
 /**
  * Extension activation function.
@@ -228,97 +274,81 @@ let outputChannel: vscode.OutputChannel | undefined;
  * Called once when the extension activates (onStartupFinished).
  */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  outputChannel = vscode.window.createOutputChannel("OmniFormatter");
-  context.subscriptions.push(outputChannel);
+  // ── Step 1: OutputChannel + Logger (must be first) ───────────────────
+  const channel = vscode.window.createOutputChannel("OmniFormatter");
+  context.subscriptions.push(channel);
+  logger.attach(channel);
 
-  log("OmniFormatter activating…");
+  log.info("OmniFormatter activating…", {
+    extensionPath: context.extensionPath,
+    cpus:          os.cpus().length,
+  });
 
-  // Initialise status bar
+  // ── Step 2: Status bar (must be early — shows error state on failures) ─
   statusBar = new StatusBar();
   context.subscriptions.push(statusBar);
 
-  // Register commands early so they are available even if worker initialization fails
-  context.subscriptions.push(
-    vscode.commands.registerCommand("omniFormatter.formatDocument", () => {
-      vscode.commands.executeCommand("editor.action.formatDocument");
-    }),
-    vscode.commands.registerCommand("omniFormatter.showStatus", () => {
-      outputChannel?.show();
-    }),
-    vscode.commands.registerCommand("omniFormatter.openDashboard", () => {
-      DashboardPanel.createOrShow(context);
-    }),
-    vscode.commands.registerCommand("omnifmt.formatWorkspace", async () => {
-      // Only format known source file types; exclude large non-source directories
-      const INCLUDE_GLOB = '**/*.{js,mjs,cjs,ts,mts,cts,tsx,jsx,py,pyw,rs,go,css,scss,sass,less,html,htm,svelte,vue,astro,c,h,cpp,hpp,cc,cxx,hh,mm,m,java,kt,kts,scala,sc,groovy,cs,fs,fsi,fsx,rb,php,pl,pm,lua,sh,bash,zsh,ps1,psm1,swift,dart,json,json5,yaml,yml,toml,xml,ini,sql,graphql,gql,tf,hcl,Dockerfile,nix,hs,lhs,ex,exs,erl,hrl,ml,mli,clj,cljs,r,R,jl,md,markdown,tex,zig,nim,sol,gd,ahk,lisp,lsp,scm,ss,jinja,jinja2,liquid,ejs,hbs,handlebars,twig}';
+  // ── Step 3: Register all commands BEFORE any potentially-failing init ──
+  //    This ensures the status bar button and palette commands always work,
+  //    even if the WASM worker pool fails to start.
+  registerCommands(context);
 
-      const EXCLUDE_GLOB = '**/{node_modules,.vscode-test,.vscode-test-user-data,.git,dist,out,target}/**';
-      const uris = await vscode.workspace.findFiles(INCLUDE_GLOB, EXCLUDE_GLOB);
-      log(`Formatting ${uris.length} files in workspace...`);
-      for (const uri of uris) {
-        try {
-          const doc = await vscode.workspace.openTextDocument(uri);
-          await vscode.window.showTextDocument(doc, { preview: false });
-          await vscode.commands.executeCommand("editor.action.formatDocument");
-          await doc.save();
-        } catch (e) {
-          log(`Failed to format ${uri.fsPath}: ${e}`);
-        }
-      }
-    })
-  );
+  // ── Step 4: FormattingState (singleton with Disposable) ──────────────
+  const formattingState = FormattingState.getInstance();
+  context.subscriptions.push(formattingState);
 
-  try {
-
-  // Initialise worker pool
+  // ── Step 5: Worker pool + everything that depends on it ───────────────
   const workerScript = path.join(context.extensionPath, "dist", "workers", "formatWorker.js");
-  const wasmDir = path.join(context.extensionPath, "dist", "wasm");
-  const numWorkers = Math.max(2, os.cpus().length - 1);
+  const wasmDir      = path.join(context.extensionPath, "dist", "wasm");
+  const numWorkers   = Math.max(2, os.cpus().length - 1);
 
   workerPool = new WorkerPool(workerScript, wasmDir, numWorkers);
-  await workerPool.initialise();
-  log(`Worker pool started with ${numWorkers} workers.`);
 
-  // Initialise module loader
+  try {
+    await workerPool.initialise();
+    log.info("Worker pool started", { numWorkers });
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    log.error("Worker pool failed to initialise", err instanceof Error ? err : new Error(errMsg));
+    statusBar.showError(
+      `WASM worker pool failed to start. Click to see details in the output channel.`
+    );
+    // Do NOT return — the extension can still register providers (they will
+    // produce empty results until the pool is available, or on next restart).
+  }
+
+  // ── Step 6: ModuleLoader ──────────────────────────────────────────────
   const moduleLoader = new ModuleLoader(
     context.globalStorageUri.fsPath,
     wasmDir
   );
 
-  // Background WASM compilation for top languages (L-03 mitigation)
-  const wasmCompiler = new WasmCompiler(wasmDir, context.globalStorageUri.fsPath);
+  // ── Step 7: Background WASM pre-compilation ───────────────────────────
+  wasmCompiler = new WasmCompiler(wasmDir, context.globalStorageUri.fsPath);
   wasmCompiler.precompileTopLanguages(["lang-js", "lang-python", "lang-rust", "lang-css"]);
 
-  // Detect conflicting formatters (L-11 mitigation)
+  // ── Step 8: Conflict detection ────────────────────────────────────────
   const conflictDetector = new ConflictDetector();
   conflictDetector.detectAndNotify(SUPPORTED_LANGUAGE_IDS as unknown as string[]);
 
-  // Register DocumentFormattingEditProvider for all supported languages
+  // ── Step 9: Document formatting providers ────────────────────────────
   for (const langId of SUPPORTED_LANGUAGE_IDS) {
     const provider = vscode.languages.registerDocumentFormattingEditProvider(
       { language: langId },
       {
-        provideDocumentFormattingEdits: async (
+        provideDocumentFormattingEdits: (
           document: vscode.TextDocument,
-          options: vscode.FormattingOptions,
-          token: vscode.CancellationToken
-        ): Promise<vscode.TextEdit[]> => {
-          return handleFormatRequest(
-            document,
-            options,
-            token,
-            moduleLoader,
-            context
-          );
-        },
+          options:  vscode.FormattingOptions,
+          token:    vscode.CancellationToken
+        ) => handleFormatRequest(document, options, token, moduleLoader, context),
       }
     );
     context.subscriptions.push(provider);
   }
 
-  // Register CodeLens and Hover providers for premium UX
+  // ── Step 10: CodeLens + Hover providers ──────────────────────────────
   const codeLensProvider = new FormatterInfoCodeLensProvider();
-  const hoverProvider = new FormatterHoverProvider();
+  const hoverProvider    = new FormatterHoverProvider();
   for (const langId of SUPPORTED_LANGUAGE_IDS) {
     context.subscriptions.push(
       vscode.languages.registerCodeLensProvider({ language: langId }, codeLensProvider),
@@ -326,160 +356,370 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     );
   }
 
-  // Format on save — triggered whenever a supported file is about to be saved.
-  // This fires independently of editor.formatOnSave so users don't need to
-  // configure that setting manually.
+  // ── Step 11: Format-on-save ───────────────────────────────────────────
   context.subscriptions.push(
     vscode.workspace.onWillSaveTextDocument((event) => {
       const { document } = event;
-      if (!SUPPORTED_LANGUAGE_IDS.includes(document.languageId as any)) return;
+      if (!(SUPPORTED_LANGUAGE_IDS as readonly string[]).includes(document.languageId)) {
+        return;
+      }
+
       const config = vscode.workspace.getConfiguration("omniFormatter", document.uri);
-      if (!config.get<boolean>("enable", true)) return;
+      if (!config.get<boolean>("enable", true)) { return; }
+
+      // Each save gets its own CancellationTokenSource that is always disposed.
+      const cts = new vscode.CancellationTokenSource();
+      context.subscriptions.push(cts); // disposes on extension deactivation as a safety net
 
       event.waitUntil(
-        handleFormatRequest(document, { tabSize: 2, insertSpaces: true }, new vscode.CancellationTokenSource().token, moduleLoader, context)
+        handleFormatRequest(
+          document,
+          { tabSize: 2, insertSpaces: true },
+          cts.token,
+          moduleLoader,
+          context
+        ).finally(() => {
+          cts.dispose();
+        })
       );
     })
   );
 
-  } catch (err) {
-    statusBar?.showError(String(err));
-    log(`Activation failed: ${err}`);
+  // ── Step 12: Evict FormattingState on document close ──────────────────
+  context.subscriptions.push(
+    vscode.workspace.onDidCloseTextDocument((doc) => {
+      formattingState.deleteState(doc.uri);
+    })
+  );
+
+  log.info("OmniFormatter activated successfully.");
+}
+
+// ── deactivate() ─────────────────────────────────────────────────────────
+
+export async function deactivate(): Promise<void> {
+  log.info("OmniFormatter deactivating…");
+
+  // Shut down the worker pool (rejects all in-flight requests gracefully).
+  if (workerPool) {
+    try {
+      await workerPool.shutdown();
+    } catch (err) {
+      log.warn("Worker pool shutdown encountered an error", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    workerPool = undefined;
   }
 
-  log("OmniFormatter activated.");
+  // Release the compiled WASM module cache.
+  wasmCompiler?.clearCache();
+  wasmCompiler = undefined;
+
+  // Detach the logger from the output channel (channel will be disposed by VS Code).
+  logger.detach();
+
+  log.info("OmniFormatter deactivated.");
 }
+
+// ── handleFormatRequest() ─────────────────────────────────────────────────
 
 /**
  * Handle a format request for a single document.
  *
- * Converts VS Code UTF-16 positions to UTF-8 byte offsets,
- * dispatches to the worker pool, and converts the response
- * back to VS Code TextEdits.
+ * Converts VS Code UTF-16 positions to UTF-8 byte offsets, dispatches to the
+ * worker pool, validates the response shape, and converts back to VS Code
+ * TextEdits. Every error path is fully logged and surfaces to the status bar.
  */
 async function handleFormatRequest(
-  document: vscode.TextDocument,
-  _options: vscode.FormattingOptions,
-  token: vscode.CancellationToken,
+  document:    vscode.TextDocument,
+  _options:    vscode.FormattingOptions,
+  token:       vscode.CancellationToken,
   _moduleLoader: ModuleLoader,
-  _context: vscode.ExtensionContext
+  _context:    vscode.ExtensionContext
 ): Promise<vscode.TextEdit[]> {
-  const langId = document.languageId;
+  // ── Guard: pool must exist ────────────────────────────────────────────
+  if (!workerPool) {
+    log.warn("Format request ignored — worker pool is not running", {
+      uri: document.uri.toString(),
+    });
+    return [];
+  }
+
+  // ── Guard: document must still be open ───────────────────────────────
+  if (document.isClosed) {
+    log.debug("Format request ignored — document was closed before formatting started", {
+      uri: document.uri.toString(),
+    });
+    return [];
+  }
+
+  const langId     = document.languageId;
   const moduleName = LANGUAGE_MODULE_MAP[langId];
 
   if (!moduleName) {
-    log(`No module for language: ${langId}`);
+    log.debug("No module registered for language", { langId });
     return [];
   }
 
-  // ── Build format request (zero-copy path) ──────────────────────────
-  // `source_text` sends the raw UTF-8 string directly into the JSON payload.
-  // No Buffer conversion. No Array.from(). No base64. No size cap.
-  // WASM deserialises it as a Rust String — one JSON parse, done.
-  // File size is unlimited: the only bound is available memory.
-  const byteEstimate = sourceText.length * 3; // worst-case UTF-8 bytes
+  // ── Read source text ─────────────────────────────────────────────────
+  const sourceText    = document.getText();
+  // Estimate byte size for timeout scaling and progress notification.
+  // UTF-8 worst case: 4 bytes per character (supplementary codepoints).
+  const byteEstimate  = Buffer.byteLength(sourceText, "utf8");
 
-  // Progress notification for files over 1 MB (purely cosmetic — the actual
-  // IPC is fast; the WASM formatter is what takes time on huge files).
-  let progressDispose: vscode.Disposable | undefined;
+  // ── Build format request ──────────────────────────────────────────────
+  const request = {
+    source_text:        sourceText,
+    source_byte_length: byteEstimate,
+    language_id:        langId,
+    config:             {},
+    range:              null,
+    previous_tree:      null,
+    edit:               null,
+  };
+
+  let requestJson: string;
+  try {
+    requestJson = JSON.stringify(request);
+  } catch (err) {
+    log.error("Failed to serialise format request", err instanceof Error ? err : new Error(String(err)), {
+      langId,
+      uri: document.uri.toString(),
+    });
+    return [];
+  }
+
+  // ── Progress notification for large files (> 1 MB) ───────────────────
+  let progressResolve: (() => void) | undefined;
   if (byteEstimate > 1_048_576) {
-    vscode.window.withProgress(
+    void vscode.window.withProgress(
       {
-        location: vscode.ProgressLocation.Window,
-        title: `OmniFormatter: formatting ${langId} (≈${Math.round(byteEstimate / 1024)} KB)…`,
+        location:    vscode.ProgressLocation.Window,
+        title:       `OmniFormatter: formatting ${langId} (≈${Math.round(byteEstimate / 1024)} KB)…`,
         cancellable: false,
       },
-      () => new Promise<void>((res) => { progressDispose = { dispose: res }; })
+      () => new Promise<void>((resolve) => { progressResolve = resolve; })
     );
   }
 
-  const request = {
-    source_text:       sourceText,   // ← raw string, WASM reads as Rust String
-    source_byte_length: byteEstimate, // ← worker uses this to size its timeout
-    language_id: langId,
-    config: {},
-    range: null,
-    previous_tree: null,
-    edit: null,
-  };
-
+  // ── Dispatch to worker pool ───────────────────────────────────────────
+  const startMs = Date.now();
+  let responseJson: string;
   try {
-    const startMs = Date.now();
-    const responseJson = await workerPool!.dispatch(JSON.stringify(request), token);
-    const elapsedMs = Date.now() - startMs;
-
-    // Dismiss progress notification if shown
-    progressDispose?.dispose();
-
-    const response = JSON.parse(responseJson) as {
-      edits: Array<{ range: { start: number; end: number }; new_text: string }>;
-      formatter_chain: string;
-      is_noop: boolean;
-      error?: unknown;
-    };
-
-    if (response.error) {
-      log(`Format error: ${JSON.stringify(response.error)}`);
-      return [];
-    }
-
-    statusBar?.update(langId, response.formatter_chain, elapsedMs);
-    log(`Formatted ${langId} in ${elapsedMs}ms via ${response.formatter_chain}`);
-
-    FormattingState.getInstance().updateState(document.uri, {
-      formatterChain: response.formatter_chain,
-      elapsedMs,
-      timestamp: Date.now(),
-    });
-
-    if (response.is_noop || response.edits.length === 0) {
-      return [];
-    }
-
-    // Convert UTF-8 byte offset TextEdits back to VS Code UTF-16 positions
-    return response.edits.map((edit) => {
-      const startPos = document.positionAt(
-        utf8ByteOffsetToUtf16CodeUnit(sourceText, edit.range.start)
-      );
-      const endPos = document.positionAt(
-        utf8ByteOffsetToUtf16CodeUnit(sourceText, edit.range.end)
-      );
-      return vscode.TextEdit.replace(
-        new vscode.Range(startPos, endPos),
-        edit.new_text
-      );
-    });
+    responseJson = await workerPool.dispatch(requestJson, token);
   } catch (err) {
-    log(`Unexpected error: ${err}`);
+    progressResolve?.();
+
+    // Cancellation is a normal user action — no error surfacing needed.
+    const isCancelled = err instanceof OmniFormatterError && err.code === "CANCELLED";
+    if (isCancelled) {
+      log.debug("Format request cancelled", { langId, uri: document.uri.toString() });
+      return [];
+    }
+
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    log.error("Worker pool dispatch failed", err instanceof Error ? err : new Error(errorMsg), {
+      langId,
+      uri:       document.uri.toString(),
+      byteEstimate,
+    });
+    statusBar?.showError(`Failed to format ${langId} — see output channel for details.`);
     return [];
   }
+
+  const elapsedMs = Date.now() - startMs;
+  progressResolve?.();
+
+  // ── Parse and validate response ───────────────────────────────────────
+  let response: unknown;
+  try {
+    response = JSON.parse(responseJson);
+  } catch (err) {
+    log.error("WASM returned non-JSON response", err instanceof Error ? err : new Error(String(err)), {
+      langId,
+      responsePreview: responseJson.slice(0, 300),
+    });
+    statusBar?.showError(`Internal error formatting ${langId} — bad response from WASM.`);
+    return [];
+  }
+
+  if (!isWasmFormatResponse(response)) {
+    log.error(
+      "WASM response did not match expected shape",
+      new Error("Unexpected WASM response shape"),
+      {
+        langId,
+        responsePreview: JSON.stringify(response).slice(0, 300),
+      }
+    );
+    statusBar?.showError(`Internal error formatting ${langId} — unexpected WASM response.`);
+    return [];
+  }
+
+  if (response.error) {
+    const errorMsg = typeof response.error === "string"
+      ? response.error
+      : JSON.stringify(response.error);
+    log.error("WASM formatter returned an error", new Error(errorMsg), {
+      langId,
+      elapsedMs,
+      uri: document.uri.toString(),
+    });
+    statusBar?.showError(`Format error in ${langId} — see output channel for details.`);
+    return [];
+  }
+
+  // ── Guard: document may have been closed while we were waiting ────────
+  if (document.isClosed) {
+    log.debug("Document was closed while formatting — discarding edits", {
+      langId,
+      uri: document.uri.toString(),
+    });
+    return [];
+  }
+
+  // ── Update status bar and state ───────────────────────────────────────
+  statusBar?.update(langId, response.formatter_chain, elapsedMs);
+  log.debug("Format complete", {
+    langId,
+    formatterChain: response.formatter_chain,
+    elapsedMs,
+    editCount:      response.edits.length,
+    isNoop:         response.is_noop,
+  });
+
+  FormattingState.getInstance().updateState(document.uri, {
+    formatterChain: response.formatter_chain,
+    elapsedMs,
+    timestamp:      Date.now(),
+  });
+
+  if (response.is_noop || response.edits.length === 0) {
+    return [];
+  }
+
+  // ── Convert UTF-8 byte offset TextEdits to VS Code UTF-16 positions ───
+  const textEdits: vscode.TextEdit[] = [];
+
+  for (const edit of response.edits) {
+    if (!isWasmEdit(edit)) {
+      log.warn("Skipping malformed edit in WASM response", {
+        langId,
+        edit: JSON.stringify(edit).slice(0, 200),
+      });
+      continue;
+    }
+
+    const startUtf16 = toUtf16CodeUnitOffset(sourceText, edit.range.start);
+    const endUtf16   = toUtf16CodeUnitOffset(sourceText, edit.range.end);
+    const startPos   = document.positionAt(startUtf16);
+    const endPos     = document.positionAt(endUtf16);
+    textEdits.push(
+      vscode.TextEdit.replace(new vscode.Range(startPos, endPos), edit.new_text)
+    );
+  }
+
+  return textEdits;
 }
 
+// ── registerCommands() ────────────────────────────────────────────────────
+
 /**
- * Convert a UTF-8 byte offset to a VS Code UTF-16 code unit offset.
+ * Register all extension commands.
  *
- * VS Code uses UTF-16 code unit offsets in all its position APIs.
- * WASM operates on UTF-8 bytes. This conversion runs on the extension
- * host boundary (L-14 mitigation).
+ * Called BEFORE workerPool.initialise() so the commands are always available.
  */
-function utf8ByteOffsetToUtf16CodeUnit(text: string, byteOffset: number): number {
-  const utf8 = Buffer.from(text, "utf8");
-  const slice = utf8.slice(0, byteOffset);
-  return slice.toString("utf8").length;
-}
+function registerCommands(context: vscode.ExtensionContext): void {
+  context.subscriptions.push(
+    // Format the active document
+    vscode.commands.registerCommand("omniFormatter.formatDocument", () => {
+      void vscode.commands.executeCommand("editor.action.formatDocument");
+    }),
 
-/** Write to the OmniFormatter output channel. */
-function log(message: string): void {
-  console.log(`[OmniFormatter] ${message}`);
-  outputChannel?.appendLine(`[${new Date().toISOString()}] ${message}`);
-}
+    // Show the output channel (status bar click target)
+    vscode.commands.registerCommand("omniFormatter.showStatus", () => {
+      const channel = context.subscriptions.find(
+        (s): s is vscode.OutputChannel =>
+          typeof (s as vscode.OutputChannel).appendLine === "function"
+      );
+      if (channel) {
+        (channel as vscode.OutputChannel).show();
+      } else {
+        // Fallback: try to show by name
+        void vscode.commands.executeCommand("workbench.action.output.show", "OmniFormatter");
+      }
+    }),
 
-/**
- * Extension deactivation function.
- * Tears down the worker pool cleanly.
- */
-export async function deactivate(): Promise<void> {
-  await workerPool?.shutdown();
-  workerPool = undefined;
-  log("OmniFormatter deactivated.");
+    // Open the interactive dashboard webview
+    vscode.commands.registerCommand("omniFormatter.openDashboard", () => {
+      DashboardPanel.createOrShow(context);
+    }),
+
+    // Format every source file in the workspace
+    vscode.commands.registerCommand("omnifmt.formatWorkspace", async () => {
+      const INCLUDE_GLOB =
+        "**/*.{js,mjs,cjs,ts,mts,cts,tsx,jsx,py,pyw,rs,go,css,scss,sass,less," +
+        "html,htm,svelte,vue,astro,c,h,cpp,hpp,cc,cxx,hh,mm,m,java,kt,kts," +
+        "scala,sc,groovy,cs,fs,fsi,fsx,rb,php,pl,pm,lua,sh,bash,zsh,ps1,psm1," +
+        "swift,dart,json,json5,yaml,yml,toml,xml,ini,sql,graphql,gql,tf,hcl," +
+        "Dockerfile,nix,hs,lhs,ex,exs,erl,hrl,ml,mli,clj,cljs,r,R,jl," +
+        "md,markdown,tex,zig,nim,sol,gd,ahk,lisp,lsp,scm,ss,jinja,jinja2," +
+        "liquid,ejs,hbs,handlebars,twig}";
+
+      const EXCLUDE_GLOB =
+        "**/{node_modules,.vscode-test,.vscode-test-user-data,.git,dist,out,target}/**";
+
+      let uris: vscode.Uri[];
+      try {
+        uris = await vscode.workspace.findFiles(INCLUDE_GLOB, EXCLUDE_GLOB);
+      } catch (err) {
+        log.error("formatWorkspace: findFiles failed", err instanceof Error ? err : new Error(String(err)));
+        void vscode.window.showErrorMessage("OmniFormatter: Failed to enumerate workspace files.");
+        return;
+      }
+
+      log.info(`Formatting ${uris.length} files in workspace…`);
+
+      let successCount = 0;
+      let failCount    = 0;
+
+      for (const uri of uris) {
+        try {
+          const doc = await vscode.workspace.openTextDocument(uri);
+          await vscode.window.showTextDocument(doc, { preview: false });
+          await vscode.commands.executeCommand("editor.action.formatDocument");
+          await doc.save();
+          successCount++;
+        } catch (err) {
+          failCount++;
+          log.warn("formatWorkspace: failed to format file", {
+            uri:   uri.fsPath,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      log.info("formatWorkspace complete", { successCount, failCount, total: uris.length });
+      if (failCount > 0) {
+        void vscode.window.showWarningMessage(
+          `OmniFormatter: Workspace format complete. ${successCount} succeeded, ${failCount} failed. ` +
+          `Check the output channel for details.`
+        );
+      } else {
+        void vscode.window.showInformationMessage(
+          `OmniFormatter: Formatted ${successCount} files successfully.`
+        );
+      }
+    })
+  );
+
+  log.debug("Commands registered.", {
+    commands: [
+      "omniFormatter.formatDocument",
+      "omniFormatter.showStatus",
+      "omniFormatter.openDashboard",
+      "omnifmt.formatWorkspace",
+    ],
+  });
 }

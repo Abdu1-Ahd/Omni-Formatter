@@ -1,4 +1,8 @@
 import * as vscode from "vscode";
+import * as crypto from "crypto";
+import { logger } from "../logger";
+
+const log = logger.withContext("DashboardPanel");
 
 /**
  * Manages the OmniFormatter Interactive Config Dashboard Webview.
@@ -52,22 +56,40 @@ export class DashboardPanel {
 
     // Handle messages from the webview
     this._panel.webview.onDidReceiveMessage(
-      async (message) => {
+      async (message: { command: string; key?: string; value?: unknown }) => {
         switch (message.command) {
           case "getConfig": {
             const config = vscode.workspace.getConfiguration("omniFormatter");
             const settings = {
-              enable: config.get("enable", true),
+              enable:   config.get("enable", true),
               logLevel: config.get("logLevel", "warn"),
             };
             this._panel.webview.postMessage({ command: "configLoaded", settings });
             break;
           }
+
           case "updateConfig": {
-            const config = vscode.workspace.getConfiguration("omniFormatter");
             const { key, value } = message;
-            await config.update(key, value, vscode.ConfigurationTarget.Workspace);
-            vscode.window.showInformationMessage(`OmniFormatter: Setting "${key}" updated.`);
+            if (typeof key !== "string" || !key) {
+              log.warn("Received updateConfig with invalid key", { key, value });
+              break;
+            }
+            const config = vscode.workspace.getConfiguration("omniFormatter");
+            try {
+              await config.update(key, value, vscode.ConfigurationTarget.Workspace);
+              void vscode.window.showInformationMessage(`OmniFormatter: Setting "${key}" updated.`);
+            } catch (err) {
+              log.error(`Failed to update setting "${key}"`, err instanceof Error ? err : new Error(String(err)), { key, value });
+              void vscode.window.showErrorMessage(
+                `OmniFormatter: Could not update setting "${key}". ` +
+                `Check the output channel for details.`
+              );
+            }
+            break;
+          }
+
+          default: {
+            log.debug("Dashboard received unknown command", { command: message.command });
             break;
           }
         }
@@ -101,12 +123,9 @@ export class DashboardPanel {
 }
 
 function getNonce(): string {
-  let text = "";
-  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
+  // Use crypto.randomBytes for a cryptographically secure nonce,
+  // replacing the insecure Math.random() approach.
+  return crypto.randomBytes(24).toString("base64url");
 }
 
 function getDashboardHtml(nonce: string, version: string): string {

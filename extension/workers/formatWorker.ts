@@ -11,110 +11,249 @@
  * 4. For each incoming { id, requestJson } message:
  *    a. Calls the WASM `format()` export.
  *    b. Sends { id, responseJson } back.
+ *
+ * Error handling contract:
+ * - WASM load failure → sends { ready: false, error: <message> } and exits.
+ * - Per-request failure → sends { id, error: <message> }, worker stays alive.
+ * - Timeout → sends { id, error: <timeout message> }, worker stays alive.
+ *   (The extension-host pool will spawn a replacement if the worker exits.)
  */
 
 import { workerData, parentPort } from "worker_threads";
 import * as fs from "fs";
 import * as path from "path";
 
-if (!parentPort) {
-  throw new Error("formatWorker.ts must run inside a Worker thread");
+// ── Type safety ──────────────────────────────────────────────────────────
+
+interface WorkerData {
+  wasmDir: string;
 }
 
-const { wasmDir } = workerData as { wasmDir: string };
+interface IncomingMessage {
+  id: number;
+  requestJson: string;
+}
 
-let wasmBindgenApi: any = null;
+interface OutgoingReady {
+  ready: true;
+}
+
+interface OutgoingInitError {
+  ready: false;
+  error: string;
+}
+
+interface OutgoingResponse {
+  id: number;
+  responseJson: string;
+}
+
+interface OutgoingError {
+  id: number;
+  error: string;
+}
+
+type OutgoingMessage = OutgoingReady | OutgoingInitError | OutgoingResponse | OutgoingError;
+
+// ── Guards ───────────────────────────────────────────────────────────────
+
+if (!parentPort) {
+  // This file must only be loaded as a Worker thread, never directly.
+  throw new Error("[formatWorker] Must run inside a Worker thread — direct execution is not supported.");
+}
+
+const { wasmDir } = (workerData as WorkerData);
+
+if (!wasmDir || typeof wasmDir !== "string") {
+  parentPort.postMessage({ ready: false, error: "[formatWorker] workerData.wasmDir is missing or not a string." } satisfies OutgoingInitError);
+  process.exit(1);
+}
+
+// ── WASM binding ─────────────────────────────────────────────────────────
+
+/** The initialised wasm-bindgen API object. Set once, then immutable. */
+let wasmBindgenApi: {
+  format: (requestJson: string) => string;
+  init_wasm?: () => void | Promise<void>;
+} | null = null;
 
 async function loadWasm(): Promise<void> {
   const wasmPath = path.join(wasmDir, "omni_core_bg.wasm");
-  const jsPath = path.join(wasmDir, "omni_core.js");
+  const jsPath   = path.join(wasmDir, "omni_core.js");
 
-  if (!fs.existsSync(wasmPath) || !fs.existsSync(jsPath)) {
-    throw new Error(`WASM binary or JS wrapper not found in: ${wasmDir}`);
+  if (!fs.existsSync(wasmPath)) {
+    throw new Error(`WASM binary not found at: ${wasmPath}`);
+  }
+  if (!fs.existsSync(jsPath)) {
+    throw new Error(`WASM JS wrapper not found at: ${jsPath}`);
   }
 
-  const wasmBytes = fs.readFileSync(wasmPath);
-  const jsCode = fs.readFileSync(jsPath, "utf8");
+  let wasmBytes: Buffer;
+  let jsCode: string;
+  try {
+    wasmBytes = fs.readFileSync(wasmPath);
+  } catch (err) {
+    throw new Error(`Failed to read WASM binary at ${wasmPath}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  try {
+    jsCode = fs.readFileSync(jsPath, "utf8");
+  } catch (err) {
+    throw new Error(`Failed to read WASM JS wrapper at ${jsPath}: ${err instanceof Error ? err.message : String(err)}`);
+  }
 
+  // Patch the import map so both possible import keys resolve correctly.
   const patchedJsCode = jsCode.replace(
-    /"\.\/omni_core_bg\.js": import0,/g,
+    /"\.\/omni_core_bg\.js":\s*import0,/g,
     '"./omni_core_bg.js": import0, "./core_bg.js": import0,'
   );
 
-  // Evaluate the generated JS wrapper in this worker context
-  const getWasmBindgen = new Function(`
-    ${patchedJsCode}
-    return wasm_bindgen;
-  `);
-  
+  // Evaluate the generated JS wrapper in this worker context.
+  let getWasmBindgen: () => typeof wasmBindgenApi;
+  try {
+    // eslint-disable-next-line no-new-func
+    getWasmBindgen = new Function(`
+      ${patchedJsCode}
+      return wasm_bindgen;
+    `) as () => typeof wasmBindgenApi;
+  } catch (err) {
+    throw new Error(`Failed to evaluate WASM JS wrapper: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   const initWasmBindgen = getWasmBindgen();
-  await initWasmBindgen(wasmBytes);
-  
-  wasmBindgenApi = initWasmBindgen;
-  wasmBindgenApi.init_wasm();
+  if (typeof initWasmBindgen !== "function") {
+    throw new Error("WASM JS wrapper did not export a callable wasm_bindgen function.");
+  }
+
+  try {
+    await (initWasmBindgen as (bytes: Buffer) => Promise<unknown>)(wasmBytes);
+  } catch (err) {
+    throw new Error(`wasm_bindgen initialisation failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  wasmBindgenApi = initWasmBindgen as typeof wasmBindgenApi;
+
+  // `init_wasm()` may be synchronous or return a Promise — handle both.
+  if (typeof wasmBindgenApi?.init_wasm === "function") {
+    try {
+      const result = wasmBindgenApi.init_wasm();
+      if (result instanceof Promise) {
+        await result;
+      }
+    } catch (err) {
+      throw new Error(`init_wasm() failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 }
+
+// ── Initialisation ───────────────────────────────────────────────────────
 
 async function init(): Promise<void> {
   try {
     await loadWasm();
-    parentPort!.postMessage({ ready: true });
+    (parentPort!).postMessage({ ready: true } satisfies OutgoingReady);
   } catch (err) {
-    parentPort!.postMessage({ ready: false, error: String(err) });
+    const message = err instanceof Error
+      ? `${err.message}${err.stack ? `\n${err.stack}` : ""}`
+      : String(err);
+    (parentPort!).postMessage({ ready: false, error: message } satisfies OutgoingInitError);
+    // Give the parent time to receive the message before exiting.
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
     process.exit(1);
   }
 }
 
-parentPort.on("message", (msg: { id: number; requestJson: string }) => {
+// ── Message handler ──────────────────────────────────────────────────────
+
+function send(msg: OutgoingMessage): void {
+  parentPort!.postMessage(msg);
+}
+
+parentPort.on("message", (msg: IncomingMessage) => {
   if (!wasmBindgenApi) {
-    parentPort!.postMessage({ id: msg.id, error: "WASM not initialised" });
+    send({ id: msg.id, error: "[formatWorker] WASM is not yet initialised — request dropped." });
     return;
   }
 
-  // ── Per-request timeout ────────────────────────────────────────────────
-  // Scales with file size: 30s base + 1s per 100 KB of estimated source size.
-  // Prevents a pathological file from permanently hanging the worker thread.
+  if (typeof msg.id !== "number" || typeof msg.requestJson !== "string") {
+    // Malformed message — log and ignore (no id to reply to reliably).
+    console.error("[formatWorker] Received malformed message:", msg);
+    return;
+  }
+
+  // ── Per-request timeout ──────────────────────────────────────────────
+  // Scales with file size: 30 s base + 1 s per 100 KB of estimated source.
   let byteEstimate = 0;
   try {
-    const meta = JSON.parse(msg.requestJson) as { source_byte_length?: number };
-    byteEstimate = meta.source_byte_length ?? 0;
-  } catch { /* ignore — timeout will use the 30s base */ }
+    const meta = JSON.parse(msg.requestJson) as { source_byte_length?: unknown };
+    if (typeof meta.source_byte_length === "number") {
+      byteEstimate = meta.source_byte_length;
+    }
+  } catch {
+    /* ignore — timeout uses the 30 s base */
+  }
 
   const timeoutMs = 30_000 + Math.ceil(byteEstimate / 102_400) * 1_000;
 
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
-    parentPort!.postMessage({
-      id:    msg.id,
-      error: `OmniFormatter: format timed out after ${Math.round(timeoutMs / 1000)}s ` +
-             `(≈${Math.round(byteEstimate / 1024)} KB file)`,
+    send({
+      id: msg.id,
+      error: (
+        `[formatWorker] Format timed out after ${Math.round(timeoutMs / 1000)}s ` +
+        `(≈${Math.round(byteEstimate / 1024)} KB file). ` +
+        `The WASM formatter may be stuck on a pathological input.`
+      ),
     });
   }, timeoutMs);
 
   // ── Call WASM ─────────────────────────────────────────────────────────
-  // `msg.requestJson` already contains `source_text` as a plain JSON string
-  // field. The WASM core (FormatRequest) reads it as a Rust String directly.
-  // Zero decoding. Zero re-encoding. One JSON parse inside WASM, done.
+  const sizeTag = byteEstimate > 0 ? `[≈${Math.round(byteEstimate / 1024)}KB]` : "";
+  const label   = `omni:format${sizeTag}`;
+  console.time(label);
+
   try {
-    const sizeTag = byteEstimate > 0 ? `[≈${Math.round(byteEstimate / 1024)}KB]` : "";
-    console.time(`omni:format${sizeTag}`);
+    const responseJson = wasmBindgenApi!.format(msg.requestJson);
 
-    const responseJson = wasmBindgenApi.format(msg.requestJson);
-
-    console.timeEnd(`omni:format${sizeTag}`);
+    console.timeEnd(label);
+    clearTimeout(timer);
 
     if (!timedOut) {
-      clearTimeout(timer);
-      parentPort!.postMessage({ id: msg.id, responseJson });
+      send({ id: msg.id, responseJson });
     }
   } catch (err) {
+    console.timeEnd(label);
     clearTimeout(timer);
+
     if (!timedOut) {
-      parentPort!.postMessage({ id: msg.id, error: `Worker error: ${err}` });
+      const detail = err instanceof Error
+        ? `${err.message}${err.stack ? `\n${err.stack}` : ""}`
+        : String(err);
+      send({
+        id: msg.id,
+        error: `[formatWorker] WASM format() threw an exception: ${detail}`,
+      });
     }
   }
 });
 
+// ── Unhandled rejection / uncaught exception safety net ─────────────────
 
+process.on("uncaughtException", (err: Error) => {
+  const message = `[formatWorker] Uncaught exception: ${err.message}\n${err.stack ?? ""}`;
+  console.error(message);
+  // Exit so the pool spawns a replacement worker.
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason: unknown) => {
+  const message = reason instanceof Error
+    ? `[formatWorker] Unhandled rejection: ${reason.message}\n${reason.stack ?? ""}`
+    : `[formatWorker] Unhandled rejection: ${String(reason)}`;
+  console.error(message);
+  process.exit(1);
+});
+
+// ── Start ─────────────────────────────────────────────────────────────────
 
 init();

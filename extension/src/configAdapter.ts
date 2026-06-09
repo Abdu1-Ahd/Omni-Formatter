@@ -37,6 +37,11 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { resolveEditorConfigCached, clearEditorConfigCache, EditorConfigResult } from "./editorConfig";
+import { logger } from "./logger";
+
+const log = logger.withContext("ConfigAdapter");
+
+// ── Types ─────────────────────────────────────────────────────────────────
 
 /** Resolved configuration for a single language format request. */
 export interface ResolvedConfig {
@@ -48,18 +53,19 @@ export interface ResolvedConfig {
 
 /** A partial ConfigIR — all fields optional, to allow partial overrides. */
 interface PartialConfig {
-  printWidth?: number;
-  indentSize?: number;
-  indentStyle?: "spaces" | "tabs";
-  quoteStyle?: "single" | "double";
+  printWidth?:   number;
+  indentSize?:   number;
+  indentStyle?:  "spaces" | "tabs";
+  quoteStyle?:   "single" | "double";
   trailingComma?: boolean;
-  semicolons?: boolean;
-  endOfLine?: "lf" | "crlf" | "cr" | "auto";
-  mode?: "opinionated" | "advanced";
-  postFormat?: string[];
-  // Language-specific extensions
+  semicolons?:   boolean;
+  endOfLine?:    "lf" | "crlf" | "cr" | "auto";
+  mode?:         "opinionated" | "advanced";
+  postFormat?:   string[];
   [key: string]: unknown;
 }
+
+// ── ConfigAdapter ─────────────────────────────────────────────────────────
 
 export class ConfigAdapter {
   private readonly workspaceFolders: readonly vscode.WorkspaceFolder[];
@@ -71,48 +77,56 @@ export class ConfigAdapter {
   /**
    * Resolve the ConfigIR for a specific document and language.
    *
-   * @param document The document being formatted.
+   * Never throws — all errors are logged and the next config layer is used.
+   *
+   * @param document   The document being formatted.
    * @param languageId The VS Code language ID.
-   * @returns The resolved ConfigIR as a JSON string.
+   * @returns The resolved ConfigIR as a JSON string plus the list of sources used.
    */
   resolve(document: vscode.TextDocument, languageId: string): ResolvedConfig {
-    const docPath = document.uri.fsPath;
+    const docPath      = document.uri.fsPath;
     const workspaceRoot = this.findWorkspaceRoot(docPath);
 
     const sources: string[] = [];
     let merged: PartialConfig = {};
 
-    // Layer 4 (base): Module defaults — applied implicitly by WASM core.
-    // ConfigIR::default() is used by the WASM core if no config JSON provided.
-
-    // Layer 3: .editorconfig
+    // Layer 3: .editorconfig (base)
     const editorConfig = this.readEditorConfig(docPath);
     if (editorConfig) {
       merged = { ...merged, ...editorConfig };
       sources.push(".editorconfig");
     }
 
-    // Layer 2: Language-native config
+    // Layer 2: language-native config
     const nativeConfig = this.readNativeConfig(workspaceRoot, languageId);
     if (nativeConfig) {
       merged = { ...merged, ...nativeConfig.config };
       sources.push(nativeConfig.source);
     }
 
-    // Layer 1: .omnifmt.json (highest priority override)
+    // Layer 1: .omnifmt.json (highest priority)
     const omnifmtConfig = this.readOmnifmtJson(workspaceRoot, languageId);
     if (omnifmtConfig) {
       merged = { ...merged, ...omnifmtConfig };
       sources.push(".omnifmt.json");
     }
 
-    return {
-      configJson: JSON.stringify(merged),
-      sources,
-    };
+    let configJson = "{}";
+    try {
+      configJson = JSON.stringify(merged);
+    } catch (err) {
+      log.error("Failed to serialise resolved config", err instanceof Error ? err : new Error(String(err)), {
+        languageId,
+        docPath,
+      });
+    }
+
+    log.debug("Config resolved", { languageId, sources });
+    return { configJson, sources };
   }
 
-  /** Find the workspace root directory for a document path. */
+  // ── Workspace root ────────────────────────────────────────────────────────
+
   private findWorkspaceRoot(docPath: string): string {
     for (const folder of this.workspaceFolders) {
       if (docPath.startsWith(folder.uri.fsPath)) {
@@ -123,36 +137,64 @@ export class ConfigAdapter {
     return path.dirname(docPath);
   }
 
-  /** Read .omnifmt.json from the workspace root and extract the language section. */
+  // ── .omnifmt.json ─────────────────────────────────────────────────────────
+
   private readOmnifmtJson(workspaceRoot: string, languageId: string): PartialConfig | null {
     const omnifmtPath = path.join(workspaceRoot, ".omnifmt.json");
-    if (!fs.existsSync(omnifmtPath)) return null;
+    if (!fs.existsSync(omnifmtPath)) { return null; }
 
+    let raw: string;
     try {
-      const raw = fs.readFileSync(omnifmtPath, "utf8");
-      const parsed = JSON.parse(raw);
-      // Support $ref: "#/javascript" for TypeScript → inherit JS config
-      const section = parsed[languageId] ?? null;
-      const global = parsed["global"] ?? {};
-      return section ? { ...global, ...section } : (global ? { ...global } : null);
-    } catch {
-      return null; // Malformed JSON — skip silently
+      raw = fs.readFileSync(omnifmtPath, "utf8");
+    } catch (err) {
+      log.warn("Could not read .omnifmt.json", {
+        path:  omnifmtPath,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
     }
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      // Malformed JSON — notify the user so they can fix it.
+      log.warn(".omnifmt.json is malformed JSON — skipping (fix syntax errors to use it)", {
+        path: omnifmtPath,
+      });
+      void vscode.window.showWarningMessage(
+        `OmniFormatter: .omnifmt.json is not valid JSON and will be ignored. ` +
+        `Check the file for syntax errors: ${omnifmtPath}`
+      );
+      return null;
+    }
+
+    const section = typeof parsed[languageId] === "object" && parsed[languageId] !== null
+      ? (parsed[languageId] as Record<string, unknown>)
+      : null;
+    const global  = typeof parsed["global"] === "object" && parsed["global"] !== null
+      ? (parsed["global"] as Record<string, unknown>)
+      : {};
+
+    const merged = section ? { ...global, ...section } : { ...global };
+    return Object.keys(merged).length > 0 ? (merged as PartialConfig) : null;
   }
 
-  /**
-   * Read the language-native config file and translate to PartialConfig.
-   * Returns null if no native config file is found.
-   */
+  // ── Language-native config ────────────────────────────────────────────────
+
   private readNativeConfig(
     workspaceRoot: string,
-    languageId: string
+    languageId:    string
   ): { config: PartialConfig; source: string } | null {
     switch (languageId) {
       case "javascript":
       case "typescript":
       case "javascriptreact":
       case "typescriptreact":
+      case "css":
+      case "scss":
+      case "less":
+      case "html":
         return this.readPrettierConfig(workspaceRoot);
 
       case "python":
@@ -161,46 +203,53 @@ export class ConfigAdapter {
       case "rust":
         return this.readRustfmtConfig(workspaceRoot);
 
-      case "css":
-      case "scss":
-      case "less":
-      case "html":
-        return this.readPrettierConfig(workspaceRoot);
-
       default:
         return null;
     }
   }
 
-  /** Read .prettierrc — supports JSON, JSON5 (comments stripped), and YAML-like simple format. */
+  // ── Prettier config ───────────────────────────────────────────────────────
+
   private readPrettierConfig(workspaceRoot: string): { config: PartialConfig; source: string } | null {
     const jsonCandidates = [".prettierrc", ".prettierrc.json", "prettier.config.json", ".prettierrc.json5"];
     for (const name of jsonCandidates) {
       const p = path.join(workspaceRoot, name);
-      if (!fs.existsSync(p)) continue;
+      if (!fs.existsSync(p)) { continue; }
       try {
-        const raw = fs.readFileSync(p, "utf8");
-        // Strip JSON5 / JSONC single-line comments before parsing
-        const stripped = raw.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
-        const parsed = JSON.parse(stripped);
+        const raw      = fs.readFileSync(p, "utf8");
+        // Strip JSON5 / JSONC single-line and block comments before parsing
+        const stripped = raw
+          .replace(/\/\/[^\n]*/g, "")
+          .replace(/\/\*[\s\S]*?\*\//g, "");
+        const parsed   = JSON.parse(stripped) as Record<string, unknown>;
         return { config: this.mapPrettierConfig(parsed), source: name };
-      } catch {
+      } catch (err) {
+        log.warn(`Could not parse Prettier config file "${name}"`, {
+          path:  p,
+          error: err instanceof Error ? err.message : String(err),
+        });
         continue;
       }
     }
-    // YAML fallback: .prettierrc.yaml / .prettierrc.yml (hand-parse simple key: value)
+
+    // YAML fallback: .prettierrc.yaml / .prettierrc.yml
     const yamlCandidates = [".prettierrc.yaml", ".prettierrc.yml"];
     for (const name of yamlCandidates) {
       const p = path.join(workspaceRoot, name);
-      if (!fs.existsSync(p)) continue;
+      if (!fs.existsSync(p)) { continue; }
       try {
-        const raw = fs.readFileSync(p, "utf8");
+        const raw    = fs.readFileSync(p, "utf8");
         const parsed = this.parseSimpleYaml(raw);
         return { config: this.mapPrettierConfig(parsed), source: name };
-      } catch {
+      } catch (err) {
+        log.warn(`Could not parse YAML Prettier config file "${name}"`, {
+          path:  p,
+          error: err instanceof Error ? err.message : String(err),
+        });
         continue;
       }
     }
+
     return null;
   }
 
@@ -215,9 +264,9 @@ export class ConfigAdapter {
       if (!trimmed || trimmed.startsWith("#")) { continue; }
       const colonIdx = trimmed.indexOf(":");
       if (colonIdx === -1) { continue; }
-      const key = trimmed.slice(0, colonIdx).trim();
+      const key    = trimmed.slice(0, colonIdx).trim();
       const rawVal = trimmed.slice(colonIdx + 1).trim();
-      // Parse value as number, boolean, or string
+      if (!key) { continue; }
       if (rawVal === "true")  { result[key] = true;  continue; }
       if (rawVal === "false") { result[key] = false; continue; }
       const num = Number(rawVal);
@@ -228,31 +277,40 @@ export class ConfigAdapter {
     return result;
   }
 
-  /**
-   * Read pyproject.toml [tool.black] section.
-   *
-   * TOML is parsed in the Rust WASM core (lang-python/adapter.rs).
-   * On the extension host (Node.js) side we do a targeted regex extraction
-   * to avoid shipping a full TOML parser in TypeScript.
-   */
+  // ── Black (Python) config ─────────────────────────────────────────────────
+
   private readBlackConfig(workspaceRoot: string): { config: PartialConfig; source: string } | null {
     const p = path.join(workspaceRoot, "pyproject.toml");
-    if (!fs.existsSync(p)) return null;
+    if (!fs.existsSync(p)) { return null; }
+
+    let raw: string;
     try {
-      const raw = fs.readFileSync(p, "utf8");
+      raw = fs.readFileSync(p, "utf8");
+    } catch (err) {
+      log.warn("Could not read pyproject.toml", {
+        path:  p,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
+
+    try {
       const config = this.extractBlackSection(raw);
       return { config, source: "pyproject.toml [tool.black]" };
-    } catch {
-      return { config: { printWidth: 88 }, source: "pyproject.toml (error)" };
+    } catch (err) {
+      log.warn("Could not parse [tool.black] from pyproject.toml — using Black defaults", {
+        path:  p,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return { config: { printWidth: 88 }, source: "pyproject.toml (error fallback)" };
     }
   }
 
-  /** Extract [tool.black] options from a pyproject.toml string via targeted line parsing. */
   private extractBlackSection(toml: string): PartialConfig {
     const config: PartialConfig = { printWidth: 88 };
-    // Find [tool.black] section
     const sectionMatch = toml.match(/\[tool\.black\]([\s\S]*?)(?=\n\[|$)/);
     if (!sectionMatch) { return config; }
+
     const section = sectionMatch[1];
     for (const line of section.split(/\r?\n/)) {
       const m = line.match(/^([\w-]+)\s*=\s*(.+)$/);
@@ -260,34 +318,55 @@ export class ConfigAdapter {
       const [, key, val] = m;
       const trimVal = val.trim().replace(/^["']|["']$/g, "");
       switch (key) {
-        case "line-length":      config.printWidth   = parseInt(trimVal, 10); break;
+        case "line-length": {
+          const n = parseInt(trimVal, 10);
+          if (!isNaN(n) && n > 0) { config.printWidth = n; }
+          break;
+        }
         case "skip-string-normalization":
-          if (trimVal === "true") { config.quoteStyle = "single"; } break;
+          if (trimVal === "true") { config.quoteStyle = "single"; }
+          break;
         case "skip-magic-trailing-comma":
-          if (trimVal === "true") { config.trailingComma = false; } break;
+          if (trimVal === "true") { config.trailingComma = false; }
+          break;
       }
     }
     return config;
   }
 
-  /** Read rustfmt.toml or .rustfmt.toml — line-parse the stable options. */
+  // ── Rustfmt config ────────────────────────────────────────────────────────
+
   private readRustfmtConfig(workspaceRoot: string): { config: PartialConfig; source: string } | null {
     const candidates = ["rustfmt.toml", ".rustfmt.toml"];
     for (const name of candidates) {
       const p = path.join(workspaceRoot, name);
       if (!fs.existsSync(p)) { continue; }
+
+      let raw: string;
       try {
-        const raw = fs.readFileSync(p, "utf8");
+        raw = fs.readFileSync(p, "utf8");
+      } catch (err) {
+        log.warn(`Could not read rustfmt config "${name}"`, {
+          path:  p,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        continue;
+      }
+
+      try {
         const config = this.extractRustfmtOptions(raw);
         return { config, source: name };
-      } catch {
-        return { config: { printWidth: 100, indentSize: 4 }, source: name };
+      } catch (err) {
+        log.warn(`Could not parse rustfmt config "${name}" — using defaults`, {
+          path:  p,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return { config: { printWidth: 100, indentSize: 4 }, source: `${name} (error fallback)` };
       }
     }
     return null;
   }
 
-  /** Extract rustfmt stable options from a rustfmt.toml string. */
   private extractRustfmtOptions(toml: string): PartialConfig {
     const config: PartialConfig = { printWidth: 100, indentSize: 4 };
     for (const line of toml.split(/\r?\n/)) {
@@ -296,52 +375,79 @@ export class ConfigAdapter {
       const [, key, val] = m;
       const trimVal = val.trim().replace(/^["']|["']$/g, "");
       switch (key) {
-        case "max_width":   config.printWidth  = parseInt(trimVal, 10); break;
-        case "tab_spaces":  config.indentSize  = parseInt(trimVal, 10); break;
-        case "hard_tabs":   if (trimVal === "true") { config.indentStyle = "tabs"; } break;
+        case "max_width": {
+          const n = parseInt(trimVal, 10);
+          if (!isNaN(n) && n > 0) { config.printWidth = n; }
+          break;
+        }
+        case "tab_spaces": {
+          const n = parseInt(trimVal, 10);
+          if (!isNaN(n) && n > 0) { config.indentSize = n; }
+          break;
+        }
+        case "hard_tabs":
+          if (trimVal === "true") { config.indentStyle = "tabs"; }
+          break;
         case "newline_style":
           if (trimVal.toLowerCase() === "windows") { config.endOfLine = "crlf"; }
           else if (trimVal.toLowerCase() === "unix") { config.endOfLine = "lf"; }
           break;
         case "trailing_comma":
-          config.trailingComma = !trimVal.toLowerCase().includes("never"); break;
+          config.trailingComma = !trimVal.toLowerCase().includes("never");
+          break;
       }
     }
     return config;
   }
 
-  /**
-   * Read .editorconfig via the full walk-up parser (L-10 base config layer).
-   * Cached per document path for performance.
-   */
+  // ── EditorConfig ──────────────────────────────────────────────────────────
+
   private readEditorConfig(docPath: string): PartialConfig | null {
-    const result: EditorConfigResult | null = resolveEditorConfigCached(docPath);
+    let result: EditorConfigResult | null;
+    try {
+      result = resolveEditorConfigCached(docPath);
+    } catch (err) {
+      log.warn("EditorConfig resolution threw unexpectedly", {
+        docPath,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
+
     if (!result) { return null; }
+
     const partial: PartialConfig = {};
-    if (result.indentStyle)  { partial.indentStyle  = result.indentStyle; }
-    if (result.indentSize)   { partial.indentSize   = result.indentSize; }
-    if (result.endOfLine)    { partial.endOfLine    = result.endOfLine; }
-    if (result.printWidth)   { partial.printWidth   = result.printWidth; }
+    if (result.indentStyle) { partial.indentStyle = result.indentStyle; }
+    if (result.indentSize)  { partial.indentSize  = result.indentSize;  }
+    if (result.endOfLine)   { partial.endOfLine   = result.endOfLine;   }
+    if (result.printWidth)  { partial.printWidth  = result.printWidth;  }
     return partial;
   }
 
   /** Clear the editorconfig cache (call on workspace folder changes). */
   clearCache(): void {
     clearEditorConfigCache();
+    log.debug("EditorConfig cache cleared.");
   }
 
-  /** Map Prettier config JSON to PartialConfig. */
+  // ── Prettier config mapping ───────────────────────────────────────────────
+
   private mapPrettierConfig(pc: Record<string, unknown>): PartialConfig {
     const config: PartialConfig = {};
-    if (typeof pc["printWidth"] === "number") config.printWidth = pc["printWidth"];
-    if (typeof pc["tabWidth"] === "number") config.indentSize = pc["tabWidth"];
-    if (pc["useTabs"] === true) config.indentStyle = "tabs";
-    if (pc["singleQuote"] === true) config.quoteStyle = "single";
-    if (typeof pc["semi"] === "boolean") config.semicolons = pc["semi"];
-    if (pc["trailingComma"] === "none") config.trailingComma = false;
-    if (["all", "es5"].includes(pc["trailingComma"] as string)) config.trailingComma = true;
+    if (typeof pc["printWidth"] === "number") { config.printWidth = pc["printWidth"]; }
+    if (typeof pc["tabWidth"]   === "number") { config.indentSize = pc["tabWidth"];   }
+    if (pc["useTabs"]    === true)            { config.indentStyle   = "tabs";         }
+    if (pc["singleQuote"] === true)           { config.quoteStyle    = "single";       }
+    if (typeof pc["semi"] === "boolean")      { config.semicolons    = pc["semi"];     }
+    if (pc["trailingComma"] === "none")       { config.trailingComma = false;          }
+    if (["all", "es5"].includes(pc["trailingComma"] as string)) {
+      config.trailingComma = true;
+    }
     if (typeof pc["endOfLine"] === "string") {
-      config.endOfLine = pc["endOfLine"] as "lf" | "crlf" | "cr" | "auto";
+      const eol = pc["endOfLine"] as string;
+      if (["lf", "crlf", "cr", "auto"].includes(eol)) {
+        config.endOfLine = eol as "lf" | "crlf" | "cr" | "auto";
+      }
     }
     return config;
   }
