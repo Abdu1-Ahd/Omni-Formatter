@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Stop"
 
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "   OmniFormatter Release Workflow (CI/CD)" -ForegroundColor Cyan
@@ -14,6 +14,9 @@ if (Test-Path "../README.md") {
     # Filter out the logo image line and any consecutive blank lines/linebreaks associated with it
     $readme = $readme -replace '(?m)^\s*<img src=".*media/Omni-Formatter-Logo\.svg".*$\r?\n?', ''
     $readme = $readme -replace '(?m)^\s*<br/>\s*$\r?\n?', ''
+    $readme = $readme -replace '(?m)^\s*# OmniFormatter\s*$\r?\n?', ''
+    $readme = $readme -replace '(?m)^\s*\[\!\[VS Code Marketplace Downloads\].*$\r?\n?', ''
+    $readme = $readme -replace '(?m)^\s*\[\!\[Open VSX Downloads\].*$\r?\n?', ''
 
     # Replace the mermaid block with the unicode box diagram
     $mermaidBlock = '(?s)```mermaid\s*\r?\n.*?\r?\n```'
