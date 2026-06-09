@@ -6,4 +6,3 @@ Always run cargo check --workspace or cargo clippy and cargo fmt --all before pu
 
 # PowerShell Encoding Rule
 Always ensure PowerShell (.ps1) script files containing Unicode/UTF-8 character literals are saved with a UTF-8 BOM (Byte Order Mark/Signature) on Windows. Otherwise, PowerShell 5.1 parses them using ANSI/Windows-1252, causing syntax errors or character corruption.
-
