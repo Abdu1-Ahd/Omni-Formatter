@@ -138,10 +138,15 @@ export class WorkerPool {
 
       worker.on("message", (msg: { id?: number; responseJson?: string; ready?: boolean; error?: string }) => {
         // Worker signals ready after loading WASM
-        if (msg.ready && !initialised) {
-          initialised = true;
-          this.workers.push(entry);
-          resolve();
+        if (msg.ready !== undefined && !initialised) {
+          if (msg.ready) {
+            initialised = true;
+            this.workers.push(entry);
+            resolve();
+          } else {
+            worker.terminate();
+            reject(new Error(msg.error ?? "Worker failed to initialise"));
+          }
           return;
         }
 

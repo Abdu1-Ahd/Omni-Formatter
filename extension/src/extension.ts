@@ -237,6 +237,39 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   statusBar = new StatusBar();
   context.subscriptions.push(statusBar);
 
+  // Register commands early so they are available even if worker initialization fails
+  context.subscriptions.push(
+    vscode.commands.registerCommand("omniFormatter.formatDocument", () => {
+      vscode.commands.executeCommand("editor.action.formatDocument");
+    }),
+    vscode.commands.registerCommand("omniFormatter.showStatus", () => {
+      outputChannel?.show();
+    }),
+    vscode.commands.registerCommand("omniFormatter.openDashboard", () => {
+      DashboardPanel.createOrShow(context);
+    }),
+    vscode.commands.registerCommand("omnifmt.formatWorkspace", async () => {
+      // Only format known source file types; exclude large non-source directories
+      const INCLUDE_GLOB = '**/*.{js,mjs,cjs,ts,mts,cts,tsx,jsx,py,pyw,rs,go,css,scss,sass,less,html,htm,svelte,vue,astro,c,h,cpp,hpp,cc,cxx,hh,mm,m,java,kt,kts,scala,sc,groovy,cs,fs,fsi,fsx,rb,php,pl,pm,lua,sh,bash,zsh,ps1,psm1,swift,dart,json,json5,yaml,yml,toml,xml,ini,sql,graphql,gql,tf,hcl,Dockerfile,nix,hs,lhs,ex,exs,erl,hrl,ml,mli,clj,cljs,r,R,jl,md,markdown,tex,zig,nim,sol,gd,ahk,lisp,lsp,scm,ss,jinja,jinja2,liquid,ejs,hbs,handlebars,twig}';
+
+      const EXCLUDE_GLOB = '**/{node_modules,.vscode-test,.vscode-test-user-data,.git,dist,out,target}/**';
+      const uris = await vscode.workspace.findFiles(INCLUDE_GLOB, EXCLUDE_GLOB);
+      log(`Formatting ${uris.length} files in workspace...`);
+      for (const uri of uris) {
+        try {
+          const doc = await vscode.workspace.openTextDocument(uri);
+          await vscode.window.showTextDocument(doc, { preview: false });
+          await vscode.commands.executeCommand("editor.action.formatDocument");
+          await doc.save();
+        } catch (e) {
+          log(`Failed to format ${uri.fsPath}: ${e}`);
+        }
+      }
+    })
+  );
+
+  try {
+
   // Initialise worker pool
   const workerScript = path.join(context.extensionPath, "dist", "workers", "formatWorker.js");
   const wasmDir = path.join(context.extensionPath, "dist", "wasm");
@@ -309,36 +342,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
 
-  // Register commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand("omniFormatter.formatDocument", () => {
-      vscode.commands.executeCommand("editor.action.formatDocument");
-    }),
-    vscode.commands.registerCommand("omniFormatter.showStatus", () => {
-      outputChannel?.show();
-    }),
-    vscode.commands.registerCommand("omniFormatter.openDashboard", () => {
-      DashboardPanel.createOrShow(context);
-    }),
-    vscode.commands.registerCommand("omnifmt.formatWorkspace", async () => {
-      // Only format known source file types; exclude large non-source directories
-      const INCLUDE_GLOB = '**/*.{js,mjs,cjs,ts,mts,cts,tsx,jsx,py,pyw,rs,go,css,scss,sass,less,html,htm,svelte,vue,astro,c,h,cpp,hpp,cc,cxx,hh,mm,m,java,kt,kts,scala,sc,groovy,cs,fs,fsi,fsx,rb,php,pl,pm,lua,sh,bash,zsh,ps1,psm1,swift,dart,json,json5,yaml,yml,toml,xml,ini,sql,graphql,gql,tf,hcl,Dockerfile,nix,hs,lhs,ex,exs,erl,hrl,ml,mli,clj,cljs,r,R,jl,md,markdown,tex,zig,nim,sol,gd,ahk,lisp,lsp,scm,ss,jinja,jinja2,liquid,ejs,hbs,handlebars,twig}';
-
-      const EXCLUDE_GLOB = '**/{node_modules,.vscode-test,.vscode-test-user-data,.git,dist,out,target}/**';
-      const uris = await vscode.workspace.findFiles(INCLUDE_GLOB, EXCLUDE_GLOB);
-      log(`Formatting ${uris.length} files in workspace...`);
-      for (const uri of uris) {
-        try {
-          const doc = await vscode.workspace.openTextDocument(uri);
-          await vscode.window.showTextDocument(doc, { preview: false });
-          await vscode.commands.executeCommand("editor.action.formatDocument");
-          await doc.save();
-        } catch (e) {
-          log(`Failed to format ${uri.fsPath}: ${e}`);
-        }
-      }
-    })
-  );
+  } catch (err) {
+    statusBar?.showError(String(err));
+    log(`Activation failed: ${err}`);
+  }
 
   log("OmniFormatter activated.");
 }
