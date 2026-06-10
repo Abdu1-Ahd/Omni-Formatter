@@ -97,7 +97,15 @@ export class WorkerPool {
    * - The cancellation token fires before a response arrives.
    * - The extension-side safety timeout fires.
    */
-  dispatch(requestJson: string, token: vscode.CancellationToken): Promise<string> {
+  /**
+   * Dispatch a format request to the least-loaded worker.
+   *
+   * @param requestJson  The JSON payload for the WASM `format()` call.
+   * @param byteLength   UTF-8 byte size of the source — used to scale the
+   *                     per-request timeout. NOT embedded in requestJson.
+   * @param token        VS Code cancellation token.
+   */
+  dispatch(requestJson: string, byteLength: number, token: vscode.CancellationToken): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       // ── Guard: pool must be live ─────────────────────────────────────
       if (this.workers.length === 0) {
@@ -129,15 +137,6 @@ export class WorkerPool {
 
       const messageId = this.nextMessageId++;
       entry.queueDepth++;
-
-      // ── Compute timeouts ─────────────────────────────────────────────
-      let byteLength = 0;
-      try {
-        const parsed = JSON.parse(requestJson) as { source_byte_length?: unknown };
-        if (typeof parsed.source_byte_length === "number") {
-          byteLength = parsed.source_byte_length;
-        }
-      } catch { /* safe to ignore */ }
 
       const workerTimeoutMs    = 30_000 + Math.ceil(byteLength / 102_400) * 1_000;
       const extensionTimeoutMs = workerTimeoutMs + 5_000; // 5 s buffer so the worker wins the race
@@ -179,7 +178,9 @@ export class WorkerPool {
       }, extensionTimeoutMs);
 
       entry.pending.set(messageId, { resolve, reject, cancelDisposable, timeoutHandle });
-      entry.worker.postMessage({ id: messageId, requestJson });
+      // byteLength is sent alongside requestJson as a separate field so the
+      // worker can scale its own timeout without parsing the WASM payload.
+      entry.worker.postMessage({ id: messageId, requestJson, byteLength });
     });
   }
 

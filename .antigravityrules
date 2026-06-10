@@ -1,8 +1,18 @@
-- All temp/useless files go `temp/` folder.
-- After update, run `scripts/publish-extension.ps1`. Trigger GitHub workflow. Auto publish both markets.
+# Omni Environment - AI Agent Rules & Mistake Log
 
-# CI Verification Rule
-Always run cargo check --workspace or cargo clippy and cargo fmt --all before pushing or releasing to ensure you haven't left broken code or unformatted files behind after refactoring or stripping dependencies. This prevents CI failures.
+## 1. Core Directives (Identified from User Conversation)
+*   **Performance First**: Code must be powerful, extremely lightweight, and blazing fast. Strive for "best in market."
+*   **Architecture Requirements**: Prefer single-AST parsers, WebAssembly (WASM), and zero `node_modules` dependencies wherever applicable.
+*   **Completeness**: Never output incomplete data. Do deep research, take necessary time, and present thorough, categorized, and structured output.
+*   **No Redundant Parsing**: If building tooling (linters, metrics, formatters), leverage a unified parser to avoid re-parsing overhead.
+*   **UI/UX**: Keep VS Code extensions visually premium and non-intrusive (e.g., zero UI blockages, offload to web workers).
 
-# PowerShell Encoding Rule
-Always ensure PowerShell (.ps1) script files containing Unicode/UTF-8 character literals are saved with a UTF-8 BOM (Byte Order Mark/Signature) on Windows. Otherwise, PowerShell 5.1 parses them using ANSI/Windows-1252, causing syntax errors or character corruption.
+## 2. Mistake Tracking & Self-Correction (MANDATORY)
+**Agent Instruction:** If you make an error, produce incomplete output, execute a failed build, or misunderstand user intent, you MUST document it here immediately so future agents do not repeat it.
+
+### Logged Mistakes:
+- *(Add mistakes here as they occur in future sessions)*
+
+## 3. Tool & Communication Rules
+*   Prefix responses with the appropriate mode: `[PLAN]`, `[BUILD]`, `[REVIEW]`, `[DEBUG]`, `[REFACTOR]`, or `[AUDIT]`.
+*   Verify output rather than assuming success.

@@ -243,10 +243,32 @@ interface WasmFormatResponse {
   error?:          unknown;
 }
 
+/**
+ * Accept either a successful response  { edits, formatter_chain, is_noop }
+ * OR an error envelope                 { error: {...} }
+ *
+ * The WASM core always returns one of these two shapes. Accepting both here
+ * prevents the error path from being misclassified as a shape validation
+ * failure and double-logging the same problem.
+ */
 function isWasmFormatResponse(v: unknown): v is WasmFormatResponse {
   if (typeof v !== "object" || v === null) { return false; }
   const r = v as Record<string, unknown>;
-  return Array.isArray(r["edits"]) && typeof r["is_noop"] === "boolean";
+  // Happy path — full response.
+  if (Array.isArray(r["edits"]) && typeof r["is_noop"] === "boolean") {
+    return true;
+  }
+  // Error envelope — { error: <FormatError> } with no edits/is_noop.
+  // We treat this as a valid (but failed) response so the error branch
+  // below can surface a clean message instead of a shape-validation error.
+  if ("error" in r && r["error"] !== null && r["error"] !== undefined) {
+    // Synthesise the missing fields so callers don't need to null-check.
+    r["edits"]           = r["edits"] ?? [];
+    r["is_noop"]         = r["is_noop"] ?? false;
+    r["formatter_chain"] = r["formatter_chain"] ?? "";
+    return true;
+  }
+  return false;
 }
 
 function isWasmEdit(v: unknown): v is WasmEdit {
@@ -325,7 +347,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // ── Step 7: Background WASM pre-compilation ───────────────────────────
   wasmCompiler = new WasmCompiler(wasmDir, context.globalStorageUri.fsPath);
-  wasmCompiler.precompileTopLanguages(["lang-js", "lang-python", "lang-rust", "lang-css"]);
+  // The extension ships a single unified WASM binary (omni_core_bg.wasm)
+  // that handles ALL languages. There are no per-language WASM modules.
+  // Precompile only the one real binary that is always present.
+  wasmCompiler.precompileTopLanguages(["core"]);
 
   // ── Step 8: Conflict detection ────────────────────────────────────────
   const conflictDetector = new ConflictDetector();
@@ -469,14 +494,30 @@ async function handleFormatRequest(
   const byteEstimate  = Buffer.byteLength(sourceText, "utf8");
 
   // ── Build format request ──────────────────────────────────────────────
+  //
+  // FormatRequest protocol (see crates/protocol/src/lib.rs):
+  //
+  //   source_text  — UTF-8 source as a JSON string (preferred, zero-copy).
+  //   source       — UTF-8 bytes as number[] (legacy, required by older WASM
+  //                  builds compiled before source_text became Optional).
+  //
+  // We send BOTH fields so the extension is forward- AND backward-compatible
+  // with any compiled WASM binary regardless of which protocol version it was
+  // built against. The WASM core uses source_text when present and falls back
+  // to source, so there is zero overhead for up-to-date builds.
+  //
+  // ⚠ source_byte_length is NOT a FormatRequest field — it is metadata that
+  //   the worker reads from the message to scale its timeout. Strip it out
+  //   of the JSON that goes to the WASM core by keeping it separate.
+  const sourceBytes = Array.from(Buffer.from(sourceText, "utf8"));
   const request = {
-    source_text:        sourceText,
-    source_byte_length: byteEstimate,
-    language_id:        langId,
-    config:             {},
-    range:              null,
-    previous_tree:      null,
-    edit:               null,
+    source_text:   sourceText,
+    source:        sourceBytes,
+    language_id:   langId,
+    config:        {},
+    range:         null,
+    previous_tree: null,
+    edit:          null,
   };
 
   let requestJson: string;
@@ -507,7 +548,7 @@ async function handleFormatRequest(
   const startMs = Date.now();
   let responseJson: string;
   try {
-    responseJson = await workerPool.dispatch(requestJson, token);
+    responseJson = await workerPool.dispatch(requestJson, byteEstimate, token);
   } catch (err) {
     progressResolve?.();
 

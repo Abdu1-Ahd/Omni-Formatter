@@ -30,8 +30,10 @@ interface WorkerData {
 }
 
 interface IncomingMessage {
-  id: number;
+  id:          number;
   requestJson: string;
+  /** UTF-8 byte size of the source — used for timeout scaling only. */
+  byteLength?: number;
 }
 
 interface OutgoingReady {
@@ -181,16 +183,11 @@ parentPort.on("message", (msg: IncomingMessage) => {
   }
 
   // ── Per-request timeout ──────────────────────────────────────────────
-  // Scales with file size: 30 s base + 1 s per 100 KB of estimated source.
-  let byteEstimate = 0;
-  try {
-    const meta = JSON.parse(msg.requestJson) as { source_byte_length?: unknown };
-    if (typeof meta.source_byte_length === "number") {
-      byteEstimate = meta.source_byte_length;
-    }
-  } catch {
-    /* ignore — timeout uses the 30 s base */
-  }
+  // byteLength comes from the pool message (not parsed from requestJson).
+  // Scales with file size: 30 s base + 1 s per 100 KB of source.
+  const byteEstimate = (typeof msg.byteLength === "number" && msg.byteLength > 0)
+    ? msg.byteLength
+    : 0;
 
   const timeoutMs = 30_000 + Math.ceil(byteEstimate / 102_400) * 1_000;
 
