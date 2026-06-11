@@ -1,71 +1,60 @@
 # OmniFormatter Developer Onboarding
 
-Welcome to OmniFormatter! This is a single WASM-binary code formatter that supports multiple languages with zero-config migration (targeting Prettier/Gofmt/Black parity).
+Welcome to OmniFormatter! This tool formats your code to make it look neat and tidy. It works for many languages using a fast, safe engine (WASM). It automatically copies the style of other popular tools so you don't need to change any settings.
 
-This standalone guide will get you running the codebase immediately.
+This guide will help you start working on the code right away.
 
-## 1. System Requirements
-- Node.js >= 20.0
-- Rust >= 1.75
-- `wasm-pack` (for building the WebAssembly targets)
-- `wasm32-unknown-unknown` target installed (`rustup target add wasm32-unknown-unknown`)
-- VS Code (for extension development)
+## 1. What You Need
+- **Node.js** (version 20 or newer): To run the web code.
+- **Rust** (version 1.75 or newer): The fast language we use for the engine.
+- **wasm-pack**: A tool to pack our Rust code into a web format.
+- **VS Code**: The editor where you will test the extension.
 
-## 2. Codebase Layout
-- **`crates/`**: The Rust core.
-  - `protocol/`: Shared structs (ConfigIR, FormatRequest, FormatResponse).
-  - `core/`: The WASM entry points and serialization bounds.
-  - `lang-*/`: Language-specific formatting logic (AST traversal).
-- **`extension/`**: The VS Code extension (TypeScript).
-  - `src/`: Extension host logic (Module loader, Config adapter).
-  - `workers/`: Node.js `worker_threads` that instantiate the WASM modules.
-- **`registry/`**: The Cloudflare Workers application (TypeScript / Hono.js) that distributes the WASM binaries.
-- **`cli/`**: The standalone Rust CLI that runs formatters via `wasmtime`.
+## 2. How the Folders are Organized
+- **`crates/`**: The core engine written in Rust. It does the actual formatting.
+- **`extension/`**: The code that connects our engine to VS Code.
+- **`registry/`**: The internet cloud server that sends the engine to users.
+- **`cli/`**: A tool to use the formatter directly from your computer's terminal.
 
-## 3. Building the Project
+## 3. How to Build the Project
 
-### Building the WASM Modules
-The Rust modules must be compiled to WebAssembly. We use `wasm-pack` or raw `cargo build`.
+First, build the Rust engine into a web format:
 ```bash
 cargo build --release --target wasm32-unknown-unknown -p lang-js
 ```
 
-### Building the VS Code Extension
-Navigate to the `extension/` directory and install dependencies:
+Next, build the VS Code extension:
 ```bash
 cd extension
 npm install
 npm run build:all
 ```
-This uses `esbuild` to bundle both the extension host (`extension.ts`) and the worker thread (`formatWorker.ts`).
 
-## 4. Running the Tests
+## 4. How to Test
+We test our code to make sure formatting it twice doesn't change it the second time.
 
-### Rust Unit Tests (Idempotency)
+Test the Rust engine:
 ```bash
 cargo test
 ```
-Tests in Rust ensure that formatting is strictly idempotent (`format(format(code)) == format(code)`).
 
-### Extension Integration Tests
+Test the VS Code extension:
 ```bash
 cd extension
 npm run test
 ```
 
-## 5. Architectural Mental Model
-When writing code for OmniFormatter, keep this lifecycle in mind:
-1. VS Code fires a `provideDocumentFormattingEdits` event.
-2. The extension delegates to `formatWorker.ts` via message passing.
-3. The worker invokes the WASM `format` function, passing a pointer to the UTF-8 source string.
-4. The Rust WASM module (`crates/lang-js/src/lib.rs`) parses the string using `tree-sitter`.
-5. Rust builds a Wadler `Doc` intermediate representation (`crates/lang-js/src/format.rs`).
-6. Rust runs the layout algorithm and returns a serialized JSON response containing the formatted string.
-7. The worker passes it back to the extension host, which applies a single text edit.
+## 5. How It Works Under the Hood
+1. VS Code asks to format the text.
+2. The extension sends a message to our background worker.
+3. The worker asks our fast Rust engine to do the work.
+4. The Rust engine reads the code and understands its structure.
+5. It rearranges the code to look perfect.
+6. The perfectly formatted code is sent back to VS Code.
 
 ## 6. How to Add a New Language
-1. Create a new crate in `crates/lang-<name>`.
-2. Depend on `tree-sitter-<name>`.
-3. Implement `format(source, config)`.
-4. Register the module in the `Cargo.toml` workspace.
-5. Publish to the registry via `POST /publish` with Ed25519 signing.
+1. Create a new folder for the language in `crates/`.
+2. Connect it to the tool that reads that language.
+3. Write the rules for how the code should look.
+4. Add it to our list of modules.
+5. Upload it to our cloud server.

@@ -1,35 +1,33 @@
-# OmniFormatter Context Pack
+# OmniFormatter Summary
 
-This standalone document provides a high-level summary of the OmniFormatter codebase's purpose, design philosophy, and operational context. It is designed to rapidly context-load AIs or new contributors without requiring them to read every file.
+This document explains what this project is and why we built it. It is meant to help new people understand everything quickly.
 
-## The Mission
-Formatters today are slow (Python's Black is notoriously heavy), require language-specific environments (Node for Prettier, Python for Black, Go for gofmt), and suffer from dependency hell.
+## The Goal
+Most code formatters are slow and require you to install heavy programs like Python or Node.js. 
 
-**OmniFormatter** solves this by compiling native formatters into strictly sandboxed WebAssembly (WASM) modules. It runs in a single VS Code extension without requiring Node.js, Python, or Go to be installed on the host machine.
+**OmniFormatter** fixes this by turning all formatters into tiny, safe web plugins (WASM). It runs directly inside VS Code. You do not need to install Python, Go, or anything else on your computer.
 
-## Core Pillars
-1. **Zero-Config Migration**: Out of the box, OmniFormatter produces byte-for-byte identical output to the industry standard formatters (Prettier for JS/CSS, gofmt for Go).
-2. **Speed**: Sub-millisecond formatting latency. Achieved via Rust, `tree-sitter`, and WASM.
-3. **Security**: Sandboxed execution. The VS Code extension runs WASM without OS access. The CLI uses `wasmtime`. The registry mandates Ed25519 signatures.
-4. **Resilience**: Node.js `worker_threads` isolate the formatting logic, ensuring the VS Code UI never blocks, and memory leaks in WASM are contained to the worker.
+## Four Main Ideas
+1. **Zero Setup**: It copies the style of popular tools (like Prettier and Gofmt) perfectly, so you don't have to change any settings.
+2. **Extremely Fast**: It finishes in less than a millisecond because it is built with Rust.
+3. **Safe**: The plugins run in a locked box. They cannot read your personal files or access the internet.
+4. **Reliable**: Formatting happens in the background, so it never freezes your editor.
 
-## The Codebase Topology
+## The Parts of the Project
 
-### 1. `crates/` (The Formatter Brains)
-Written entirely in Rust. Uses `tree-sitter` for parsing source code into a Concrete Syntax Tree (CST). The CST is then mapped into a Wadler-style `Doc` Intermediate Representation (IR), which handles line-wrapping and indentation dynamically.
-- The `core` and `protocol` crates provide the glue (serialization, config parsing).
-- The `lang-*` crates contain the actual AST-to-Doc mapping logic for each language.
+### 1. `crates/` (The Brain)
+Written in Rust. It reads the code, understands the structure, and rearranges it nicely. This folder contains all the rules for different languages.
 
-### 2. `extension/` (The VS Code Host)
-Written in TypeScript. Registers as a formatter in VS Code. It uses a `ModuleLoader` to pull WASM binaries from the Cloudflare registry (and caches them on disk). Formatting requests are offloaded to `formatWorker.ts` to keep the main thread fluid.
+### 2. `extension/` (The VS Code Link)
+Written in TypeScript. It connects to VS Code. It downloads the formatting plugins from the internet and asks them to format your text in the background.
 
-### 3. `registry/` (The Distribution Network)
-Written in TypeScript (Hono.js). Deployed to Cloudflare Workers. It acts as the package manager (`npm` equivalent) for OmniFormatter plugins. Modules are stored in R2 (blob storage) and metadata in D1 (SQLite).
+### 3. `registry/` (The Cloud Server)
+Hosted on the internet (Cloudflare). This is the store where all the plugins are kept. It safely sends the plugins to the extension when needed.
 
-### 4. `cli/` (The Native Runner)
-Written in Rust. A standalone CLI (`omnifmt`) that downloads WASM binaries from the registry and executes them natively using the `wasmtime` JIT compiler. Perfect for CI/CD pipelines.
+### 4. `cli/` (The Command Line Tool)
+A tool to run the formatter from your terminal, without opening VS Code. This is useful for automated robots.
 
-## Critical Technical Details
-- **Memory Management**: WASM and C-bindings (`tree-sitter`) easily corrupt memory with default allocators like `dlmalloc`. We strictly use `talc` or `lol_alloc` in the WASM compilation targets.
-- **WASM Boundary**: Data crosses the JS-to-WASM boundary as linear memory pointers. The JS side allocates memory via exported `alloc()`, writes the UTF-8 string, calls `format()`, reads the returned pointer, and calls `dealloc()`.
-- **Zone Routing**: HTML and Vue files embed multiple languages. OmniFormatter extracts these embedded blocks (zones), routes them to `lang-js` or `lang-css`, and stitches the result back together seamlessly.
+## Important Details
+- **Memory Safety**: We are very careful to ensure our fast engine does not leak memory or crash.
+- **Talking to the Plugin**: VS Code sends the text to the plugin using shared computer memory to make it super fast.
+- **Mixed Files**: If you have a file that mixes HTML, CSS, and JavaScript, the tool is smart enough to separate them, format them individually, and put them back together perfectly.
