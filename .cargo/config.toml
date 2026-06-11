@@ -13,8 +13,8 @@
 linker = "C:/clang22/bin/wasm-ld.exe"
 
 [env]
-CC_wasm32_unknown_unknown  = { value = "wasi-sdk/bin/clang.exe",   relative = true }
-AR_wasm32_unknown_unknown  = { value = "wasi-sdk/bin/llvm-ar.exe", relative = true }
+CC_wasm32_unknown_unknown  = { value = "wasi-sdk/bin/clang",   relative = true }
+AR_wasm32_unknown_unknown  = { value = "wasi-sdk/bin/llvm-ar", relative = true }
 # sysroot           → wasm libc headers (stdio.h, stdlib.h …)
 # -I wasm32-wasi    → triple-specific headers inside that sysroot
 # -I clang22        → system LLVM resource headers (stdbool.h, stddef.h …)
