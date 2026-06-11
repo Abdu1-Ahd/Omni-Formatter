@@ -28,6 +28,14 @@ members = [
     "cli", "tests/native_runner",
 ]
 
+# ── Vendor patches ────────────────────────────────────────────────────────────
+# tree-sitter 0.22.6 calls dup() in ts_tree_print_dot_graph() (a debug-only
+# function). That syscall doesn't exist in wasm32-unknown-unknown. The vendored
+# copy stubs _ts_dup() to return -1 so the WASM build compiles cleanly.
+# This only affects the debug-graph feature — formatting is unaffected.
+[patch.crates-io]
+tree-sitter = { path = "vendor/tree-sitter-0.22.6" }
+
 [workspace.package]
 version     = "0.2.0"
 edition     = "2021"

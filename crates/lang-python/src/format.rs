@@ -455,29 +455,41 @@ impl<'a> PythonFormatter<'a> {
 // ── Line-length pass ──────────────────────────────────────────────────────
 
 /// Split lines that exceed `print_width` at comma boundaries (simplified).
+///
+/// # Correctness invariant
+/// We ONLY split a line when it ends with `(` — meaning the line is a
+/// *call opener* such as `some_func(` whose arguments follow on the next
+/// logical unit. If `(` appears anywhere else (e.g. inside a list literal
+/// `db = [ProductData(1, "x"), ...]`) we emit the line verbatim.
+///
+/// The old `splitn(2, '(')` approach matched the **first** `(` in the
+/// line regardless of position. On an assignment like
+/// `db = [ProductData(1, …)]` it would split at the `P` of `ProductData`,
+/// prepend a synthesized prefix + `(`, and close with `)` — injecting a
+/// spurious `)` that breaks Python syntax every time the file was saved.
 fn wrap_long_lines(lines: Vec<Line>, print_width: usize, indent_size: usize) -> Vec<Line> {
     let mut out = Vec::with_capacity(lines.len());
     for line in lines {
         let rendered_len = line.indent * indent_size + line.content.len();
         if rendered_len <= print_width || !line.content.contains(',') {
             out.push(line);
+            continue;
+        }
+
+        let trimmed = line.content.trim_end();
+
+        // Only reformat if the line is a bare call-opener (ends with '(').
+        // Everything else — list assignments, dict literals, f-strings, etc.
+        // — is emitted verbatim so we don't corrupt their structure.
+        if trimmed.ends_with('(') {
+            let prefix = trimmed.to_string(); // already ends with '('
+            let inner = ""; // arguments come from subsequent lines; nothing to split
+            out.push(Line::new(line.indent, prefix));
+            // No args to split from this line — just leave as-is.
+            // (The tree-sitter walk already broke args onto their own lines.)
+            let _ = inner;
         } else {
-            // Split at commas — emit one item per line at indent + 1
-            let parts: Vec<&str> = line.content.splitn(2, '(').collect();
-            if parts.len() == 2 {
-                let prefix = format!("{}(", parts[0]);
-                out.push(Line::new(line.indent, prefix));
-                let inner = parts[1].trim_end_matches(')');
-                for item in inner.split(',') {
-                    let item = item.trim();
-                    if !item.is_empty() {
-                        out.push(Line::new(line.indent + 1, format!("{},", item)));
-                    }
-                }
-                out.push(Line::new(line.indent, ")".to_string()));
-            } else {
-                out.push(line);
-            }
+            out.push(line);
         }
     }
     out

@@ -1,0 +1,22 @@
+# .cargo/config.toml
+#
+# Configures the C compiler for wasm32-unknown-unknown builds.
+# tree-sitter compiles C code that needs both:
+#   - A WASM sysroot for libc headers (stdio.h, stdlib.h …)
+#   - Clang resource headers for builtins (stdbool.h, stddef.h …)
+#
+# We use the WASI SDK clang + its sysroot for libc, supplemented by the
+# system LLVM clang resource headers (C:\clang22 junction → C:\Program Files\LLVM)
+# for the compiler builtins that weren't in the partial WASI SDK extraction.
+
+[target.wasm32-unknown-unknown]
+linker = "C:/clang22/bin/wasm-ld.exe"
+
+[env]
+CC_wasm32_unknown_unknown  = { value = "wasi-sdk/bin/clang.exe",   relative = true }
+AR_wasm32_unknown_unknown  = { value = "wasi-sdk/bin/llvm-ar.exe", relative = true }
+# sysroot           → wasm libc headers (stdio.h, stdlib.h …)
+# -I wasm32-wasi    → triple-specific headers inside that sysroot
+# -I clang22        → system LLVM resource headers (stdbool.h, stddef.h …)
+CFLAGS_wasm32_unknown_unknown = "--sysroot=C:/Users/zawia/.antigravity/Development/ACTIVE_PROJECTS/Omni/OmniFormatter/wasi-sdk/share/wasi-sysroot -IC:/Users/zawia/.antigravity/Development/ACTIVE_PROJECTS/Omni/OmniFormatter/wasi-sdk/share/wasi-sysroot/include/wasm32-wasi -IC:/clang22/lib/clang/22/include -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_SIGNAL"
+
