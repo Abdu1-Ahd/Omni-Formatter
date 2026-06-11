@@ -63,3 +63,4 @@ publish-extension.exe
 wasi-sdk.tar.gz
 __pycache__/
 *.pyc
+.antigravityrules
