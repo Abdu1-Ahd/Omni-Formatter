@@ -64,3 +64,4 @@ wasi-sdk.tar.gz
 __pycache__/
 *.pyc
 .antigravityrules
+FLAWS.md
