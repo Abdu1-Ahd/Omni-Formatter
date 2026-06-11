@@ -58,3 +58,8 @@ tests/professional_workspace/.vscode-test/
 tests/professional_workspace/.vscode-test-user-data/
 tests/professional_workspace/frontend/src/generated_large.ts
 publish-extension.exe
+
+# Additional ignore rules
+wasi-sdk.tar.gz
+__pycache__/
+*.pyc

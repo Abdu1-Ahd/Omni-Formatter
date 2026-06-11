@@ -28,3 +28,10 @@ dist/**/.gitignore
 
 # Only media/logo.png is referenced by package.json — extras not needed
 media/logos/**
+
+# Exclude source code directories from extension build
+workers/**
+tests/**
+
+# Exclude all dependencies (esbuild bundles everything we need)
+node_modules/**
