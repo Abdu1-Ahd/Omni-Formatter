@@ -10,7 +10,7 @@
 # for the compiler builtins that weren't in the partial WASI SDK extraction.
 
 [target.wasm32-unknown-unknown]
-linker = "C:/clang22/bin/wasm-ld.exe"
+# linker is removed to allow rust-lld (default) to be used cross-platform
 
 [env]
 CC_wasm32_unknown_unknown  = { value = "wasi-sdk/bin/clang",   relative = true }
