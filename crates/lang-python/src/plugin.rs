@@ -10,7 +10,7 @@ impl LanguagePlugin for PythonPlugin {
     }
 
     fn extensions(&self) -> &[&str] {
-        &["py", "pyi", "pyw"]
+        &["py", "pyi", "pyw", "ipynb"]
     }
 
     fn format(&self, source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {

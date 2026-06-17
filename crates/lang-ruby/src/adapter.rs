@@ -1,5 +1,6 @@
 //! lang-ruby config adapter.
 use serde::Deserialize;
+use protocol::config::ConfigIR;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
@@ -9,18 +10,20 @@ pub struct Config {
     pub column_limit: usize,
 }
 
-fn default_indent_size() -> usize {
-    2
-}
-fn default_column_limit() -> usize {
-    80
-}
+fn default_indent_size() -> usize { 2 }
+fn default_column_limit() -> usize { 80 }
 
 impl Default for Config {
     fn default() -> Self {
+        Self { indent_size: 2, column_limit: 80 }
+    }
+}
+
+impl From<&ConfigIR> for Config {
+    fn from(ir: &ConfigIR) -> Self {
         Self {
-            indent_size: default_indent_size(),
-            column_limit: default_column_limit(),
+            indent_size: ir.indent_size as usize,
+            column_limit: ir.print_width as usize,
         }
     }
 }

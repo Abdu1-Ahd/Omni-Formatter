@@ -35,8 +35,7 @@ pub fn format_java(
     language_id: &str,
 ) -> Result<Vec<u8>, JsValue> {
     let config = adapter::config_from_json(config_json);
-    let dialect = JvmDialect::from_language_id(language_id);
-    match format::format(source_bytes, &config, dialect) {
+    match format::format(source_bytes, &config) {
         Ok(f) => Ok(f),
         Err(e) => Err(JsValue::from_str(&e.to_string())),
     }

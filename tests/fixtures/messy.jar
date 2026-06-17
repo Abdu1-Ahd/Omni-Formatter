@@ -1,0 +1,2 @@
+/* default messy content for jar */
+console.log("hello");

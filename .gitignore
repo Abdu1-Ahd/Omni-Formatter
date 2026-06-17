@@ -65,3 +65,4 @@ __pycache__/
 *.pyc
 .antigravityrules
 FLAWS.md
+EXTENSION_CONTEXT.md

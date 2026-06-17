@@ -1,4 +1,22 @@
-//! Plugin metadata for lang-swift.
-pub const NAME: &str = "lang-swift";
-pub const FORMATTER: &str = "swift-format";
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+use crate::format;
+use protocol::{config::ConfigIR, FormatError, LanguagePlugin};
+
+/// SwiftPlugin plugin
+pub struct SwiftPlugin;
+
+impl LanguagePlugin for SwiftPlugin {
+    fn name(&self) -> &str {
+        "lang-swift"
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["swift", "m", "mm"]
+    }
+
+    fn format(&self, source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+        match format::format(source, &config.into()) {
+            Ok(bytes) => Ok(bytes),
+            Err(e) => Err(FormatError::Internal { message: e.to_string() }),
+        }
+    }
+}

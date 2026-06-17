@@ -257,6 +257,12 @@
           "default": true,
           "description": "Enable OmniFormatter for all supported languages."
         },
+        "omniFormatter.registryUrl": {
+          "type": "string",
+          "default": "https://Abdu1-Ahd.github.io/Omni-Formatter",
+          "description": "Base URL of the OmniFormatter WASM registry. Used to download language modules.",
+          "format": "uri"
+        },
         "omniFormatter.logLevel": {
           "type": "string",
           "enum": [

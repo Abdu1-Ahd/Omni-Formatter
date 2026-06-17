@@ -1,0 +1,2 @@
+/* default messy content for adoc */
+console.log("hello");

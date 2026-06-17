@@ -1,4 +1,22 @@
-//! Plugin metadata for lang-functional.
-pub const NAME: &str = "lang-functional";
-pub const FORMATTER: &str = "ormolu / mix format / erlfmt / ocamlformat";
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+use crate::format;
+use protocol::{config::ConfigIR, FormatError, LanguagePlugin};
+
+/// FunctionalPlugin plugin
+pub struct FunctionalPlugin;
+
+impl LanguagePlugin for FunctionalPlugin {
+    fn name(&self) -> &str {
+        "lang-functional"
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["hs", "lhs", "ex", "exs", "erl", "hrl", "ml", "mli", "clj", "cljs", "r", "R", "jl", "lisp", "lsp", "scm", "ss"]
+    }
+
+    fn format(&self, source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+        match format::format(source, &config.into()) {
+            Ok(bytes) => Ok(bytes),
+            Err(e) => Err(FormatError::Internal { message: e.to_string() }),
+        }
+    }
+}

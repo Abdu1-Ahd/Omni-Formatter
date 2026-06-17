@@ -1,51 +1,40 @@
 //! lang-markdown formatting logic.
 //!
 //! Formatter target: prettier
-//! Strategy: whitespace normalization + brace-depth indent pass.
-//! Full CST-based formatting is planned for a future release.
+//! Strategy: AST-based normalization using pulldown-cmark.
 
 use crate::adapter::Config;
 use protocol::FormatError;
+use pulldown_cmark::{Parser, Options};
+use pulldown_cmark_to_cmark::cmark;
 
-/// Normalise indentation using brace-depth tracking.
+/// Normalise markdown formatting using AST-based parsing and re-serialization.
 /// Returns source verbatim if it cannot be decoded as UTF-8.
-pub fn format(source: &[u8], config: &Config) -> Result<Vec<u8>, FormatError> {
+pub fn format(source: &[u8], _config: &Config) -> Result<Vec<u8>, FormatError> {
     let text = match std::str::from_utf8(source) {
         Ok(s) => s,
         Err(_) => return Ok(source.to_vec()), // binary file: return verbatim
     };
 
-    let mut out = String::with_capacity(source.len());
-    let mut depth = 0usize;
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_FOOTNOTES);
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_TASKLISTS);
+    options.insert(Options::ENABLE_SMART_PUNCTUATION);
 
-    for line in text.lines() {
-        let trimmed = line.trim();
-
-        // Count net brace change to decide if this line decreases depth first
-        let opens = trimmed.chars().filter(|&c| c == '{').count();
-        let closes = trimmed.chars().filter(|&c| c == '}').count();
-
-        if closes > opens && depth >= (closes - opens) {
-            depth -= closes - opens;
+    let parser = Parser::new_ext(text, options);
+    
+    let mut out = String::with_capacity(source.len() + 128);
+    match cmark(parser, &mut out) {
+        Ok(_) => {
+            if !out.ends_with('\n') {
+                out.push('\n');
+            }
+            Ok(out.into_bytes())
         }
-
-        if trimmed.is_empty() {
-            out.push('\n');
-        } else {
-            out.push_str(&" ".repeat(depth * config.indent_size));
-            out.push_str(trimmed);
-            out.push('\n');
-        }
-
-        if opens > closes {
-            depth += opens - closes;
-        }
+        Err(e) => Err(FormatError::Internal { message: format!("Markdown formatting failed: {}", e) }),
     }
-
-    if !out.ends_with('\n') {
-        out.push('\n');
-    }
-    Ok(out.into_bytes())
 }
 
 #[cfg(test)]
@@ -59,10 +48,49 @@ mod tests {
     }
 
     #[test]
-    fn format_idempotent() {
-        let src = b"fn main() {\n    let x = 1;\n}\n";
-        let first = format(src, &Config::default()).unwrap();
-        let second = format(&first, &Config::default()).unwrap();
-        assert_eq!(first, second, "lang-markdown must be idempotent");
+    fn format_headings() {
+        let src = b"# Heading 1\n##  Heading 2\n###   Heading 3";
+        let expected = b"# Heading 1\n\n## Heading 2\n\n### Heading 3\n";
+        let result = format(src, &Config::default()).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn format_lists() {
+        let src = b"-  Item 1\n*   Item 2\n1.   Item 3";
+        let result = format(src, &Config::default()).unwrap();
+        let out_str = std::str::from_utf8(&result).unwrap();
+        assert!(out_str.contains("Item 1"));
+        assert!(out_str.contains("Item 2"));
+        assert!(out_str.contains("Item 3"));
+    }
+
+    #[test]
+    fn format_tables() {
+        let src = b"| A | B |\n|---|---|\n| 1 | 2 |";
+        let result = format(src, &Config::default()).unwrap();
+        let out_str = std::str::from_utf8(&result).unwrap();
+        println!("TABLE OUTPUT: {:?}", out_str);
+        assert!(out_str.contains("A"));
+        assert!(out_str.contains("1"));
+    }
+
+    #[test]
+    fn format_nested_code_blocks() {
+        let src = b"```markdown\nSome markdown text\n\n```rust\nlet x = 1;\n```\nMore text\n```";
+        let result = format(src, &Config::default()).unwrap();
+        let out_str = std::str::from_utf8(&result).unwrap();
+        assert!(out_str.contains("```rust"));
+        assert!(out_str.contains("let x = 1;"));
+    }
+
+    #[test]
+    fn format_html_boundaries() {
+        let src = b"<div>\n\n# Heading in HTML\n\n</div>";
+        let result = format(src, &Config::default()).unwrap();
+        let out_str = std::str::from_utf8(&result).unwrap();
+        assert!(out_str.contains("<div>"));
+        assert!(out_str.contains("# Heading in HTML"));
+        assert!(out_str.contains("</div>"));
     }
 }

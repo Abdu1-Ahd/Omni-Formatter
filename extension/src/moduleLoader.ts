@@ -25,7 +25,7 @@ import { logger } from "./logger";
 
 const log = logger.withContext("ModuleLoader");
 
-const REGISTRY_BASE_URL = "https://omnifmt-registry.omniformat.workers.dev";
+
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -50,10 +50,12 @@ interface RegistryResolveResponse {
 export class ModuleLoader {
   private readonly cacheRoot:          string;
   private readonly bundledModulesDir:  string;
+  private readonly registryUrl:        string;
 
-  constructor(globalStoragePath: string, bundledModulesDir: string) {
+  constructor(globalStoragePath: string, bundledModulesDir: string, registryUrl: string) {
     this.cacheRoot         = path.join(globalStoragePath, "modules");
     this.bundledModulesDir = bundledModulesDir;
+    this.registryUrl       = registryUrl;
 
     // Guard: mkdirSync can throw if the path is on a read-only volume.
     try {
@@ -109,9 +111,55 @@ export class ModuleLoader {
     return this.downloadFromRegistry(moduleName);
   }
 
+  // ── Public: resolve path only (preferred for worker pool wiring) ────────
+
+  /**
+   * Resolve the on-disk path of a WASM module without loading its bytes.
+   *
+   * Workers call `fs.readFileSync` on the path themselves — there is no need
+   * to load the full binary (3 MB+) into the extension-host process just to
+   * hand a file path to a Node.js Worker thread.
+   *
+   * Resolution order:
+   *   1. Bundled path (ships inside the .vsix) — exists check only, zero I/O.
+   *   2. Disk cache  (previously downloaded + verified).
+   *   3. Registry download → written to cache → returns cache path.
+   *
+   * @param moduleName  e.g. "core", "lang-js", "lang-python"
+   * @returns Absolute path to the verified .wasm binary.
+   * @throws  {Error} If the module cannot be found locally or downloaded.
+   */
+  async resolveModulePath(moduleName: string): Promise<string> {
+    if (!moduleName || typeof moduleName !== "string") {
+      throw new Error(`ModuleLoader.resolveModulePath() called with invalid module name: ${JSON.stringify(moduleName)}`);
+    }
+
+    // 1. Bundled path
+    const bundledPath = this.resolveBundledPath(moduleName);
+    if (fs.existsSync(bundledPath)) {
+      log.debug("Resolved bundled module path", { moduleName, path: bundledPath });
+      return bundledPath;
+    }
+
+    // 2. Disk cache — find the latest cached version
+    const cachedPath = this.resolveCachePath(moduleName);
+    if (cachedPath) {
+      log.debug("Resolved cached module path", { moduleName, path: cachedPath });
+      return cachedPath;
+    }
+
+    // 3. Download from registry and return the cache path it was written to
+    log.info("Module not found locally — downloading from registry", { moduleName });
+    return this.downloadFromRegistryAndReturnPath(moduleName);
+  }
+
   // ── Private: bundled path ─────────────────────────────────────────────
 
   private resolveBundledPath(moduleName: string): string {
+    // The core WASM binary lives directly in the wasm/ directory, not modules/.
+    if (moduleName === "core") {
+      return path.join(this.bundledModulesDir, "omni_core_bg.wasm");
+    }
     const safeName = moduleName.replace(/-/g, "_");
     return path.join(
       this.bundledModulesDir,
@@ -124,7 +172,13 @@ export class ModuleLoader {
 
   // ── Private: cache ────────────────────────────────────────────────────
 
-  private loadFromCache(moduleName: string): Buffer | null {
+  /**
+   * Resolve the on-disk path for the latest cached version of a module.
+   *
+   * Performs the same integrity check as `loadFromCache` but returns the
+   * path rather than the Buffer, avoiding the full read for path-only callers.
+   */
+  private resolveCachePath(moduleName: string): string | null {
     const moduleDir = path.join(this.cacheRoot, moduleName);
     if (!fs.existsSync(moduleDir)) { return null; }
 
@@ -141,8 +195,8 @@ export class ModuleLoader {
 
     if (versions.length === 0) { return null; }
 
-    // Sort semver correctly: compare major, minor, patch numerically.
-    versions.sort((a, b) => semverCompare(b, a)); // descending — latest first
+    // Descending semver order — latest first.
+    versions.sort((a, b) => semverCompare(b, a));
     const latestVersion = versions[0];
     const wasmPath      = path.join(moduleDir, latestVersion, "module.wasm");
     const manifestPath  = path.join(moduleDir, latestVersion, "manifest.json");
@@ -152,18 +206,8 @@ export class ModuleLoader {
       return null;
     }
 
-    let wasmBytes: Buffer;
-    let manifest:  ModuleManifest;
-    try {
-      wasmBytes = fs.readFileSync(wasmPath);
-    } catch (err) {
-      log.warn("Failed to read cached WASM", {
-        wasmPath,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return null;
-    }
-
+    // Integrity check: read manifest only (cheap), verify hash of wasm bytes.
+    let manifest: ModuleManifest;
     try {
       manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as ModuleManifest;
     } catch (err) {
@@ -174,7 +218,17 @@ export class ModuleLoader {
       return null;
     }
 
-    // Integrity verification on every load (defence-in-depth)
+    let wasmBytes: Buffer;
+    try {
+      wasmBytes = fs.readFileSync(wasmPath);
+    } catch (err) {
+      log.warn("Failed to read cached WASM for integrity check", {
+        wasmPath,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
+
     if (!this.verifyHash(wasmBytes, manifest.sha256)) {
       log.error(
         "Cache integrity failure — SHA-256 mismatch. Deleting corrupt entry.",
@@ -192,14 +246,30 @@ export class ModuleLoader {
       return null;
     }
 
-    return wasmBytes;
+    return wasmPath;
+  }
+
+  private loadFromCache(moduleName: string): Buffer | null {
+    const wasmPath = this.resolveCachePath(moduleName);
+    if (!wasmPath) { return null; }
+    try {
+      return fs.readFileSync(wasmPath);
+    } catch (err) {
+      log.warn("Failed to read cached WASM", {
+        wasmPath,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
   }
 
   // ── Private: registry download ────────────────────────────────────────
 
   private async downloadFromRegistry(moduleName: string): Promise<Buffer> {
     // ── Resolve latest version ───────────────────────────────────────
-    const resolveUrl = `${REGISTRY_BASE_URL}/resolve/${encodeURIComponent(moduleName)}`;
+    // We append .json so this works transparently with static hosting (like GitHub Pages)
+    // where the server cannot perform dynamic URL rewrites.
+    const resolveUrl = `${this.registryUrl}/resolve/${encodeURIComponent(moduleName)}.json`;
     log.info("Resolving module from registry", { url: resolveUrl });
 
     let resolveRes: Response;
@@ -314,6 +384,41 @@ export class ModuleLoader {
     });
     return wasmBytes;
   }
+
+  // ── Private: registry download (path-returning variant) ───────────────
+
+  /**
+   * Download a module from the registry, write it to the cache atomically,
+   * and return the on-disk path of the cached file.
+   *
+   * Called by `resolveModulePath()` so callers that only need a path never
+   * have to load the full binary into the extension-host process.
+   */
+  private async downloadFromRegistryAndReturnPath(moduleName: string): Promise<string> {
+    const wasmBytes = await this.downloadFromRegistry(moduleName);
+
+    // downloadFromRegistry already wrote the file atomically.
+    // Reconstruct the cache path it used, then verify it exists.
+    // We cannot re-use the internal version string outside that method, so
+    // we delegate back to resolveCachePath() which reads the cache directory.
+    const cachedPath = this.resolveCachePath(moduleName);
+    if (!cachedPath) {
+      // Should never happen — downloadFromRegistry just wrote it.
+      // As a last resort, write the bytes to a temp location and return that.
+      const fallbackDir  = path.join(this.cacheRoot, moduleName, "fallback");
+      fs.mkdirSync(fallbackDir, { recursive: true });
+      const fallbackPath = path.join(fallbackDir, "module.wasm");
+      fs.writeFileSync(fallbackPath, wasmBytes);
+      log.warn("resolveCachePath returned null immediately after download — using fallback path", {
+        moduleName,
+        fallbackPath,
+      });
+      return fallbackPath;
+    }
+
+    return cachedPath;
+  }
+
 
   // ── Private: atomic write ─────────────────────────────────────────────
 

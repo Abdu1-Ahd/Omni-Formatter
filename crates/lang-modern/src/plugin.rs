@@ -1,4 +1,22 @@
-//! Plugin metadata for lang-modern.
-pub const NAME: &str = "lang-modern";
-pub const FORMATTER: &str = "zig fmt";
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+use crate::format;
+use protocol::{config::ConfigIR, FormatError, LanguagePlugin};
+
+/// ModernPlugin plugin
+pub struct ModernPlugin;
+
+impl LanguagePlugin for ModernPlugin {
+    fn name(&self) -> &str {
+        "lang-modern"
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["zig", "nim", "d", "astro", "svelte", "vue"]
+    }
+
+    fn format(&self, source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
+        match format::format(source, &config.into()) {
+            Ok(bytes) => Ok(bytes),
+            Err(e) => Err(FormatError::Internal { message: e.to_string() }),
+        }
+    }
+}

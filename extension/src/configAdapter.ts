@@ -104,11 +104,21 @@ export class ConfigAdapter {
       sources.push(nativeConfig.source);
     }
 
-    // Layer 1: .omnifmt.json (highest priority)
+    // Layer 1: .omnifmt.json (highest priority among static files)
     const omnifmtConfig = this.readOmnifmtJson(workspaceRoot, languageId);
     if (omnifmtConfig) {
       merged = { ...merged, ...omnifmtConfig };
       sources.push(".omnifmt.json");
+    }
+
+    // Layer 0 (lowest-priority fallback): derive end_of_line from the live
+    // document if — and ONLY if — no static config layer has already set it.
+    // Reading from document.eol (not vscode.window.activeTextEditor) ensures
+    // this is always the correct value for the document being formatted, even
+    // during background format-on-save or formatWorkspace operations.
+    if (!merged.endOfLine) {
+      merged.endOfLine = this.mapVscodeEol(document.eol);
+      sources.push("document.eol");
     }
 
     let configJson = "{}";
@@ -123,6 +133,19 @@ export class ConfigAdapter {
 
     log.debug("Config resolved", { languageId, sources });
     return { configJson, sources };
+  }
+
+  /**
+   * Map VS Code's EndOfLine enum to our protocol's endOfLine string.
+   *
+   * vscode.EndOfLine.LF   = 1  →  "lf"
+   * vscode.EndOfLine.CRLF = 2  →  "crlf"
+   *
+   * Never reads vscode.window.activeTextEditor — the caller always provides
+   * the concrete document.eol from the document being formatted.
+   */
+  private mapVscodeEol(eol: vscode.EndOfLine): "lf" | "crlf" {
+    return eol === vscode.EndOfLine.CRLF ? "crlf" : "lf";
   }
 
   // ── Workspace root ────────────────────────────────────────────────────────

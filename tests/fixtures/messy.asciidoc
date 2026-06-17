@@ -1,0 +1,2 @@
+/* default messy content for asciidoc */
+console.log("hello");

@@ -99,6 +99,22 @@ pub fn default_registry() -> PluginRegistry {
     registry.register(Box::new(lang_python::plugin::PythonPlugin));
     registry.register(Box::new(lang_rust::plugin::RustPlugin));
     registry.register(Box::new(lang_go::plugin::GoPlugin));
+    registry.register(Box::new(lang_markdown::plugin::MarkdownPlugin));
+    registry.register(Box::new(lang_c::plugin::CPlugin));
+    registry.register(Box::new(lang_csharp::plugin::CsharpPlugin));
+    registry.register(Box::new(lang_data::plugin::DataPlugin));
+    registry.register(Box::new(lang_devops::plugin::DevopsPlugin));
+    registry.register(Box::new(lang_functional::plugin::FunctionalPlugin));
+    registry.register(Box::new(lang_java::plugin::JavaPlugin));
+    registry.register(Box::new(lang_mobile::plugin::MobilePlugin));
+    registry.register(Box::new(lang_modern::plugin::ModernPlugin));
+    registry.register(Box::new(lang_other::plugin::OtherPlugin));
+    registry.register(Box::new(lang_ruby::plugin::RubyPlugin));
+    registry.register(Box::new(lang_sass::plugin::SassPlugin));
+    registry.register(Box::new(lang_shell::plugin::ShellPlugin));
+    registry.register(Box::new(lang_sql::plugin::SqlPlugin));
+    registry.register(Box::new(lang_swift::plugin::SwiftPlugin));
+    registry.register(Box::new(lang_template::plugin::TemplatePlugin));
     registry
 }
 

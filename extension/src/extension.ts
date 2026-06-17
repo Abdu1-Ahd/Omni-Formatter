@@ -33,7 +33,8 @@ import { ConflictDetector } from "./conflictDetector";
 import { FormattingState } from "./formattingState";
 import { FormatterInfoCodeLensProvider } from "./providers/FormatterInfoCodeLensProvider";
 import { FormatterHoverProvider } from "./providers/FormatterHoverProvider";
-import { toUtf16CodeUnitOffset } from "./offsets";
+import { toUtf16CodeUnitOffset, positionToUtf8ByteOffset } from "./offsets";
+import { ConfigAdapter } from "./configAdapter";
 
 // ── Logger (module-level so it is accessible in handleFormatRequest) ──────
 
@@ -287,6 +288,7 @@ function isWasmEdit(v: unknown): v is WasmEdit {
 let workerPool:     WorkerPool | undefined;
 let statusBar:      StatusBar  | undefined;
 let wasmCompiler:   WasmCompiler | undefined;
+let configAdapter:  ConfigAdapter | undefined;
 
 // ── activate() ───────────────────────────────────────────────────────────
 
@@ -319,12 +321,48 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const formattingState = FormattingState.getInstance();
   context.subscriptions.push(formattingState);
 
-  // ── Step 5: Worker pool + everything that depends on it ───────────────
+  // ── Step 5: Path constants used by WorkerPool and ModuleLoader ────────
   const workerScript = path.join(context.extensionPath, "dist", "workers", "formatWorker.js");
   const wasmDir      = path.join(context.extensionPath, "dist", "wasm");
   const numWorkers   = Math.max(2, os.cpus().length - 1);
 
-  workerPool = new WorkerPool(workerScript, wasmDir, numWorkers);
+  // ── Step 6: ModuleLoader + ConfigAdapter ────────────────────────────
+  const globalConfig = vscode.workspace.getConfiguration("omniFormatter");
+  const registryUrl = globalConfig.get<string>(
+    "registryUrl",
+    "https://Abdu1-Ahd.github.io/Omni-Formatter"
+  );
+  
+  const moduleLoader = new ModuleLoader(
+    context.globalStorageUri.fsPath,
+    wasmDir,
+    registryUrl
+  );
+  configAdapter = new ConfigAdapter();
+
+  // ── Step 7: Resolve core WASM path via ModuleLoader (three-tier) ─────
+  //
+  // ModuleLoader checks: bundled (dist/wasm/) → disk cache → OTA download.
+  // This ensures the first format request always has a valid, verified binary,
+  // even if the extension was installed offline (bundled tier) or if a newer
+  // version was downloaded in a previous session (cache tier).
+  let resolvedWasmDir: string = wasmDir;
+  try {
+    const resolvedWasmPath = await moduleLoader.resolveModulePath("core");
+    resolvedWasmDir = path.dirname(resolvedWasmPath);
+    log.info("Core WASM resolved via ModuleLoader", { path: resolvedWasmPath });
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    log.warn("ModuleLoader could not resolve core WASM — falling back to bundled wasmDir", {
+      error:    errMsg,
+      fallback: wasmDir,
+    });
+    // Non-fatal: fall through with the bundled directory. If the binary truly
+    // doesn't exist the worker will report INIT_TIMEOUT and surface that error.
+  }
+
+  // ── Step 8: Worker pool ───────────────────────────────────────────────
+  workerPool = new WorkerPool(workerScript, resolvedWasmDir, numWorkers);
 
   try {
     await workerPool.initialise();
@@ -339,36 +377,48 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // produce empty results until the pool is available, or on next restart).
   }
 
-  // ── Step 6: ModuleLoader ──────────────────────────────────────────────
-  const moduleLoader = new ModuleLoader(
-    context.globalStorageUri.fsPath,
-    wasmDir
-  );
-
-  // ── Step 7: Background WASM pre-compilation ───────────────────────────
-  wasmCompiler = new WasmCompiler(wasmDir, context.globalStorageUri.fsPath);
+  // ── Step 9: Background WASM pre-compilation ─────────────────────────────
+  wasmCompiler = new WasmCompiler(resolvedWasmDir, context.globalStorageUri.fsPath);
   // The extension ships a single unified WASM binary (omni_core_bg.wasm)
   // that handles ALL languages. There are no per-language WASM modules.
   // Precompile only the one real binary that is always present.
   wasmCompiler.precompileTopLanguages(["core"]);
 
-  // ── Step 8: Conflict detection ────────────────────────────────────────
+  // ── Step 10: Conflict detection ────────────────────────────────────────
   const conflictDetector = new ConflictDetector();
   conflictDetector.detectAndNotify(SUPPORTED_LANGUAGE_IDS as unknown as string[]);
 
   // ── Step 9: Document formatting providers ────────────────────────────
   for (const langId of SUPPORTED_LANGUAGE_IDS) {
-    const provider = vscode.languages.registerDocumentFormattingEditProvider(
+    // Full-document provider — invoked by Shift+Alt+F and format-on-save.
+    // Never receives a selection range; always formats the entire document.
+    const fullProvider = vscode.languages.registerDocumentFormattingEditProvider(
       { language: langId },
       {
         provideDocumentFormattingEdits: (
           document: vscode.TextDocument,
           options:  vscode.FormattingOptions,
           token:    vscode.CancellationToken
-        ) => handleFormatRequest(document, options, token, moduleLoader, context),
+        ) => handleFormatRequest(document, options, token),
       }
     );
-    context.subscriptions.push(provider);
+
+    // Range provider — invoked by "Format Selection" (right-click menu or
+    // keyboard shortcut). Registered separately so it never interferes with
+    // the full-document provider or with background format-on-save.
+    const rangeProvider = vscode.languages.registerDocumentRangeFormattingEditProvider(
+      { language: langId },
+      {
+        provideDocumentRangeFormattingEdits: (
+          document: vscode.TextDocument,
+          range:    vscode.Range,
+          options:  vscode.FormattingOptions,
+          token:    vscode.CancellationToken
+        ) => handleRangeFormatRequest(document, range, options, token),
+      }
+    );
+
+    context.subscriptions.push(fullProvider, rangeProvider);
   }
 
   // ── Step 10: CodeLens + Hover providers ──────────────────────────────
@@ -400,9 +450,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         handleFormatRequest(
           document,
           { tabSize: 2, insertSpaces: true },
-          cts.token,
-          moduleLoader,
-          context
+          cts.token
         ).finally(() => {
           cts.dispose();
         })
@@ -457,11 +505,9 @@ export async function deactivate(): Promise<void> {
  * TextEdits. Every error path is fully logged and surfaces to the status bar.
  */
 async function handleFormatRequest(
-  document:    vscode.TextDocument,
-  _options:    vscode.FormattingOptions,
-  token:       vscode.CancellationToken,
-  _moduleLoader: ModuleLoader,
-  _context:    vscode.ExtensionContext
+  document:      vscode.TextDocument,
+  _options:      vscode.FormattingOptions,
+  token:         vscode.CancellationToken
 ): Promise<vscode.TextEdit[]> {
   // ── Guard: pool must exist ────────────────────────────────────────────
   if (!workerPool) {
@@ -493,6 +539,17 @@ async function handleFormatRequest(
   // UTF-8 worst case: 4 bytes per character (supplementary codepoints).
   const byteEstimate  = Buffer.byteLength(sourceText, "utf8");
 
+  // ── Resolve config (includes EOL derived from document.eol) ─────────
+  const resolved = configAdapter?.resolve(document, langId);
+  let configIr: unknown = {};
+  try {
+    configIr = resolved ? JSON.parse(resolved.configJson) : {};
+  } catch {
+    // resolved.configJson is always produced by JSON.stringify — should never
+    // fail to parse, but guard defensively to prevent crashing the formatter.
+    configIr = {};
+  }
+
   // ── Build format request ──────────────────────────────────────────────
   //
   // FormatRequest protocol (see crates/protocol/src/lib.rs):
@@ -514,7 +571,7 @@ async function handleFormatRequest(
     source_text:   sourceText,
     source:        sourceBytes,
     language_id:   langId,
-    config:        {},
+    config:        configIr,
     range:         null,
     previous_tree: null,
     edit:          null,
@@ -652,6 +709,194 @@ async function handleFormatRequest(
       continue;
     }
 
+    const startUtf16 = toUtf16CodeUnitOffset(sourceText, edit.range.start);
+    const endUtf16   = toUtf16CodeUnitOffset(sourceText, edit.range.end);
+    const startPos   = document.positionAt(startUtf16);
+    const endPos     = document.positionAt(endUtf16);
+    textEdits.push(
+      vscode.TextEdit.replace(new vscode.Range(startPos, endPos), edit.new_text)
+    );
+  }
+
+  return textEdits;
+}
+
+// ── handleRangeFormatRequest() ────────────────────────────────────────────
+
+/**
+ * Handle a format request for a selected range within a document.
+ *
+ * Registered via DocumentRangeFormattingEditProvider — VS Code calls this
+ * when the user invokes "Format Selection". It is entirely separate from
+ * handleFormatRequest (full-document) and does NOT interfere with
+ * format-on-save or Shift+Alt+F behaviour.
+ *
+ * VS Code supplies the range in UTF-16 (line, character) coordinates.
+ * We convert both endpoints to UTF-8 byte offsets using positionToUtf8ByteOffset
+ * before passing them to the WASM core as a ByteRange.
+ *
+ * The WASM core (lib.rs L-15) expands the byte range to the nearest complete
+ * syntactic unit, so partial AST nodes are never produced.
+ */
+async function handleRangeFormatRequest(
+  document:      vscode.TextDocument,
+  range:         vscode.Range,
+  _options:      vscode.FormattingOptions,
+  token:         vscode.CancellationToken
+): Promise<vscode.TextEdit[]> {
+  if (!workerPool) {
+    log.warn("Range format request ignored — worker pool is not running", {
+      uri: document.uri.toString(),
+    });
+    return [];
+  }
+
+  if (document.isClosed) {
+    log.debug("Range format request ignored — document was closed", {
+      uri: document.uri.toString(),
+    });
+    return [];
+  }
+
+  const langId     = document.languageId;
+  const moduleName = LANGUAGE_MODULE_MAP[langId];
+  if (!moduleName) {
+    log.debug("No module registered for language", { langId });
+    return [];
+  }
+
+  const sourceText   = document.getText();
+  const byteEstimate = Buffer.byteLength(sourceText, "utf8");
+
+  // ── Convert VS Code UTF-16 (line, character) to UTF-8 byte offsets ───
+  //
+  // positionToUtf8ByteOffset handles ASCII, 2/3-byte BMP, and 4-byte
+  // supplementary (surrogate pair) characters correctly. It is O(byteOffset)
+  // — fast for user selections which are always a small fraction of the file.
+  const rangeStartByte = positionToUtf8ByteOffset(
+    sourceText,
+    range.start.line,
+    range.start.character
+  );
+  const rangeEndByte = positionToUtf8ByteOffset(
+    sourceText,
+    range.end.line,
+    range.end.character
+  );
+
+  // ── Resolve config (same as full-document, includes EOL) ─────────────
+  const resolved = configAdapter?.resolve(document, langId);
+  let configIr: unknown = {};
+  try {
+    configIr = resolved ? JSON.parse(resolved.configJson) : {};
+  } catch {
+    configIr = {};
+  }
+
+  const sourceBytes = Array.from(Buffer.from(sourceText, "utf8"));
+  const request = {
+    source_text:   sourceText,
+    source:        sourceBytes,
+    language_id:   langId,
+    config:        configIr,
+    // ByteRange passed in UTF-8 byte offsets as required by the protocol.
+    // The WASM core expands this to the nearest syntactic unit (L-15).
+    range:         { start: rangeStartByte, end: rangeEndByte },
+    previous_tree: null,
+    edit:          null,
+  };
+
+  let requestJson: string;
+  try {
+    requestJson = JSON.stringify(request);
+  } catch (err) {
+    log.error("Failed to serialise range format request", err instanceof Error ? err : new Error(String(err)), {
+      langId,
+      uri: document.uri.toString(),
+    });
+    return [];
+  }
+
+  const startMs = Date.now();
+  let responseJson: string;
+  try {
+    responseJson = await workerPool.dispatch(requestJson, byteEstimate, token);
+  } catch (err) {
+    const isCancelled = err instanceof OmniFormatterError && err.code === "CANCELLED";
+    if (isCancelled) {
+      log.debug("Range format request cancelled", { langId, uri: document.uri.toString() });
+      return [];
+    }
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    log.error("Worker pool dispatch failed (range)", err instanceof Error ? err : new Error(errorMsg), {
+      langId,
+      uri: document.uri.toString(),
+    });
+    statusBar?.showError(`Failed to format selection in ${langId} — see output channel for details.`);
+    return [];
+  }
+
+  const elapsedMs = Date.now() - startMs;
+
+  let response: unknown;
+  try {
+    response = JSON.parse(responseJson);
+  } catch (err) {
+    log.error("WASM returned non-JSON response (range)", err instanceof Error ? err : new Error(String(err)), {
+      langId,
+      responsePreview: responseJson.slice(0, 300),
+    });
+    statusBar?.showError(`Internal error formatting ${langId} selection — bad response from WASM.`);
+    return [];
+  }
+
+  if (!isWasmFormatResponse(response)) {
+    log.error(
+      "WASM range response did not match expected shape",
+      new Error("Unexpected WASM response shape"),
+      { langId, responsePreview: JSON.stringify(response).slice(0, 300) }
+    );
+    statusBar?.showError(`Internal error formatting ${langId} selection — unexpected WASM response.`);
+    return [];
+  }
+
+  if (response.error) {
+    const errorMsg = typeof response.error === "string"
+      ? response.error
+      : JSON.stringify(response.error);
+    log.error("WASM formatter returned an error (range)", new Error(errorMsg), {
+      langId,
+      elapsedMs,
+      uri: document.uri.toString(),
+    });
+    statusBar?.showError(`Format selection error in ${langId} — see output channel for details.`);
+    return [];
+  }
+
+  if (document.isClosed) { return []; }
+
+  statusBar?.update(langId, response.formatter_chain, elapsedMs);
+  log.debug("Range format complete", {
+    langId,
+    formatterChain: response.formatter_chain,
+    elapsedMs,
+    editCount:      response.edits.length,
+    isNoop:         response.is_noop,
+    rangeStartByte,
+    rangeEndByte,
+  });
+
+  if (response.is_noop || response.edits.length === 0) { return []; }
+
+  const textEdits: vscode.TextEdit[] = [];
+  for (const edit of response.edits) {
+    if (!isWasmEdit(edit)) {
+      log.warn("Skipping malformed edit in WASM range response", {
+        langId,
+        edit: JSON.stringify(edit).slice(0, 200),
+      });
+      continue;
+    }
     const startUtf16 = toUtf16CodeUnitOffset(sourceText, edit.range.start);
     const endUtf16   = toUtf16CodeUnitOffset(sourceText, edit.range.end);
     const startPos   = document.positionAt(startUtf16);

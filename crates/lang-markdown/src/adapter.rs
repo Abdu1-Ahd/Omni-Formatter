@@ -1,5 +1,6 @@
 //! lang-markdown config adapter.
 use serde::Deserialize;
+use protocol::config::ConfigIR;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
@@ -21,6 +22,15 @@ impl Default for Config {
         Self {
             indent_size: default_indent_size(),
             column_limit: default_column_limit(),
+        }
+    }
+}
+
+impl From<&ConfigIR> for Config {
+    fn from(ir: &ConfigIR) -> Self {
+        Self {
+            indent_size: ir.indent_size as usize,
+            column_limit: ir.print_width as usize,
         }
     }
 }
