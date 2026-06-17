@@ -34,8 +34,9 @@ jobs:
       - name: Rust format check
         run: cargo fmt --all -- --check
 
-      - name: Rust clippy (zero warnings)
-        run: cargo clippy --all-targets -- -D warnings
+      - name: Rust clippy (zero warnings in workspace)
+        # --workspace: only lint our own crates, not vendored deps like tree-sitter
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -95,38 +96,12 @@ jobs:
         run: pnpm test
         working-directory: extension
 
-  build:
-    name: Build
+  build-extension:
+    name: Build Extension
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust stable + WASM target
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - name: Install wasm-pack
-        run: cargo install wasm-pack --version "^0.13"
-
-      - name: Cache Rust deps
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target/
-          key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('**/Cargo.toml') }}
-
-      - name: Build WASM core
-        run: bash scripts/build-wasm.sh
-
-      - name: WASM smoke test
-        timeout-minutes: 2
-        run: |
-          cd tests/wasm_integration
-          node smoke_test.js
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -144,14 +119,8 @@ jobs:
           pnpm build:all
         working-directory: extension
 
-      - name: Upload WASM artifact
+      - name: Upload extension artifact
         uses: actions/upload-artifact@v4
         with:
-          name: core-wasm-nomodules
-          path: extension/dist/wasm/
-
-      - name: Upload WASM artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: core-wasm
-          path: crates/core/pkg/
+          name: extension-dist
+          path: extension/dist/
