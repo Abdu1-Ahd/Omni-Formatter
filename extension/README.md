@@ -1,10 +1,13 @@
-﻿<div align="center">
+<div align="center">
 **One extension. Every language. Zero configuration.**<br/>
 [![Build](https://img.shields.io/github/actions/workflow/status/Abdu1-Ahd/Omni-Formatter/ci.yml?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Abdu1-Ahd/Omni-Formatter/actions)
 <br/>
 [![Rust](https://img.shields.io/badge/Core-Rust-CE422B?style=flat-square&logo=rust)](https://www.rust-lang.org/)
 [![WebAssembly](https://img.shields.io/badge/Runtime-WebAssembly-654ff0?style=flat-square&logo=webassembly)](https://webassembly.org/)
-[![Cloudflare Workers](https://img.shields.io/badge/Registry-Cloudflare%20Workers-F38020?style=flat-square&logo=cloudflare)](https://workers.cloudflare.com/)
+[![GitHub Pages](https://img.shields.io/badge/Registry-GitHub%20Pages-222222?style=flat-square&logo=github)](https://pages.github.com/)
+<br/>
+[![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/Abdu1-Ahd.omni-formatter?style=flat-square&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=Abdu1-Ahd.omni-formatter)
+[![Open VSX](https://img.shields.io/open-vsx/v/Abdu1-Ahd/omni-formatter?style=flat-square&logo=eclipse)](https://open-vsx.org/extension/Abdu1-Ahd/omni-formatter)
 
 [Install for VS Code](https://marketplace.visualstudio.com/items?itemName=Abdu1-Ahd.omni-formatter) • [Install for Open VSX](https://open-vsx.org/extension/Abdu1-Ahd/omni-formatter) • [Documentation](docs/) • [Add a Language](docs/ADD_LANGUAGE_TEMPLATE.md)
 
