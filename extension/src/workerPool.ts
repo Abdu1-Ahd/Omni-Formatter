@@ -29,6 +29,15 @@ const log = logger.withContext("WorkerPool");
 /** Maximum in-flight requests per worker before back-pressure kicks in. */
 const MAX_QUEUE_DEPTH = 16;
 
+/**
+ * Recycle a worker after this many completed requests.
+ *
+ * ponytail: WASM linear memory only grows — recycling is the only way to
+ * release the heap back to the OS without a custom allocator. 500 requests
+ * ≈ hours of heavy use before recycling kicks in.
+ */
+const MAX_REQUESTS_PER_WORKER = 500;
+
 /** Milliseconds to wait for a worker to report ready during spawn. */
 const WORKER_INIT_TIMEOUT_MS = 10_000;
 
@@ -42,9 +51,10 @@ interface PendingRequest {
 }
 
 interface WorkerEntry {
-  worker:     Worker;
-  queueDepth: number;
-  pending:    Map<number, PendingRequest>;
+  worker:        Worker;
+  queueDepth:    number;
+  pending:       Map<number, PendingRequest>;
+  requestCount:  number;  // ponytail: tracks completed requests for recycling
 }
 
 // ── OmniFormatterError ────────────────────────────────────────────────────
@@ -236,8 +246,9 @@ export class WorkerPool {
 
       const entry: WorkerEntry = {
         worker,
-        queueDepth: 0,
-        pending:    new Map(),
+        queueDepth:   0,
+        pending:      new Map(),
+        requestCount: 0,
       };
 
       let initialised = false;
@@ -303,6 +314,29 @@ export class WorkerPool {
             "Worker returned a message with neither responseJson nor error.",
             "MALFORMED_RESPONSE"
           ));
+        }
+
+        // ── Periodic recycling (memory-leak mitigation) ──────────────
+        // WASM linear memory only grows. After MAX_REQUESTS_PER_WORKER
+        // completed requests, retire this worker once its queue drains so
+        // the V8 heap and WASM memory are released back to the OS.
+        entry.requestCount++;
+        if (
+          entry.requestCount >= MAX_REQUESTS_PER_WORKER &&
+          entry.queueDepth === 0 &&
+          !this.shutdownRequested
+        ) {
+          log.debug("Recycling worker after request limit", {
+            requestCount: entry.requestCount,
+            totalWorkers: this.workers.length,
+          });
+          this.workers = this.workers.filter((e) => e !== entry);
+          entry.worker.terminate().catch(() => undefined);
+          this.spawnWorker().catch((spawnErr) => {
+            log.warn("Worker recycle: replacement spawn failed", {
+              error: spawnErr instanceof Error ? spawnErr.message : String(spawnErr),
+            });
+          });
         }
       });
 

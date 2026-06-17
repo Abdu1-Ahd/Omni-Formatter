@@ -382,6 +382,11 @@ export class ModuleLoader {
       version:   registryResponse.version,
       sizeBytes: wasmBytes.length,
     });
+
+    // Evict all older versions so disk usage stays bounded.
+    // ponytail: run best-effort after the happy-path write; errors are warned, not thrown.
+    this.pruneOldCacheVersions(moduleName, registryResponse.version);
+
     return wasmBytes;
   }
 
@@ -419,6 +424,38 @@ export class ModuleLoader {
     return cachedPath;
   }
 
+
+  // ── Private: stale cache pruning ─────────────────────────────────────
+
+  /**
+   * Delete all cached versions of `moduleName` except `keepVersion`.
+   *
+   * ponytail: called immediately after a successful download so old binaries
+   * never accumulate on the user's disk. Best-effort — errors are warned only.
+   */
+  private pruneOldCacheVersions(moduleName: string, keepVersion: string): void {
+    const moduleDir = path.join(this.cacheRoot, moduleName);
+    let versions: string[];
+    try {
+      versions = fs.readdirSync(moduleDir);
+    } catch {
+      return; // nothing to prune
+    }
+    for (const v of versions) {
+      if (v === keepVersion) { continue; }
+      const vDir = path.join(moduleDir, v);
+      try {
+        fs.rmSync(vDir, { recursive: true, force: true });
+        log.debug("Pruned old cache version", { moduleName, version: v });
+      } catch (err) {
+        log.warn("Could not prune old cache version", {
+          moduleName,
+          version: v,
+          error:   err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+  }
 
   // ── Private: atomic write ─────────────────────────────────────────────
 
