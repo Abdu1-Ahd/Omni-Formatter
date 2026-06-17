@@ -54,7 +54,7 @@ impl CDialect {
 pub fn format_c(
     source_bytes: &[u8],
     config_json: &str,
-    language_id: &str,
+    _language_id: &str,
 ) -> Result<Vec<u8>, JsValue> {
     let config = adapter::config_from_json(config_json);
     match format::format(source_bytes, &config) {

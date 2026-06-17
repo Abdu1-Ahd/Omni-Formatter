@@ -1,6 +1,6 @@
 //! lang-markdown config adapter.
-use serde::Deserialize;
 use protocol::config::ConfigIR;
+use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {

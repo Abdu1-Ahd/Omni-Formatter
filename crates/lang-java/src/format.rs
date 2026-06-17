@@ -6,9 +6,6 @@
 use crate::adapter::Config;
 use protocol::FormatError;
 
-pub fn format(
-    source: &[u8],
-    _config: &Config,
-) -> Result<Vec<u8>, FormatError> {
+pub fn format(source: &[u8], _config: &Config) -> Result<Vec<u8>, FormatError> {
     Ok(source.to_vec())
 }

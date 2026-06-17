@@ -5,7 +5,7 @@
 
 use crate::adapter::Config;
 use protocol::FormatError;
-use pulldown_cmark::{Parser, Options};
+use pulldown_cmark::{Options, Parser};
 use pulldown_cmark_to_cmark::cmark;
 
 /// Normalise markdown formatting using AST-based parsing and re-serialization.
@@ -24,7 +24,7 @@ pub fn format(source: &[u8], _config: &Config) -> Result<Vec<u8>, FormatError> {
     options.insert(Options::ENABLE_SMART_PUNCTUATION);
 
     let parser = Parser::new_ext(text, options);
-    
+
     let mut out = String::with_capacity(source.len() + 128);
     match cmark(parser, &mut out) {
         Ok(_) => {
@@ -33,7 +33,9 @@ pub fn format(source: &[u8], _config: &Config) -> Result<Vec<u8>, FormatError> {
             }
             Ok(out.into_bytes())
         }
-        Err(e) => Err(FormatError::Internal { message: format!("Markdown formatting failed: {}", e) }),
+        Err(e) => Err(FormatError::Internal {
+            message: format!("Markdown formatting failed: {}", e),
+        }),
     }
 }
 

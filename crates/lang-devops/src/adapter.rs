@@ -1,6 +1,6 @@
 //! lang-devops config adapter.
-use serde::Deserialize;
 use protocol::config::ConfigIR;
+use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
@@ -10,12 +10,19 @@ pub struct Config {
     pub column_limit: usize,
 }
 
-fn default_indent_size() -> usize { 2 }
-fn default_column_limit() -> usize { 80 }
+fn default_indent_size() -> usize {
+    2
+}
+fn default_column_limit() -> usize {
+    80
+}
 
 impl Default for Config {
     fn default() -> Self {
-        Self { indent_size: 2, column_limit: 80 }
+        Self {
+            indent_size: 2,
+            column_limit: 80,
+        }
     }
 }
 
