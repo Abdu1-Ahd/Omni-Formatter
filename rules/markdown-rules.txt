@@ -1,119 +1,58 @@
-# Markdown Formatting Logic and Rules
+# Comprehensive Formatting Rules for Markdown
 
-Markdown is a lightweight markup language. It converts plain text into structured HTML. The underlying logic relies on a deterministic parser identifying specific character sequences at the start or within lines of text and wrapping the targeted text in corresponding HTML tags.
-
----
+This document outlines the strict formatting, parsing, and tokenization rules for Markdown. It is designed to act as a reference for syntax highlighters, parsers, and AST (Abstract Syntax Tree) generation tools.
 
 ## 1. Core Parsing Logic
+The core parser for Markdown operates under the `docs` paradigm.
+Block-level parsing (paragraphs, headers, lists) followed by inline parsing (bold, links).
 
-Markdown parsers read text line by line or block by block. They apply two layers of processing.
-
-1. Block-Level Parsing: Identifies structural elements that define the page layout (headings, lists, code blocks, paragraphs, tables). These elements are separated by blank lines and map to HTML block elements like <h1>, <p>, <ul>, and <table>.
-2. Inline-Level Parsing: Identifies text styling within a block (bold, italics, inline code, links). These tokens map to inline HTML tags like <strong>, <em>, <code>, and <a>.
-
----
+**Tokenization Strategy:**
+- The lexer identifies keywords, operators, and literals specific to Markdown.
+- Statement boundaries are resolved via: `newline`.
+- For tree construction, the parser strictly evaluates scope depth and applies semantic checks pertinent to the `docs` ecosystem.
 
 ## 2. Block Element Rules
+Block elements encapsulate logical groupings of statements, such as function bodies, loops, conditionals, or data structures.
 
-### Headings
-Headings use the # symbol followed by exactly one space. The number of # signs determines the heading level (1 to 6).
+**Scope Delimiters:**
+- **Start Token:** `newline`
+- **End Token:** `newline`
 
-# Heading 1 (Maps to <h1>)
-## Heading 2 (Maps to <h2>)
-### Heading 3 (Maps to <h3>)
+**Block-Level Comments:**
+Block comments are designed to span multiple lines without terminating the parser context abruptly.
+- **Syntax:** `<!-- ... -->`
 
-### Paragraphs and Line Breaks
-* Paragraph: Any consecutive lines of text without prefix tokens. Paragraphs must be separated by at least one completely blank line.
-* Line Break: To force a line break (<br>) within a paragraph, end a line with two or more spaces and press enter. You can also use a backslash (\) at the end of the line.
-
-### Lists
-
-#### Unordered Lists
-Use an asterisk *, minus -, or plus + followed by a space.
-
-- Item 1
-- Item 2
-  - Indented sub-item (requires 2 or 4 spaces of indentation)
-
-#### Ordered Lists
-Use a number followed by a period . and a space. The actual numbers used do not matter. The parser automatically increments the output from 1.
-
-1. First item
-1. Second item
-1. Third item
-
-### Code Blocks
-Wrap multi-line code blocks using three backticks (```) on a line before and after the code. Specify the language immediately after the first set of backticks for syntax highlighting.
-
-```python
-def hello_world():
-    print("Hello, World!")
-
+**Block Rule Example:**
+```
+# Header
+<!-- comment -->
+**bold** text.
 ```
 
-### Blockquotes
-
-Prefix the line with a greater-than sign > followed by a space.
-
-> This is a blockquote element.
-> It can span multiple lines.
-
-### Horizontal Rules
-
-Three or more asterisks ***, hyphens ---, or underscores ___ on a line by themselves create a horizontal separator line ().
-
-### Tables
-
-Tables operate on a grid-based logic. Pipes | define columns and hyphens - define the header structure. A table requires a specific three-part sequence.
-
-1. The Header Row: The first line of the table. Each column is separated by a pipe |.
-2. The Delimiter Row: The second line of the table. It must contain at least three hyphens --- for every column.
-3. The Body Rows: Every subsequent line follows the same pipe-delimited structure.
-
-| Header 1 | Header 2 | Header 3 |
-| --- | --- | --- |
-| Left | Center | Right |
-| Text | Text | Text |
-
-Use colons : in the delimiter row to control alignment.
-
-* Left-aligned (Default): :---
-* Center-aligned: :---:
-* Right-aligned: ---:
-
----
-
 ## 3. Inline Element Rules
+Inline elements operate within a single line or statement. They encompass arithmetic operations, variable assignments, function invocations, and single-line annotations.
 
-### Emphasis (Italics and Bold)
+**Inline Comments:**
+Inline comments terminate at the end of the line (newline character).
+- **Syntax:** `<!--`
 
-* Italics: Wrap text in a single asterisk *text* or single underscore *text*.
-* Bold: Wrap text in double asterisks **text** or double underscores **text**.
-* Bold and Italic: Wrap text in triple asterisks ***text***.
-
-### Inline Code
-
-Wrap text in single backticks (`) to denote code variables, HTML tags, or terminal commands within a sentence.
-
-Use the `print()` function in Python.
-
-### Links and Images
-
-#### Links
-
-Format links by placing the anchor text in square brackets followed by the URL in parentheses.
-
-[Google](https://www.google.com)
-
-#### Images
-
-Images use the exact same syntax as links, but add an exclamation mark ! at the very beginning. The square brackets contain the alternative text (alt text).
-
----
+**String Literals:**
+String boundaries must be strictly respected to prevent injection or parser failure.
+- **Supported Enclosures:** `N/A`
 
 ## 4. Escape Characters
+Within string literals or regex definitions, escape characters are strictly evaluated to emit special, non-printable characters or to escape literal delimiters.
 
-If you need to display a literal character that Markdown uses for formatting, precede that character with a backslash .
+**Supported Escapes:**
+- `\\*, \\_, \\[, \\], \\(`
 
-* This will show a literal asterisk, not a bullet point.
-# This will show a literal hashtag, not a heading.
+When an escape character is encountered, the lexer consumes the subsequent character as a literal or control code.
+
+## 5. Comprehensive Syntax Example
+Below is a clear syntax example demonstrating the interplay of core parsing logic, block elements, inline elements, and string escapes:
+
+```
+# Header
+<!-- comment -->
+**bold** text.
+```
