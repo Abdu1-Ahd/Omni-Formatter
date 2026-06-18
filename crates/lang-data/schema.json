@@ -1,9 +1,85 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter JSON / YAML / TOML / XML / INI language module Config",
+  "title": "OmniFormatter JSON / YAML / TOML / XML / INI / CSV / Protobuf Configuration Schema",
+  "description": "Merged formatting configuration for data serialization formats. All fields optional.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "indentationSpaces": {
+      "type": "integer", "minimum": 0, "maximum": 8, "default": 2,
+      "description": "Spaces per indentation level. 0 = minified output. Applies to JSON, YAML, XML."
+    },
+    "useTabs": {
+      "type": "boolean", "default": false,
+      "description": "Tabs are PROHIBITED in YAML and strongly discouraged in other formats."
+    },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "trailingNewline": { "type": "boolean", "default": true },
+    "json__sortKeys": {
+      "type": "boolean", "default": false,
+      "description": "[JSON] Sort object keys alphabetically on format."
+    },
+    "json__trailingCommas": {
+      "type": "boolean", "default": false,
+      "description": "[JSON] Trailing commas are INVALID in strict JSON (RFC 8259). Only valid in JSON5."
+    },
+    "yaml__scalarStyle": {
+      "type": "string",
+      "enum": ["plain", "single-quoted", "double-quoted", "literal", "folded", "auto"],
+      "default": "auto",
+      "description": "[YAML] Preferred string (scalar) style."
+    },
+    "yaml__booleanRepresentation": {
+      "type": "string", "enum": ["true/false", "yes/no", "on/off"], "default": "true/false",
+      "description": "[YAML] Canonical boolean representation."
+    },
+    "yaml__documentSeparator": {
+      "type": "boolean", "default": false,
+      "description": "[YAML] Add --- document separator at the start of each document."
+    },
+    "toml__keyStyle": {
+      "type": "string", "enum": ["bare", "quoted", "auto"], "default": "bare",
+      "description": "[TOML] Prefer bare keys when valid."
+    },
+    "toml__arrayStyle": {
+      "type": "string", "enum": ["inline", "multi-line", "auto"], "default": "auto",
+      "description": "[TOML] Inline arrays [...] vs block-style multi-line arrays."
+    },
+    "xml__selfClosingElements": {
+      "type": "boolean", "default": true,
+      "description": "[XML] Collapse empty elements to self-closing form <br />."
+    },
+    "xml__xmlDeclaration": {
+      "type": "boolean", "default": true,
+      "description": "[XML] Require <?xml version=\"1.0\" encoding=\"UTF-8\"?> at the top."
+    },
+    "xml__attributesOnNewLines": {
+      "type": "boolean", "default": false,
+      "description": "[XML] Put each attribute on its own line."
+    },
+    "ini__commentStyle": {
+      "type": "string", "enum": ["semicolon", "hash", "both"], "default": "semicolon",
+      "description": "[INI] Character to use for inline comments."
+    },
+    "ini__valueSpacing": {
+      "type": "string", "enum": ["around-equals", "no-spaces"], "default": "around-equals",
+      "description": "[INI] Spacing around = in assignments."
+    },
+    "csv__delimiter": {
+      "type": "string", "enum": [",", ";", "\t", "|"], "default": ",",
+      "description": "[CSV] Field delimiter character."
+    },
+    "csv__quoteStrings": {
+      "type": "boolean", "default": false,
+      "description": "[CSV] Always quote string fields even when not necessary."
+    },
+    "protobuf__fieldNumbering": {
+      "type": "string", "enum": ["sequential", "preserve"], "default": "preserve",
+      "description": "[Protobuf] Prefer sequential field numbers. NEVER reuse deleted field numbers."
+    },
+    "protobuf__enumZeroFirst": {
+      "type": "boolean", "default": true,
+      "description": "[Protobuf] Enforce that the first enum value maps to 0 (proto3 requirement)."
+    }
+  },
+  "additionalProperties": false
 }

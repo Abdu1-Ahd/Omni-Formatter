@@ -1,9 +1,58 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter Solidity / GDScript / AutoHotkey / COBOL / Fortran / Assembly stubs Config",
+  "title": "OmniFormatter Miscellaneous / Legacy Languages Configuration Schema",
+  "description": "Merged formatting configuration for Solidity, GDScript, AutoHotkey, AutoIt, COBOL, Fortran, Assembly, Ada, Pascal, MATLAB, TCL, VBScript, ActionScript, and others.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "indentationSpaces": { "type": "integer", "minimum": 1, "maximum": 8, "default": 4 },
+    "useTabs": { "type": "boolean", "default": false },
+    "maxLineLength": { "type": "integer", "minimum": 1, "maximum": 500, "default": 80 },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "solidity__pragmaVersion": {
+      "type": "string", "default": "^0.8.0",
+      "description": "[Solidity] Pragma version string. Must be the first line of each .sol file."
+    },
+    "solidity__natspecComments": {
+      "type": "boolean", "default": true,
+      "description": "[Solidity] Require NatSpec (/// or /**) documentation on public/external functions."
+    },
+    "gdscript__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4,
+      "description": "[GDScript] Spaces per indentation level. GDScript uses significant whitespace."
+    },
+    "cobol__columnStyle": {
+      "type": "string", "enum": ["fixed", "free"], "default": "fixed",
+      "description": "[COBOL] Fixed-format (columns 7-72) vs free-format."
+    },
+    "cobol__verbCase": {
+      "type": "string", "enum": ["upper", "lower", "preserve"], "default": "upper",
+      "description": "[COBOL] Case for COBOL verbs and keywords."
+    },
+    "fortran__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 3
+    },
+    "fortran__caseStyle": {
+      "type": "string", "enum": ["upper", "lower", "preserve"], "default": "lower",
+      "description": "[Fortran] Modern Fortran convention is lowercase keywords."
+    },
+    "ada__namingConvention": {
+      "type": "string", "enum": ["mixed-case", "upper", "preserve"], "default": "mixed-case",
+      "description": "[Ada] Ada is case-insensitive; MixedCase (CamelCase) for identifiers is convention."
+    },
+    "pascal__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 2,
+      "description": "[Pascal] Spaces per indentation level."
+    },
+    "matlab__suppressOutput": {
+      "type": "boolean", "default": true,
+      "description": "[MATLAB] Add semicolons at end of statements to suppress console output."
+    },
+    "autohotkey__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4
+    },
+    "actionscript__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4
+    }
+  },
+  "additionalProperties": false
 }

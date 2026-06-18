@@ -1,9 +1,57 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter Ruby / PHP / Perl / Lua language module Config",
+  "title": "OmniFormatter Ruby / PHP / Perl / Lua Configuration Schema",
+  "description": "Merged formatting configuration for dynamic scripting languages.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "indentationSpaces": { "type": "integer", "minimum": 1, "maximum": 8, "default": 2 },
+    "useTabs": { "type": "boolean", "default": false },
+    "maxLineLength": { "type": "integer", "minimum": 1, "maximum": 500, "default": 120 },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "ruby__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 2,
+      "description": "[Ruby] Ruby community convention is 2 spaces."
+    },
+    "ruby__rubocopEnabled": {
+      "type": "boolean", "default": true,
+      "description": "[Ruby] Apply RuboCop formatting style."
+    },
+    "ruby__frozenStringLiteral": {
+      "type": "boolean", "default": false,
+      "description": "[Ruby] Add # frozen_string_literal: true comment at the top of each file."
+    },
+    "ruby__hashStyle": {
+      "type": "string", "enum": ["ruby19", "hash-rocket", "auto"], "default": "ruby19",
+      "description": "[Ruby] Key: value (ruby19 symbol shorthand) or :key => value (hash rocket)."
+    },
+    "php__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4
+    },
+    "php__braceStyle": {
+      "type": "string", "enum": ["allman", "k&r", "psr2"], "default": "psr2",
+      "description": "[PHP] PSR-2/PSR-12 is the modern PHP standard (K&R-like)."
+    },
+    "php__shortArraySyntax": {
+      "type": "boolean", "default": true,
+      "description": "[PHP] Use [] for arrays instead of array()."
+    },
+    "php__statementTerminator": {
+      "type": "string", "enum": ["semicolon"], "default": "semicolon"
+    },
+    "perl__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4
+    },
+    "perl__strictMode": {
+      "type": "boolean", "default": true,
+      "description": "[Perl] Require 'use strict;' and 'use warnings;' at the top of every script."
+    },
+    "lua__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 2
+    },
+    "lua__localVariables": {
+      "type": "boolean", "default": true,
+      "description": "[Lua] Always declare variables with 'local' to avoid global namespace pollution."
+    }
+  },
+  "additionalProperties": false
 }

@@ -477,6 +477,33 @@ impl<'a> HtmlFormatter<'a> {
         out
     }
 
+    /// Re-indent sub-formatter output into the HTML Line IR at `base_indent + 1`.
+    ///
+    /// Sub-formatters output relative indentation at depth 0 (e.g. outer
+    /// function 0 spaces, inner body 2 spaces). We strip the minimum common
+    /// indent to remove any residual offset, then bake the full HTML context
+    /// prefix into the line content and emit via Line::new(0, …) so render()
+    /// adds nothing extra. This correctly shifts the whole block without
+    /// flattening the inner relative depth — fixing the double-indent flaw.
+    fn reindent_zone_output(
+        formatted: &str,
+        base_indent: usize,
+        indent_size: usize,
+        out: &mut Vec<Line>,
+    ) {
+        // ponytail: strip absolute base, add exactly (base_indent+1)*indent_size spaces
+        let stripped = Self::strip_indent(formatted.trim_end());
+        let prefix = " ".repeat((base_indent + 1) * indent_size);
+        for line in stripped.lines() {
+            let t = line.trim_end();
+            if t.is_empty() {
+                out.push(Line::new(0, ""));
+            } else {
+                out.push(Line::new(0, format!("{}{}", prefix, t)));
+            }
+        }
+    }
+
     fn is_block_or_special(node: tree_sitter::Node, source: &[u8]) -> bool {
         match node.kind() {
             "comment" | "script_element" | "style_element" => true,
@@ -700,14 +727,7 @@ impl<'a> HtmlFormatter<'a> {
             let formatted_js = lang_js::format::format(stripped_js.as_bytes(), config)
                 .unwrap_or_else(|_| stripped_js.as_bytes().to_vec());
             let formatted_str = String::from_utf8_lossy(&formatted_js);
-            for line in formatted_str.trim_end().lines() {
-                let t = line.trim_end();
-                if t.is_empty() {
-                    out.push(Line::new(0, ""));
-                } else {
-                    out.push(Line::new(indent + 1, t));
-                }
-            }
+            Self::reindent_zone_output(&formatted_str, indent, config.indent_size as usize, out);
         }
 
         out.push(Line::new(indent, close_tag));
@@ -726,14 +746,7 @@ impl<'a> HtmlFormatter<'a> {
                 crate::format::format(stripped_css.as_bytes(), config, CssDialect::Css)
                     .unwrap_or_else(|_| stripped_css.as_bytes().to_vec());
             let formatted_str = String::from_utf8_lossy(&formatted_css);
-            for line in formatted_str.trim_end().lines() {
-                let t = line.trim_end();
-                if t.is_empty() {
-                    out.push(Line::new(0, ""));
-                } else {
-                    out.push(Line::new(indent + 1, t));
-                }
-            }
+            Self::reindent_zone_output(&formatted_str, indent, config.indent_size as usize, out);
         }
 
         out.push(Line::new(indent, close_tag));
@@ -961,6 +974,98 @@ mod tests {
         let config = ConfigIR::default();
         let result = format(src, &config, CssDialect::Html).unwrap();
         assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn html_embedded_script_not_double_indented() {
+        // Regression test: embedded JS was double-indented (html_depth + sub_fmt_depth)
+        // instead of (html_depth + 1 level). Fixed by reindent_zone_output.
+        let src = br#"<!doctype html>
+<html>
+<body>
+<script>
+function hello() {
+  console.log("hi");
+}
+</script>
+</body>
+</html>
+"#;
+        let config = ConfigIR::default();
+        let result = format(src, &config, CssDialect::Html).unwrap();
+        let s = std::str::from_utf8(&result).unwrap();
+        let indent_size = config.indent_size as usize;
+
+        // Find the <script> tag line and get its indent level
+        let script_leading = s
+            .lines()
+            .find(|l| l.trim().starts_with("<script"))
+            .map(|l| l.len() - l.trim_start().len())
+            .unwrap_or(0);
+
+        // JS content should be indented exactly one level deeper than <script>
+        let fn_line = s.lines().find(|l| l.trim().starts_with("function hello"));
+        if let Some(fn_line) = fn_line {
+            let fn_leading = fn_line.len() - fn_line.trim_start().len();
+            assert_eq!(
+                fn_leading,
+                script_leading + indent_size,
+                "function hello() must be exactly 1 indent level inside <script>.\nFull output:\n{}",
+                s
+            );
+        }
+
+        // console.log is one level deeper than function hello (body of function)
+        let log_line = s.lines().find(|l| l.trim().starts_with("console.log"));
+        if let Some(log_line) = log_line {
+            let log_leading = log_line.len() - log_line.trim_start().len();
+            let fn_leading = s
+                .lines()
+                .find(|l| l.trim().starts_with("function hello"))
+                .map(|l| l.len() - l.trim_start().len())
+                .unwrap_or(0);
+            assert_eq!(
+                log_leading,
+                fn_leading + indent_size,
+                "console.log must be 1 level deeper than function hello.\nFull output:\n{}",
+                s
+            );
+        }
+    }
+
+    #[test]
+    fn html_embedded_style_not_double_indented() {
+        // Regression: embedded CSS must be indented at <style>+1, not double-stacked.
+        let src = br#"<html><head>
+<style>
+body {
+  color: red;
+}
+</style>
+</head></html>
+"#;
+        let config = ConfigIR::default();
+        let result = format(src, &config, CssDialect::Html).unwrap();
+        let s = std::str::from_utf8(&result).unwrap();
+        let indent_size = config.indent_size as usize;
+
+        let style_leading = s
+            .lines()
+            .find(|l| l.trim().starts_with("<style"))
+            .map(|l| l.len() - l.trim_start().len())
+            .unwrap_or(0);
+
+        // body { selector must be exactly 1 level inside <style>
+        let body_line = s.lines().find(|l| l.trim().starts_with("body"));
+        if let Some(body_line) = body_line {
+            let body_leading = body_line.len() - body_line.trim_start().len();
+            assert_eq!(
+                body_leading,
+                style_leading + indent_size,
+                "body rule must be exactly 1 indent level inside <style>.\nFull output:\n{}",
+                s
+            );
+        }
     }
 
     #[test]

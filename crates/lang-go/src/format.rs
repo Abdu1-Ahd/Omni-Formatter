@@ -50,13 +50,20 @@ impl Line {
 
 struct GoFormatter<'a> {
     source: &'a [u8],
-    #[allow(dead_code)]
     config: &'a ConfigIR,
+    /// go__groupImports: when true (default), separate stdlib imports from
+    /// external imports with a blank line (goimports style).
+    group_imports: bool,
 }
 
 impl<'a> GoFormatter<'a> {
     fn new(source: &'a [u8], config: &'a ConfigIR) -> Self {
-        Self { source, config }
+        let group_imports = config.get_extra_bool("go__groupImports").unwrap_or(true);
+        Self {
+            source,
+            config,
+            group_imports,
+        }
     }
 
     fn text_of(&self, node: &tree_sitter::Node) -> &str {
@@ -476,14 +483,63 @@ impl<'a> GoFormatter<'a> {
     }
 }
 
-// ── Import grouping pass ──────────────────────────────────────────────────
+// ── Import grouping pass ──────────────────────────────────────────────
 
 /// Separate stdlib imports from external ones (goimports rule).
-/// stdlib = no dot in the path.
-fn group_imports(output: &str) -> String {
-    // Find the import block, split by blank lines, resort
-    // Simplified: leave import grouping as-is from tree output
-    output.to_string()
+/// stdlib = no dot in the unquoted path.
+/// When `enabled` is false, the output is returned verbatim.
+fn group_imports(output: &str, enabled: bool) -> String {
+    if !enabled {
+        return output.to_string();
+    }
+
+    // Locate a multi-line import block: `import (\n ... \n)`
+    let import_start = match output.find("import (") {
+        Some(i) => i,
+        None => return output.to_string(), // no grouped import block
+    };
+    let block_end = match output[import_start..].find(')') {
+        Some(i) => import_start + i,
+        None => return output.to_string(),
+    };
+
+    let before = &output[..import_start];
+    let after = &output[block_end + 1..];
+    let block = &output[import_start + 8..block_end]; // strip "import ("
+
+    let mut stdlib: Vec<&str> = Vec::new();
+    let mut external: Vec<&str> = Vec::new();
+
+    for line in block.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        // stdlib paths have no '.' before the first '/'
+        let unquoted = trimmed.trim_matches('"');
+        let is_stdlib = !unquoted.contains('.');
+        if is_stdlib {
+            stdlib.push(trimmed);
+        } else {
+            external.push(trimmed);
+        }
+    }
+
+    if stdlib.is_empty() || external.is_empty() {
+        return output.to_string(); // no grouping needed
+    }
+
+    let mut grouped = String::from("import (\n");
+    for s in &stdlib {
+        grouped.push_str(&format!("\t{}\n", s));
+    }
+    grouped.push('\n');
+    for e in &external {
+        grouped.push_str(&format!("\t{}\n", e));
+    }
+    grouped.push(')');
+
+    format!("{}{}{}", before, grouped, after)
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────
@@ -528,7 +584,7 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
         raw.push('\n');
     }
 
-    let out = group_imports(&raw);
+    let out = group_imports(&raw, formatter.group_imports);
 
     let cleaned: String = out
         .lines()
@@ -612,5 +668,47 @@ mod tests {
         let first = format(src, &config).unwrap();
         let second = format(&first, &config).unwrap();
         assert_eq!(first, second);
+    }
+
+    // ── Extras: go__groupImports ──────────────────────────────────────
+
+    #[test]
+    fn group_imports_true_separates_stdlib_from_external() {
+        let src = b"package main\n\nimport (\n\t\"fmt\"\n\t\"github.com/user/pkg\"\n)\n\nfunc main() {}\n";
+        let mut config = ConfigIR::default();
+        config.extras.insert(
+            "go__groupImports".to_string(),
+            serde_json::Value::Bool(true),
+        );
+        let result = format(src, &config).unwrap();
+        let s = std::str::from_utf8(&result).unwrap();
+        // fmt (stdlib) and github.com/... (external) should be in separate groups
+        let fmt_pos = s.find("\"fmt\"").unwrap_or(0);
+        let gh_pos = s.find("github.com").unwrap_or(0);
+        assert!(fmt_pos < gh_pos, "stdlib before external: {s}");
+        // There should be a blank line between the two groups
+        let between = &s[fmt_pos..gh_pos];
+        assert!(
+            between.contains("\n\n") || between.contains("\n\t\n"),
+            "expected blank line between import groups: {s}"
+        );
+    }
+
+    #[test]
+    fn go_group_imports_false_leaves_imports_as_is() {
+        let mut config = ConfigIR::default();
+        config.extras.insert(
+            "go__groupImports".to_string(),
+            serde_json::Value::Bool(false),
+        );
+        let formatter_flag = config.get_extra_bool("go__groupImports");
+        assert_eq!(formatter_flag, Some(false));
+    }
+
+    #[test]
+    fn go_group_imports_default_is_true() {
+        let config = ConfigIR::default();
+        let f = GoFormatter::new(b"", &config);
+        assert!(f.group_imports, "default must be true");
     }
 }

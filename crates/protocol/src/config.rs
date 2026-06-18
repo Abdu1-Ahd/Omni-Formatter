@@ -12,6 +12,7 @@
 //! 4. Module defaults
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Print width mode for line-length limits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -104,6 +105,70 @@ pub struct ConfigIR {
     /// Post-format chain: list of additional formatters to run after the
     /// primary formatter (e.g. `["eslint-fix", "import-sort"]`). Default: [].
     pub post_format: Vec<String>,
+
+    /// Language-specific schema overrides.
+    ///
+    /// Populated by the TypeScript host from `.omnifmt.json` or native configs.
+    /// Keys follow the `<lang>__<option>` convention
+    /// (e.g. `swift__braceStyle`, `objc__nullabilityAnnotations`,
+    ///        `kotlin__trailingComma`, `java__maxAnnotationFieldLength`).
+    ///
+    /// `#[serde(flatten)]` makes these keys invisible in the struct layout but
+    /// fully round-trippable at the JSON level — they appear at the top level
+    /// of the serialised object, not nested under an `"extras"` key.
+    /// Unknown keys from the TS host are collected here without error.
+    #[serde(flatten)]
+    pub extras: HashMap<String, serde_json::Value>,
+}
+
+impl ConfigIR {
+    /// Return a language-specific string override, or `None` if absent / not a
+    /// JSON string.
+    ///
+    /// ```rust,ignore
+    /// let style = config.get_extra_str("swift__braceStyle").unwrap_or("k&r");
+    /// ```
+    pub fn get_extra_str<'a>(&'a self, key: &str) -> Option<&'a str> {
+        self.extras.get(key)?.as_str()
+    }
+
+    /// Return a language-specific boolean override, or `None` if absent / not
+    /// a JSON boolean.
+    ///
+    /// ```rust,ignore
+    /// let annots = config.get_extra_bool("objc__nullabilityAnnotations").unwrap_or(true);
+    /// ```
+    pub fn get_extra_bool(&self, key: &str) -> Option<bool> {
+        self.extras.get(key)?.as_bool()
+    }
+
+    /// Return a language-specific unsigned integer override, or `None`.
+    ///
+    /// ```rust,ignore
+    /// let w = config.get_extra_u64("java__maxAnnotationFieldLength").unwrap_or(40);
+    /// ```
+    pub fn get_extra_u64(&self, key: &str) -> Option<u64> {
+        self.extras.get(key)?.as_u64()
+    }
+
+    /// Return a language-specific floating-point override, or `None`.
+    pub fn get_extra_f64(&self, key: &str) -> Option<f64> {
+        self.extras.get(key)?.as_f64()
+    }
+
+    /// Generic typed accessor — deserialises the stored JSON value into `T`.
+    /// Prefer the specialised helpers above for the common primitive types.
+    pub fn get_extra<'de, T: serde::de::DeserializeOwned>(&self, key: &str) -> Option<T> {
+        self.extras
+            .get(key)
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+    }
+
+    /// Check whether a language-specific key is present, regardless of its
+    /// JSON type.
+    pub fn has_extra(&self, key: &str) -> bool {
+        self.extras.contains_key(key)
+    }
 }
 
 impl Default for ConfigIR {
@@ -120,6 +185,85 @@ impl Default for ConfigIR {
             mode: ModuleMode::default(),
             preset: None,
             post_format: Vec::new(),
+            extras: HashMap::new(),
         }
+    }
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Baseline fields still round-trip correctly after adding extras.
+    #[test]
+    fn roundtrip_baseline_fields() {
+        let ir = ConfigIR {
+            print_width: 120,
+            indent_size: 4,
+            trailing_comma: false,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&ir).unwrap();
+        let back: ConfigIR = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.print_width, 120);
+        assert_eq!(back.indent_size, 4);
+        assert!(!back.trailing_comma);
+        assert!(back.extras.is_empty());
+    }
+
+    /// Language-specific keys survive the JSON round-trip via `extras`.
+    #[test]
+    fn roundtrip_language_specific_extras() {
+        let json = r#"{
+            "printWidth": 100,
+            "swift__braceStyle": "k&r",
+            "objc__nullabilityAnnotations": true,
+            "java__maxAnnotationFieldLength": 40,
+            "kotlin__trailingComma": "always"
+        }"#;
+        let ir: ConfigIR = serde_json::from_str(json).unwrap();
+        assert_eq!(ir.print_width, 100);
+        assert_eq!(ir.get_extra_str("swift__braceStyle"), Some("k&r"));
+        assert_eq!(
+            ir.get_extra_bool("objc__nullabilityAnnotations"),
+            Some(true)
+        );
+        assert_eq!(ir.get_extra_u64("java__maxAnnotationFieldLength"), Some(40));
+        assert_eq!(ir.get_extra_str("kotlin__trailingComma"), Some("always"));
+    }
+
+    /// Unknown keys from the TS host do NOT cause a deserialisation error.
+    #[test]
+    fn unknown_keys_are_silently_collected() {
+        let json = r#"{"printWidth": 80, "futureLanguage__unknownOption": "yes"}"#;
+        let ir: ConfigIR = serde_json::from_str(json).unwrap();
+        assert_eq!(ir.print_width, 80);
+        assert!(ir.has_extra("futureLanguage__unknownOption"));
+    }
+
+    /// Serialised output contains language-specific keys at the top level
+    /// (i.e. `flatten` is transparent to JSON consumers like the TS host).
+    #[test]
+    fn extras_serialised_at_top_level() {
+        let mut ir = ConfigIR::default();
+        ir.extras.insert(
+            "swift__braceStyle".to_string(),
+            serde_json::Value::String("k&r".to_string()),
+        );
+        let json = serde_json::to_string(&ir).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(val["swift__braceStyle"], "k&r");
+    }
+
+    /// Accessor helpers return None for absent keys — never panic.
+    #[test]
+    fn accessor_helpers_return_none_for_missing_keys() {
+        let ir = ConfigIR::default();
+        assert!(ir.get_extra_str("nonexistent").is_none());
+        assert!(ir.get_extra_bool("nonexistent").is_none());
+        assert!(ir.get_extra_u64("nonexistent").is_none());
+        assert!(!ir.has_extra("nonexistent"));
     }
 }

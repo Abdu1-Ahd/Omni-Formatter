@@ -1,45 +1,49 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter lang-rust Configuration Schema",
-  "description": "Configuration options for the Rust language module. Defaults match rustfmt stable.",
+  "title": "OmniFormatter Rust Configuration Schema",
+  "description": "Formatting configuration for Rust. Defaults match rustfmt stable.",
   "type": "object",
   "properties": {
     "maxWidth": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 500,
-      "default": 100,
-      "description": "Maximum line width. rustfmt default is 100, not 80."
+      "type": "integer", "minimum": 1, "maximum": 500, "default": 100,
+      "description": "Maximum line width. rustfmt default is 100."
     },
     "tabSpaces": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 16,
-      "default": 4,
-      "description": "Number of spaces per indent level. rustfmt default is 4."
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4,
+      "description": "Spaces per indentation level. rustfmt default is 4."
     },
-    "hardTabs": {
-      "type": "boolean",
-      "default": false,
-      "description": "Use hard tabs for indentation."
-    },
-    "newlineStyle": {
-      "type": "string",
-      "enum": ["Auto", "Unix", "Windows", "Native"],
-      "default": "Auto",
-      "description": "Line ending style."
-    },
+    "hardTabs": { "type": "boolean", "default": false },
     "edition": {
-      "type": "string",
-      "enum": ["2015", "2018", "2021"],
-      "default": "2021",
-      "description": "Rust edition to target."
+      "type": "string", "enum": ["2015", "2018", "2021", "2024"], "default": "2021",
+      "description": "Rust edition. Affects module paths, closures, and import syntax."
     },
-    "mode": {
+    "braceStyle": {
       "type": "string",
-      "enum": ["opinionated", "advanced"],
-      "default": "opinionated",
-      "description": "'opinionated' = rustfmt stable compat. 'advanced' = full option surface."
+      "enum": ["SameLineWhere", "AlwaysNextLine", "PreferSameLine"],
+      "default": "SameLineWhere"
+    },
+    "importGranularity": {
+      "type": "string",
+      "enum": ["preserve", "crate", "module", "one", "item"],
+      "default": "preserve",
+      "description": "How to merge/group use statements."
+    },
+    "groupImports": {
+      "type": "string", "enum": ["Preserve", "StdExternalCrate"], "default": "Preserve",
+      "description": "Group std, external, and crate imports into separate blocks."
+    },
+    "trailingComma": {
+      "type": "string", "enum": ["Vertical", "Always", "Never"], "default": "Vertical"
+    },
+    "matchBlockTrailingComma": { "type": "boolean", "default": false },
+    "forceExplicitAbi": {
+      "type": "boolean", "default": true,
+      "description": "Require explicit extern ABI (e.g., extern \"C\")."
+    },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "mode": {
+      "type": "string", "enum": ["opinionated", "advanced"], "default": "opinionated",
+      "description": "opinionated = rustfmt stable compat. advanced = full rustfmt option surface."
     }
   },
   "additionalProperties": false

@@ -1,10 +1,52 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter Java/Kotlin Config",
+  "title": "OmniFormatter Java / Kotlin / Groovy / Scala Configuration Schema",
+  "description": "Merged formatting configuration for JVM languages. All fields optional.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 4 },
-    "column_limit": { "type": "integer", "default": 100 },
-    "brace_style":  { "type": "string", "enum": ["Attach", "Allman"], "default": "Attach" }
-  }
+    "indentationSpaces": { "type": "integer", "minimum": 1, "maximum": 8, "default": 4 },
+    "useTabs": { "type": "boolean", "default": false },
+    "maxLineLength": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "braceStyle": {
+      "type": "string", "enum": ["k&r", "allman"], "default": "k&r",
+      "description": "Opening brace placement. Java/Kotlin convention is K&R (same line)."
+    },
+    "statementTerminator": {
+      "type": "string", "enum": ["semicolon", "newline", "auto"], "default": "semicolon",
+      "description": "Java/Groovy require semicolons; Kotlin makes them optional."
+    },
+    "java__importOrdering": {
+      "type": "string",
+      "enum": ["java-first", "static-first", "alphabetical", "preserve"],
+      "default": "java-first"
+    },
+    "java__wildcardImportThreshold": {
+      "type": "integer", "minimum": 1, "default": 99,
+      "description": "[Java] Number of same-package imports before switching to wildcard."
+    },
+    "kotlin__trailingComma": {
+      "type": "string", "enum": ["always", "multiline", "never"], "default": "multiline",
+      "description": "[Kotlin] Add trailing commas in multi-line function params and collections."
+    },
+    "kotlin__functionBodyStyle": {
+      "type": "string", "enum": ["block", "expression", "auto"], "default": "auto",
+      "description": "[Kotlin] Prefer expression body fun f() = x when single-line."
+    },
+    "kotlin__nullSafety": {
+      "type": "boolean", "default": true,
+      "description": "[Kotlin] Enforce null-safety: prefer ? types, ?: Elvis, avoid !! where possible."
+    },
+    "kotlin__ktlintEnabled": {
+      "type": "boolean", "default": true,
+      "description": "[Kotlin] Apply ktlint-compatible formatting rules."
+    },
+    "groovy__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4
+    },
+    "scala__style": {
+      "type": "string", "enum": ["scalafmt", "preserve"], "default": "scalafmt"
+    }
+  },
+  "additionalProperties": false
 }

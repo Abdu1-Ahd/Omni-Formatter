@@ -1,9 +1,44 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter Dart language module Config",
+  "title": "OmniFormatter Dart / Kotlin / Swift Configuration Schema",
+  "description": "Merged formatting configuration for mobile platform languages.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "indentationSpaces": { "type": "integer", "minimum": 1, "maximum": 8, "default": 4 },
+    "useTabs": { "type": "boolean", "default": false },
+    "maxLineLength": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "dart__dartfmtEnabled": {
+      "type": "boolean", "default": true,
+      "description": "[Dart] Apply dart format (formerly dartfmt) rules. Dart formatter is opinionated."
+    },
+    "dart__trailingCommas": {
+      "type": "boolean", "default": true,
+      "description": "[Dart] Trailing commas in function parameters force multi-line formatting (dart fmt rule)."
+    },
+    "dart__constructorStyle": {
+      "type": "string", "enum": ["initializer-list", "body"], "default": "initializer-list",
+      "description": "[Dart] Use initializer list syntax: MyClass() : field = value."
+    },
+    "kotlin__trailingComma": {
+      "type": "string", "enum": ["always", "multiline", "never"], "default": "multiline"
+    },
+    "kotlin__nullSafety": { "type": "boolean", "default": true },
+    "swift__braceStyle": {
+      "type": "string", "enum": ["k&r", "allman"], "default": "k&r",
+      "description": "[Swift] Opening brace on same line (K&R). Swift conditionals do not require parentheses."
+    },
+    "swift__statementTerminator": {
+      "type": "string", "enum": ["newline", "semicolon"], "default": "newline",
+      "description": "[Swift] Semicolons are optional and strongly discouraged."
+    },
+    "swift__trailingComma": {
+      "type": "string", "enum": ["always", "never", "multiline"], "default": "never"
+    },
+    "swift__indentCaseLabels": {
+      "type": "boolean", "default": true,
+      "description": "[Swift] Indent switch case bodies at the same level as switch (SE-0003)."
+    }
+  },
+  "additionalProperties": false
 }

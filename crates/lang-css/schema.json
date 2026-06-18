@@ -1,53 +1,62 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter lang-css Configuration Schema",
-  "description": "Configuration for CSS, SCSS, Less, and HTML. Defaults match Prettier 3.x.",
+  "title": "OmniFormatter CSS / SCSS / Less / Stylus / Sass / HTML Configuration Schema",
+  "description": "Merged formatting configuration for CSS-family languages and HTML. Defaults match Prettier 3.x.",
   "type": "object",
   "properties": {
-    "printWidth": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 500,
-      "default": 80,
-      "description": "Maximum line length in display columns."
-    },
-    "tabWidth": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 16,
-      "default": 2,
-      "description": "Number of spaces per indent level."
-    },
-    "useTabs": {
-      "type": "boolean",
-      "default": false,
-      "description": "Indent with tabs instead of spaces."
-    },
+    "printWidth": { "type": "integer", "minimum": 1, "maximum": 500, "default": 80 },
+    "tabWidth": { "type": "integer", "minimum": 1, "maximum": 16, "default": 2 },
+    "useTabs": { "type": "boolean", "default": false },
     "singleQuote": {
-      "type": "boolean",
-      "default": false,
+      "type": "boolean", "default": false,
       "description": "Use single quotes in CSS attribute selectors and values."
     },
-    "endOfLine": {
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "cr", "auto"], "default": "lf" },
+    "propertyOrdering": {
       "type": "string",
-      "enum": ["lf", "crlf", "cr", "auto"],
-      "default": "lf"
+      "enum": ["alphabetical", "concentric", "idiomatic", "preserve"],
+      "default": "preserve"
+    },
+    "hexColorCase": { "type": "string", "enum": ["upper", "lower"], "default": "lower" },
+    "hexColorLength": { "type": "string", "enum": ["short", "long", "preserve"], "default": "short" },
+    "numberLeadingZero": {
+      "type": "boolean", "default": true,
+      "description": "Require leading zero for fractional numbers: 0.5 vs .5."
+    },
+    "selectorSeparatorNewline": {
+      "type": "boolean", "default": true,
+      "description": "Put each selector on its own line in multi-selector rules."
+    },
+    "nestingDepthLimit": {
+      "type": "integer", "minimum": 1, "maximum": 10, "default": 3,
+      "description": "[SCSS/Less/Sass] Maximum nesting depth for selectors."
+    },
+    "variablePrefix": {
+      "type": "string", "enum": ["dollar", "at", "none"], "default": "dollar",
+      "description": "Variable prefix: $ for SCSS/Sass, @ for Less."
+    },
+    "importStyle": {
+      "type": "string", "enum": ["use", "forward", "import", "preserve"], "default": "use",
+      "description": "[SCSS] Prefer @use over @import (deprecated in Dart Sass)."
     },
     "htmlWhitespaceSensitivity": {
-      "type": "string",
-      "enum": ["css", "strict", "ignore"],
-      "default": "css",
-      "description": "How to handle whitespace in HTML. 'css' follows CSS display property semantics."
+      "type": "string", "enum": ["css", "strict", "ignore"], "default": "css",
+      "description": "[HTML] How to handle inline element whitespace."
+    },
+    "attributeQuotes": {
+      "type": "string", "enum": ["double", "single"], "default": "double",
+      "description": "[HTML] Attribute values MUST be quoted. Double quotes are HTML standard."
+    },
+    "selfClosingVoidElements": {
+      "type": "boolean", "default": false,
+      "description": "[HTML] Self-closing slash on void elements (<br /> vs <br>). false = HTML5 style."
     },
     "vueIndentScriptAndStyle": {
-      "type": "boolean",
-      "default": false,
-      "description": "Indent <script> and <style> blocks in Vue SFC files."
+      "type": "boolean", "default": false,
+      "description": "[Vue SFC] Indent <script> and <style> blocks inside .vue files."
     },
     "mode": {
-      "type": "string",
-      "enum": ["opinionated", "advanced"],
-      "default": "opinionated"
+      "type": "string", "enum": ["opinionated", "advanced"], "default": "opinionated"
     }
   },
   "additionalProperties": false

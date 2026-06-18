@@ -77,6 +77,10 @@ struct PythonFormatter<'a> {
     source: &'a [u8],
     config: &'a ConfigIR,
     target_quote: char,
+    /// python__magicTrailingComma: if true (default), a trailing comma in a
+    /// collection forces multi-line expansion regardless of line length
+    /// (Black's "magic trailing comma" rule).
+    magic_trailing_comma: bool,
 }
 
 impl<'a> PythonFormatter<'a> {
@@ -85,10 +89,14 @@ impl<'a> PythonFormatter<'a> {
             QuoteStyle::Double => '"',
             QuoteStyle::Single => '\'',
         };
+        let magic_trailing_comma = config
+            .get_extra_bool("python__magicTrailingComma")
+            .unwrap_or(true);
         Self {
             source,
             config,
             target_quote,
+            magic_trailing_comma,
         }
     }
 
@@ -404,7 +412,10 @@ impl<'a> PythonFormatter<'a> {
             }
         }
 
-        if !has_trailing {
+        // python__magicTrailingComma: honour trailing comma only if the option is on
+        let force_expand = has_trailing && self.magic_trailing_comma;
+
+        if !force_expand {
             let flat = format!("{}{}{}", open, items.join(", "), close);
             if flat.len() <= self.config.print_width as usize {
                 return flat;
@@ -608,5 +619,29 @@ mod tests {
         };
         let result = format(src, &config).unwrap();
         assert!(!result.is_empty());
+    }
+
+    // ── Extras: python__magicTrailingComma ────────────────────────────────
+
+    #[test]
+    fn magic_trailing_comma_false_ignores_trailing_comma() {
+        // With magicTrailingComma=false, a trailing comma should NOT force expansion
+        let mut config = ConfigIR {
+            print_width: 120, // wide enough that the list fits inline
+            ..Default::default()
+        };
+        config.extras.insert(
+            "python__magicTrailingComma".to_string(),
+            serde_json::Value::Bool(false),
+        );
+        let formatter = PythonFormatter::new(b"", &config);
+        assert!(!formatter.magic_trailing_comma, "flag must be false");
+    }
+
+    #[test]
+    fn magic_trailing_comma_true_by_default() {
+        let config = ConfigIR::default();
+        let formatter = PythonFormatter::new(b"", &config);
+        assert!(formatter.magic_trailing_comma, "default must be true");
     }
 }

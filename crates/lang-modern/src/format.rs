@@ -1,68 +1,198 @@
-//! lang-modern formatting logic.
+//! Zig / Nim / D / Crystal / V / Vala Structural Formatter
 //!
-//! Formatter target: zig fmt
-//! Strategy: whitespace normalization + brace-depth indent pass.
-//! Full CST-based formatting is planned for a future release.
+//! Upgrades the previous naive brace counter which was string-blind.
+//! These languages all use `{...}` for blocks, so the brace-based
+//! approach is correct — but must not count braces inside strings/comments.
+//!
+//! # Schema keys consumed
+//!
+//! | Key           | Type | Default   | Effect                       |
+//! |---------------|------|-----------|------------------------------|
+//! | `braceStyle`  | str  | `"k&r"`   | `"allman"` splits `{` to own line |
 
-use crate::adapter::Config;
+use protocol::config::{ConfigIR, IndentStyle};
 use protocol::FormatError;
 
-/// Normalise indentation using brace-depth tracking.
-/// Returns source verbatim if it cannot be decoded as UTF-8.
-pub fn format(source: &[u8], config: &Config) -> Result<Vec<u8>, FormatError> {
+pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
     let text = match std::str::from_utf8(source) {
         Ok(s) => s,
-        Err(_) => return Ok(source.to_vec()), // binary file: return verbatim
+        Err(_) => return Ok(source.to_vec()),
     };
+    if text.trim().is_empty() {
+        return Ok(b"\n".to_vec());
+    }
 
-    let mut out = String::with_capacity(source.len());
-    let mut depth = 0usize;
+    let brace_style = config.get_extra_str("braceStyle").unwrap_or("k&r");
+    let indent_char = match config.indent_style {
+        IndentStyle::Tabs => '\t',
+        IndentStyle::Spaces => ' ',
+    };
+    let indent_size = config.indent_size as usize;
 
-    for line in text.lines() {
-        let trimmed = line.trim();
+    let result = format_brace_lang(text, brace_style, indent_char, indent_size);
+    let mut out = result.into_bytes();
+    if !out.ends_with(b"\n") {
+        out.push(b'\n');
+    }
+    Ok(out)
+}
 
-        // Count net brace change to decide if this line decreases depth first
-        let opens = trimmed.chars().filter(|&c| c == '{').count();
-        let closes = trimmed.chars().filter(|&c| c == '}').count();
+fn format_brace_lang(
+    source: &str,
+    brace_style: &str,
+    indent_char: char,
+    indent_size: usize,
+) -> String {
+    let allman = brace_style == "allman";
+    let mut out: Vec<String> = Vec::with_capacity(source.lines().count());
+    let mut depth: i32 = 0;
+    let mut in_block_comment = false;
+    let mut consecutive_blank = 0u32;
 
-        if closes > opens && depth >= (closes - opens) {
-            depth -= closes - opens;
+    for raw in source.lines() {
+        let trimmed = raw.trim();
+
+        if in_block_comment {
+            let pfx = make_indent(indent_char, indent_size, depth.max(0) as usize);
+            let content = if trimmed.starts_with('*') {
+                format!(" {}", trimmed)
+            } else {
+                trimmed.to_string()
+            };
+            out.push(format!("{}{}", pfx, content));
+            if trimmed.contains("*/") {
+                in_block_comment = false;
+            }
+            consecutive_blank = 0;
+            continue;
         }
 
         if trimmed.is_empty() {
-            out.push('\n');
+            consecutive_blank += 1;
+            if consecutive_blank <= 1 {
+                out.push(String::new());
+            }
+            continue;
+        }
+        consecutive_blank = 0;
+
+        let (opens, closes) = count_brace_delta(trimmed);
+        if closes > 0 && opens == 0 {
+            depth = (depth - closes as i32).max(0);
+        }
+        if closes > 0 && opens > 0 && trimmed.starts_with('}') {
+            depth = (depth - 1).max(0);
+        }
+
+        let current_indent = make_indent(indent_char, indent_size, depth.max(0) as usize);
+
+        if allman && trimmed.ends_with('{') && trimmed != "{" && !trimmed.starts_with("//") {
+            let body = trimmed[..trimmed.len() - 1].trim_end();
+            out.push(format!("{}{}", current_indent, body));
+            out.push(format!("{}{}", current_indent, "{"));
         } else {
-            out.push_str(&" ".repeat(depth * config.indent_size));
-            out.push_str(trimmed);
-            out.push('\n');
+            out.push(format!("{}{}", current_indent, trimmed));
         }
 
-        if opens > closes {
-            depth += opens - closes;
+        if opens > 0 && closes == 0 {
+            depth += opens as i32;
+        } else if opens > 0 && closes > 0 && !trimmed.starts_with('}') {
+            depth += (opens as i32 - closes as i32).max(0);
+        } else if opens > 0 && closes > 0 && trimmed.starts_with('}') {
+            depth += opens as i32;
+        }
+
+        if trimmed.contains("/*") && !trimmed.contains("*/") {
+            in_block_comment = true;
         }
     }
 
-    if !out.ends_with('\n') {
-        out.push('\n');
+    out.iter()
+        .map(|l| l.trim_end().to_string())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn make_indent(c: char, size: usize, depth: usize) -> String {
+    std::iter::repeat_n(c, size * depth).collect()
+}
+
+fn count_brace_delta(line: &str) -> (usize, usize) {
+    let mut opens = 0usize;
+    let mut closes = 0usize;
+    let mut chars = line.chars().peekable();
+    let mut in_str = false;
+    let mut str_char = '"';
+
+    while let Some(c) = chars.next() {
+        match c {
+            '/' if !in_str => match chars.peek() {
+                Some('/') | Some('*') => break,
+                _ => {}
+            },
+            '"' | '\'' if !in_str => {
+                in_str = true;
+                str_char = c;
+            }
+            c2 if in_str && c2 == str_char => {
+                in_str = false;
+            }
+            '\\' if in_str => {
+                chars.next();
+            }
+            '{' if !in_str => opens += 1,
+            '}' if !in_str => closes += 1,
+            _ => {}
+        }
     }
-    Ok(out.into_bytes())
+    (opens, closes)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn cfg() -> ConfigIR {
+        ConfigIR::default()
+    }
+
     #[test]
     fn format_empty() {
-        let result = format(b"", &Config::default()).unwrap();
-        assert_eq!(result, b"\n");
+        assert_eq!(format(b"", &cfg()).unwrap(), b"\n");
     }
 
     #[test]
     fn format_idempotent() {
-        let src = b"fn main() {\n    let x = 1;\n}\n";
-        let first = format(src, &Config::default()).unwrap();
-        let second = format(&first, &Config::default()).unwrap();
+        let src = b"fn main() {\n    const x = 1;\n}\n";
+        let first = format(src, &cfg()).unwrap();
+        let second = format(&first, &cfg()).unwrap();
         assert_eq!(first, second, "lang-modern must be idempotent");
+    }
+
+    #[test]
+    fn brace_in_string_not_counted() {
+        let src = b"const msg = \"{\";\nconst x = 1;\n";
+        let result = format(src, &cfg()).unwrap();
+        let s = std::str::from_utf8(&result).unwrap();
+        let x_line = s
+            .lines()
+            .find(|l| l.contains("const x"))
+            .expect("const x missing");
+        assert_eq!(
+            x_line.len() - x_line.trim_start().len(),
+            0,
+            "brace in string must not increase indent:\n{}",
+            s
+        );
+    }
+
+    #[test]
+    fn strips_trailing_whitespace() {
+        let src = b"const x = 1;   \n";
+        let result = format(src, &cfg()).unwrap();
+        let s = std::str::from_utf8(&result).unwrap();
+        for line in s.lines() {
+            assert_eq!(line, line.trim_end());
+        }
     }
 }

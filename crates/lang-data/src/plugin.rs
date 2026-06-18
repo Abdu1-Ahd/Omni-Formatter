@@ -13,12 +13,10 @@ impl LanguagePlugin for DataPlugin {
         &["json", "json5", "yaml", "yml", "toml", "xml", "ini", "csv"]
     }
 
+    /// Format the source using the full ConfigIR so that language-specific
+    /// schema overrides in `config.extras` (e.g. `json__trailingComma`)
+    /// are forwarded to the formatter — not discarded by the slim adapter.
     fn format(&self, source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
-        match format::format(source, &config.into()) {
-            Ok(bytes) => Ok(bytes),
-            Err(e) => Err(FormatError::Internal {
-                message: e.to_string(),
-            }),
-        }
+        format::format(source, config)
     }
 }

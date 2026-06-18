@@ -9,13 +9,16 @@ pub mod plugin;
 use wasm_bindgen::prelude::*;
 
 /// Format source using this module's formatter.
+///
+/// `config_json` is a JSON-serialised `ConfigIR` — including any
+/// language-specific extras (e.g. `json__trailingComma`).
 #[cfg_attr(feature = "standalone", wasm_bindgen)]
 pub fn format_data(
     source_bytes: &[u8],
     config_json: &str,
     _language_id: &str,
 ) -> Result<Vec<u8>, JsValue> {
-    let config = adapter::config_from_json(config_json);
+    let config: protocol::config::ConfigIR = serde_json::from_str(config_json).unwrap_or_default();
     match format::format(source_bytes, &config) {
         Ok(f) => Ok(f),
         Err(e) => Err(JsValue::from_str(&e.to_string())),

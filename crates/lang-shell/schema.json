@@ -1,9 +1,56 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter Bash / PowerShell / Zsh / Shell language module Config",
+  "title": "OmniFormatter Bash / PowerShell / Zsh / AWK / Sed Configuration Schema",
+  "description": "Merged formatting configuration for shell scripting and text processing languages.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "indentationSpaces": { "type": "integer", "minimum": 1, "maximum": 8, "default": 4 },
+    "useTabs": { "type": "boolean", "default": false },
+    "maxLineLength": { "type": "integer", "minimum": 1, "maximum": 500, "default": 80 },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "bash__shebangRequired": {
+      "type": "boolean", "default": true,
+      "description": "[Bash] Require #!/usr/bin/env bash shebang on first line."
+    },
+    "bash__variableQuoting": {
+      "type": "string", "enum": ["always-double", "minimal", "preserve"], "default": "always-double",
+      "description": "[Bash] Always double-quote variable expansions: \"$var\" prevents word-splitting."
+    },
+    "bash__commandSubstitution": {
+      "type": "string", "enum": ["dollar-parens", "backticks"], "default": "dollar-parens",
+      "description": "[Bash] Prefer $(cmd) over `cmd`. Backtick style is deprecated."
+    },
+    "bash__testOperator": {
+      "type": "string", "enum": ["double-bracket", "single-bracket"], "default": "double-bracket",
+      "description": "[Bash] [[ ]] is bash-specific and safer. [ ] is POSIX-portable."
+    },
+    "bash__localVariables": {
+      "type": "boolean", "default": true,
+      "description": "[Bash] Use 'local' keyword inside functions to prevent global pollution."
+    },
+    "powershell__endOfLine": {
+      "type": "string", "enum": ["lf", "crlf", "auto"], "default": "crlf",
+      "description": "[PowerShell] PowerShell is Windows-native; CRLF is default."
+    },
+    "powershell__cmdletCase": {
+      "type": "string", "enum": ["pascal-case", "preserve"], "default": "pascal-case",
+      "description": "[PowerShell] Normalize cmdlets to Verb-Noun PascalCase (Get-Item vs get-item)."
+    },
+    "powershell__aliasExpansion": {
+      "type": "boolean", "default": true,
+      "description": "[PowerShell] Expand aliases to full cmdlet names (ls -> Get-ChildItem)."
+    },
+    "zsh__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4
+    },
+    "awk__fieldSeparator": {
+      "type": "string", "default": "auto",
+      "description": "[AWK] Default field separator. 'auto' uses the AWK default (whitespace). Can be set to e.g. ','"
+    },
+    "sed__scriptStyle": {
+      "type": "string", "enum": ["gnu", "posix"], "default": "gnu",
+      "description": "[Sed] GNU extensions vs strict POSIX compatibility."
+    }
+  },
+  "additionalProperties": false
 }

@@ -1,9 +1,55 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter Sass indented syntax (.sass) language module Config",
+  "title": "OmniFormatter Sass / SCSS / Less / Stylus Configuration Schema",
+  "description": "Merged formatting configuration for CSS preprocessors.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "printWidth": { "type": "integer", "minimum": 1, "maximum": 500, "default": 80 },
+    "tabWidth": { "type": "integer", "minimum": 1, "maximum": 16, "default": 2 },
+    "useTabs": { "type": "boolean", "default": false },
+    "singleQuote": { "type": "boolean", "default": false },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "cr", "auto"], "default": "lf" },
+    "nestingDepthLimit": {
+      "type": "integer", "minimum": 1, "maximum": 10, "default": 3,
+      "description": "Maximum nesting depth for selectors. Deeper nesting causes specificity issues."
+    },
+    "propertyOrdering": {
+      "type": "string",
+      "enum": ["alphabetical", "concentric", "idiomatic", "preserve"],
+      "default": "preserve"
+    },
+    "scss__variablePrefix": {
+      "type": "string", "enum": ["dollar"], "default": "dollar",
+      "description": "[SCSS] Variables MUST use the $ prefix."
+    },
+    "scss__importStyle": {
+      "type": "string", "enum": ["use", "forward", "import"], "default": "use",
+      "description": "[SCSS] Prefer @use over @import (deprecated in Dart Sass)."
+    },
+    "less__variablePrefix": {
+      "type": "string", "enum": ["at"], "default": "at",
+      "description": "[Less] Variables MUST use the @ prefix."
+    },
+    "sass__syntaxStyle": {
+      "type": "string", "enum": ["indented", "scss"], "default": "indented",
+      "description": "[Sass] Indented (.sass) uses indentation + newlines; SCSS (.scss) uses braces."
+    },
+    "sass__mixinDefineSymbol": {
+      "type": "string", "enum": ["equals", "mixin-keyword"], "default": "equals",
+      "description": "[Sass indented] Define mixin with = symbol; include with + symbol."
+    },
+    "stylus__omitBraces": {
+      "type": "boolean", "default": true,
+      "description": "[Stylus] Omit curly braces (minimalist mode)."
+    },
+    "stylus__omitColons": {
+      "type": "boolean", "default": true,
+      "description": "[Stylus] Omit colons in property declarations."
+    },
+    "stylus__omitSemicolons": {
+      "type": "boolean", "default": true,
+      "description": "[Stylus] Omit semicolons at end of declarations."
+    }
+  },
+  "additionalProperties": false
 }

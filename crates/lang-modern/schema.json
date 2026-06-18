@@ -1,9 +1,46 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter Zig / Nim / D language module Config",
+  "title": "OmniFormatter Zig / Nim / D / Crystal / V / Vala Configuration Schema",
+  "description": "Merged formatting configuration for modern systems languages.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "indentationSpaces": { "type": "integer", "minimum": 1, "maximum": 8, "default": 4 },
+    "useTabs": { "type": "boolean", "default": false },
+    "maxLineLength": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "statementTerminator": {
+      "type": "string", "enum": ["semicolon", "newline", "auto"], "default": "semicolon",
+      "description": "Statement termination style. Zig/V use semicolons; Nim uses newlines."
+    },
+    "zig__zigFmtEnabled": {
+      "type": "boolean", "default": true,
+      "description": "[Zig] Apply zig fmt rules. Zig formatter is opinionated and part of the toolchain."
+    },
+    "zig__comptime": {
+      "type": "string", "enum": ["inline", "block"], "default": "inline",
+      "description": "[Zig] Prefer inline comptime expressions or comptime blocks."
+    },
+    "nim__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 2,
+      "description": "[Nim] Nim uses 2-space indentation by convention."
+    },
+    "nim__nimprettyEnabled": {
+      "type": "boolean", "default": true,
+      "description": "[Nim] Apply nimpretty formatter rules."
+    },
+    "d__memoryModel": {
+      "type": "string", "enum": ["gc", "nogc", "manual"], "default": "gc",
+      "description": "[D] Memory management model. gc = garbage collected (default); nogc = disable GC."
+    },
+    "crystal__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 2
+    },
+    "v__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4
+    },
+    "vala__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4
+    }
+  },
+  "additionalProperties": false
 }

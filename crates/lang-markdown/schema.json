@@ -1,9 +1,52 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter Markdown / LaTeX language module Config",
+  "title": "OmniFormatter Markdown / AsciiDoc / LaTeX Configuration Schema",
+  "description": "Merged formatting configuration for documentation/markup languages.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "printWidth": { "type": "integer", "minimum": 1, "maximum": 500, "default": 80 },
+    "proseWrap": {
+      "type": "string", "enum": ["always", "never", "preserve"], "default": "preserve",
+      "description": "[Markdown] Wrap prose at printWidth."
+    },
+    "headingStyle": {
+      "type": "string", "enum": ["atx", "setext"], "default": "atx",
+      "description": "[Markdown] ATX uses # prefix; setext uses underline === or ---."
+    },
+    "bulletListMarker": {
+      "type": "string", "enum": ["-", "*", "+"], "default": "-",
+      "description": "[Markdown] Preferred character for unordered list items."
+    },
+    "orderedListMarker": {
+      "type": "string", "enum": ["dot", "parenthesis"], "default": "dot",
+      "description": "[Markdown] 1. Item (dot) or 1) Item (parenthesis)."
+    },
+    "emphasisMarker": { "type": "string", "enum": ["asterisk", "underscore"], "default": "asterisk" },
+    "strongMarker": { "type": "string", "enum": ["asterisk", "underscore"], "default": "asterisk" },
+    "codeBlockStyle": {
+      "type": "string", "enum": ["fenced", "indented"], "default": "fenced"
+    },
+    "fenceCharacter": { "type": "string", "enum": ["`", "~"], "default": "`" },
+    "linkStyle": { "type": "string", "enum": ["inline", "reference"], "default": "inline" },
+    "tableAlignment": {
+      "type": "string",
+      "enum": ["left", "right", "center", "preserve"],
+      "default": "preserve"
+    },
+    "trailingNewline": { "type": "boolean", "default": true },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "asciidoc__sectionDepthStyle": {
+      "type": "string", "enum": ["symmetric", "asymmetric"], "default": "symmetric",
+      "description": "[AsciiDoc] Symmetric uses === for all levels; asymmetric uses = for h1, == for h2, etc."
+    },
+    "latex__lineBreakStyle": {
+      "type": "string", "enum": ["newline-per-sentence", "preserve", "wrap"], "default": "preserve",
+      "description": "[LaTeX] One sentence per line improves diff readability."
+    },
+    "latex__alignMath": {
+      "type": "boolean", "default": true,
+      "description": "[LaTeX] Align = signs in align environments."
+    }
+  },
+  "additionalProperties": false
 }

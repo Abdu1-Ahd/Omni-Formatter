@@ -6,8 +6,6 @@ src/**
 tsconfig.json
 **/*.map
 **/*.ts
-!dist/**/*.js
-!dist/**/*.wasm
 
 # The out/ directory is a duplicate of dist/src/ — not needed at runtime
 out/**
@@ -30,8 +28,29 @@ dist/**/.gitignore
 media/logos/**
 
 # Exclude source code directories from extension build
-workers/**
-tests/**
+/workers/**
+/src/**
+/tests/**
 
 # Exclude all dependencies (esbuild bundles everything we need)
 node_modules/**
+
+# Exclude development/agent directories and files
+.gemini/**
+.github/**
+.code-review-graph/**
+.kiro/**
+FLAWS.md
+EXTENSION_CONTEXT.md
+.antigravityrules
+wasi-sdk/**
+wasi-sdk.tar.gz
+temp/**
+registry/**
+publish-extension.exe
+scripts/**
+
+# VERY IMPORTANT: Un-ignore the compiled output at the very end 
+# to override any broad ignore rules above
+!dist/**/*.js
+!dist/**/*.wasm

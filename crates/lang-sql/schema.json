@@ -1,9 +1,56 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter SQL / GraphQL language module Config",
+  "title": "OmniFormatter SQL / GraphQL Configuration Schema",
+  "description": "Merged formatting configuration for SQL dialects and GraphQL.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "indentationSpaces": { "type": "integer", "minimum": 1, "maximum": 8, "default": 4 },
+    "maxLineLength": { "type": "integer", "minimum": 1, "maximum": 500, "default": 120 },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "sql__keywordCase": {
+      "type": "string", "enum": ["upper", "lower", "capitalize", "preserve"], "default": "upper",
+      "description": "[SQL] Case for reserved SQL keywords: SELECT, FROM, WHERE."
+    },
+    "sql__identifierCase": {
+      "type": "string", "enum": ["upper", "lower", "preserve"], "default": "lower",
+      "description": "[SQL] Case for table, column, and alias identifiers."
+    },
+    "sql__statementTerminator": {
+      "type": "string", "enum": ["semicolon", "none"], "default": "semicolon"
+    },
+    "sql__commaPlacement": {
+      "type": "string", "enum": ["after", "before"], "default": "after",
+      "description": "[SQL] Commas at end (after) or start (before) of SELECT list lines."
+    },
+    "sql__joinStyle": {
+      "type": "string", "enum": ["explicit-join", "implicit-cross"], "default": "explicit-join",
+      "description": "[SQL] Require explicit JOIN keyword. Comma-separated FROM tables are discouraged."
+    },
+    "sql__aliasingStyle": {
+      "type": "string", "enum": ["as-keyword", "space-only"], "default": "as-keyword",
+      "description": "[SQL] Use AS keyword for aliases: table AS t vs table t."
+    },
+    "sql__dialect": {
+      "type": "string",
+      "enum": ["ansi", "mysql", "postgresql", "sqlite", "mssql", "oracle"],
+      "default": "ansi"
+    },
+    "graphql__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 2,
+      "description": "[GraphQL] Spaces per indentation level."
+    },
+    "graphql__fieldOrdering": {
+      "type": "string", "enum": ["alphabetical", "preserve"], "default": "preserve",
+      "description": "[GraphQL] Order fields within type definitions alphabetically."
+    },
+    "graphql__operationNaming": {
+      "type": "string", "enum": ["PascalCase", "camelCase", "preserve"], "default": "PascalCase",
+      "description": "[GraphQL] Naming convention for query, mutation, and subscription operations."
+    },
+    "graphql__typeNaming": {
+      "type": "string", "enum": ["PascalCase", "preserve"], "default": "PascalCase",
+      "description": "[GraphQL] Naming convention for type definitions."
+    }
+  },
+  "additionalProperties": false
 }

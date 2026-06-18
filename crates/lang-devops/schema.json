@@ -1,9 +1,55 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter HCL / Terraform / Dockerfile / Makefile / Nix language module Config",
+  "title": "OmniFormatter HCL / Terraform / Dockerfile / Makefile / Nix Configuration Schema",
+  "description": "Merged formatting configuration for DevOps and Infrastructure-as-Code languages.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 2,
+      "description": "Spaces per indentation level. terraform fmt mandates 2; Nix uses 2."
+    },
+    "useTabs": {
+      "type": "boolean", "default": false,
+      "description": "Tabs are PROHIBITED by terraform fmt and Nix. Makefiles are the exception (tabs REQUIRED for recipes)."
+    },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "trailingNewline": { "type": "boolean", "default": true },
+    "hcl__attributeAlignment": {
+      "type": "string", "enum": ["align-equals", "none"], "default": "align-equals",
+      "description": "[HCL/Terraform] Align consecutive = operators within a block (terraform fmt style)."
+    },
+    "hcl__interpolationStyle": {
+      "type": "string", "enum": ["hcl2-minimal", "verbose"], "default": "hcl2-minimal",
+      "description": "[HCL] HCL2: use ${} only inside strings; standalone expressions must NOT be wrapped."
+    },
+    "hcl__blockOrdering": {
+      "type": "boolean", "default": true,
+      "description": "[Terraform] Order block types: terraform, provider, variable, resource, output."
+    },
+    "dockerfile__instructionCase": {
+      "type": "string", "enum": ["upper", "lower", "preserve"], "default": "upper",
+      "description": "[Dockerfile] Case for Dockerfile instructions: FROM, RUN, COPY, etc."
+    },
+    "dockerfile__multilineRunStyle": {
+      "type": "string", "enum": ["backslash-continuation", "heredoc"], "default": "backslash-continuation",
+      "description": "[Dockerfile] Multi-line RUN command style."
+    },
+    "makefile__recipeTabs": {
+      "type": "boolean", "default": true,
+      "description": "[Makefile] Recipe lines MUST begin with a TAB. This is non-negotiable in GNU Make."
+    },
+    "makefile__targetSpacing": {
+      "type": "string", "enum": ["colon", "colon-space"], "default": "colon",
+      "description": "[Makefile] Spacing after target name: target: vs target :"
+    },
+    "nix__nixpkgsStyle": {
+      "type": "boolean", "default": true,
+      "description": "[Nix] Apply nixpkgs formatting conventions (alejandra/nixpkgs-fmt style)."
+    },
+    "nix__letInIndent": {
+      "type": "integer", "minimum": 1, "maximum": 4, "default": 2,
+      "description": "[Nix] Indentation spaces inside let-in blocks."
+    }
+  },
+  "additionalProperties": false
 }

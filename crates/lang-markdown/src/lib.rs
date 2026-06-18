@@ -15,7 +15,7 @@ pub fn format_markdown(
     config_json: &str,
     _language_id: &str,
 ) -> Result<Vec<u8>, JsValue> {
-    let config = adapter::config_from_json(config_json);
+    let config: protocol::config::ConfigIR = serde_json::from_str(config_json).unwrap_or_default();
     match format::format(source_bytes, &config) {
         Ok(f) => Ok(f),
         Err(e) => Err(JsValue::from_str(&e.to_string())),

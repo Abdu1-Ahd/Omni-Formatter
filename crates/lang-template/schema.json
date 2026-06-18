@@ -1,9 +1,53 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter Jinja / Liquid / EJS / Handlebars / Twig template language stubs Config",
+  "title": "OmniFormatter Jinja / Liquid / EJS / Handlebars / Twig / Mustache / Nunjucks / Blade / Pug Configuration Schema",
+  "description": "Merged formatting configuration for HTML templating engines.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "printWidth": { "type": "integer", "minimum": 1, "maximum": 500, "default": 80 },
+    "tabWidth": { "type": "integer", "minimum": 1, "maximum": 16, "default": 2 },
+    "useTabs": { "type": "boolean", "default": false },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "htmlEscapeByDefault": {
+      "type": "boolean", "default": true,
+      "description": "All template engines escape HTML by default in {{ }} blocks. Unescaped output ({{{ }}} or {{! }}) is explicitly opt-in."
+    },
+    "jinja__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4,
+      "description": "[Jinja2] Spaces per indentation level inside blocks."
+    },
+    "jinja__trimBlocks": {
+      "type": "boolean", "default": true,
+      "description": "[Jinja2] Remove first newline after a block tag (trim_blocks=True)."
+    },
+    "jinja__lstripBlocks": {
+      "type": "boolean", "default": true,
+      "description": "[Jinja2] Strip leading whitespace from block tags (lstrip_blocks=True)."
+    },
+    "liquid__assignStyle": {
+      "type": "string", "enum": ["assign", "capture"], "default": "assign",
+      "description": "[Liquid] Prefer {% assign %} for simple values, {% capture %} for block content."
+    },
+    "ejs__tagStyle": {
+      "type": "string", "enum": ["standard", "custom"], "default": "standard",
+      "description": "[EJS] Standard: <% %> for execution, <%= %> for safe output, <%- %> for raw output."
+    },
+    "blade__bracketStyle": {
+      "type": "string", "enum": ["blade-directives", "raw-php"], "default": "blade-directives",
+      "description": "[Blade] Prefer @if/@foreach directives over @php raw blocks where possible."
+    },
+    "pug__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 2,
+      "description": "[Pug] Spaces per indentation level. Pug uses significant indentation."
+    },
+    "pug__classAttributeStyle": {
+      "type": "string", "enum": ["css-shorthand", "attribute"], "default": "css-shorthand",
+      "description": "[Pug] Use .class (CSS shorthand) vs class=\"class\" attribute syntax."
+    },
+    "mustache__strictLogicless": {
+      "type": "boolean", "default": true,
+      "description": "[Mustache] Mustache is strictly logic-less. No if/else or loops — use Sections ({{#key}}) only."
+    }
+  },
+  "additionalProperties": false
 }

@@ -1,35 +1,58 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter C/C++ Config",
+  "title": "OmniFormatter C / C++ / Objective-C / Objective-C++ Configuration Schema",
+  "description": "Merged formatting configuration for C, C++, Objective-C, and Objective-C++. All fields optional; defaults match clang-format LLVM style.",
   "type": "object",
   "properties": {
-    "indent_style": {
+    "indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4,
+      "description": "Spaces per indentation level. Applies to all C-family languages."
+    },
+    "useTabs": { "type": "boolean", "default": false },
+    "braceStyle": {
       "type": "string",
-      "enum": ["spaces", "tabs"],
-      "default": "spaces",
-      "description": "Indentation style (clang-format BasedOnStyle)"
+      "enum": ["allman", "k&r", "gnu", "stroustrup", "mozilla", "google", "llvm", "webkit"],
+      "default": "llvm",
+      "description": "Opening brace placement. k&r = same line; allman = next line."
     },
-    "indent_size": {
-      "type": "integer",
-      "default": 4,
-      "description": "Indentation width (clang-format IndentWidth)"
+    "maxLineLength": { "type": "integer", "minimum": 1, "maximum": 500, "default": 80 },
+    "pointerAlignment": {
+      "type": "string", "enum": ["Left", "Right", "Middle"], "default": "Right",
+      "description": "Pointer/reference alignment: int* p (Left), int *p (Right), int * p (Middle)."
     },
-    "column_limit": {
-      "type": "integer",
-      "default": 80,
-      "description": "Maximum line width (clang-format ColumnLimit)"
+    "includeOrdering": {
+      "type": "string", "enum": ["system-first", "local-first", "preserve"], "default": "system-first",
+      "description": "Ordering of #include / #import directives."
     },
-    "brace_style": {
+    "spaceBeforeParens": {
       "type": "string",
-      "enum": ["Attach", "Linux", "Allman", "GNU"],
-      "default": "Attach",
-      "description": "Brace placement style"
+      "enum": ["Never", "ControlStatements", "ControlStatementsExceptControlMacros", "NonEmptyParentheses", "Always"],
+      "default": "ControlStatements"
     },
-    "pointer_alignment": {
-      "type": "string",
-      "enum": ["Left", "Right", "Middle"],
-      "default": "Right",
-      "description": "Pointer (*) alignment relative to type/name"
-    }
-  }
+    "cppStandard": {
+      "type": "string", "enum": ["c++11", "c++14", "c++17", "c++20", "c++23"], "default": "c++17",
+      "description": "C++ standard version. Affects available language features."
+    },
+    "namespaceIndent": {
+      "type": "string", "enum": ["None", "Inner", "All"], "default": "None"
+    },
+    "accessModifierOffset": {
+      "type": "integer", "minimum": -8, "maximum": 0, "default": -2,
+      "description": "Indentation offset of access modifiers (public/private/protected) relative to class body."
+    },
+    "objcProtocol": {
+      "type": "string", "enum": ["auto", "manual"], "default": "auto",
+      "description": "[Objective-C] Auto-detect protocol declarations in .h files."
+    },
+    "objcBlockIndentWidth": {
+      "type": "integer", "minimum": 0, "maximum": 8, "default": 4,
+      "description": "[Objective-C] Indent width for block literals."
+    },
+    "statementTerminator": {
+      "type": "string", "enum": ["semicolon"], "default": "semicolon",
+      "description": "All statements MUST end with a semicolon."
+    },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" }
+  },
+  "additionalProperties": false
 }

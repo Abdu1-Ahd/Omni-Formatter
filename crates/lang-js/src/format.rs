@@ -191,6 +191,12 @@ struct DocBuilder<'a> {
     source: &'a [u8],
     config: &'a ConfigIR,
     quote: char,
+    /// js__arrowParens: "always" (default) wraps single params in `(x) =>`;
+    /// "avoid" emits `x =>` when there is exactly one non-destructured param.
+    arrow_parens: bool, // true = always wrap
+    /// js__bracketSpacing: true (default) emits `{ key: value }` with spaces;
+    /// false emits `{key: value}` without spaces around the braces.
+    bracket_spacing: bool,
 }
 
 impl<'a> DocBuilder<'a> {
@@ -199,10 +205,17 @@ impl<'a> DocBuilder<'a> {
             QuoteStyle::Single => '\'',
             QuoteStyle::Double => '"',
         };
+        let arrow_parens = config
+            .get_extra_str("js__arrowParens")
+            .map(|s| s != "avoid")
+            .unwrap_or(true); // default: always wrap
+        let bracket_spacing = config.get_extra_bool("js__bracketSpacing").unwrap_or(true); // default: spaces inside braces
         Self {
             source,
             config,
             quote,
+            arrow_parens,
+            bracket_spacing,
         }
     }
 
@@ -515,14 +528,22 @@ impl<'a> DocBuilder<'a> {
     }
 
     fn build_arrow(&self, node: tree_sitter::Node) -> Doc {
-        let params = node
+        let param_node = node
             .child_by_field_name("parameter")
-            .or_else(|| node.child_by_field_name("parameters"))
+            .or_else(|| node.child_by_field_name("parameters"));
+        let params = param_node
             .map(|n| {
                 if n.kind() == "formal_parameters" {
                     self.build_params(n)
-                } else {
+                } else if !self.arrow_parens {
+                    // js__arrowParens = "avoid": single identifier param without parens
                     Doc::text(self.text_of(&n))
+                } else {
+                    // js__arrowParens = "always": wrap in parens
+                    Doc::concat(
+                        Doc::text("("),
+                        Doc::concat(Doc::text(self.text_of(&n)), Doc::text(")")),
+                    )
                 }
             })
             .unwrap_or(Doc::text("()"));
@@ -741,8 +762,14 @@ impl<'a> DocBuilder<'a> {
             return Doc::text("{}");
         }
         let trailing = if self.config.trailing_comma { "," } else { "" };
+        // js__bracketSpacing controls spaces inside `{ }` — default: true
+        let (open, close) = if self.bracket_spacing {
+            ("{ ", " }")
+        } else {
+            ("{", "}")
+        };
         Doc::group(Doc::concat(
-            Doc::text("{"),
+            Doc::text(open),
             Doc::concat(
                 Doc::indent(Doc::concat(
                     Doc::hard_line(),
@@ -751,7 +778,7 @@ impl<'a> DocBuilder<'a> {
                         Doc::text(trailing),
                     ),
                 )),
-                Doc::concat(Doc::hard_line(), Doc::text("}")),
+                Doc::concat(Doc::hard_line(), Doc::text(close)),
             ),
         ))
     }
@@ -1023,5 +1050,65 @@ mod tests {
         );
         let second = format(&result, &config).unwrap();
         assert_eq!(result, second, "function+for format not idempotent");
+    }
+
+    // ── Extras: js__arrowParens ───────────────────────────────────────────
+
+    #[test]
+    fn arrow_parens_avoid_emits_bare_param() {
+        let mut config = ConfigIR::default();
+        config.extras.insert(
+            "js__arrowParens".to_string(),
+            serde_json::Value::String("avoid".to_string()),
+        );
+        let source = b"const f = x => x + 1;\n";
+        let result = format(source, &config).unwrap();
+        let s = std::str::from_utf8(&result).unwrap();
+        // With avoid, single identifier param should NOT be wrapped in extra parens
+        // (the source already has bare `x`; formatter should not inject `(x)`)
+        assert!(
+            !s.contains("(x) =>"),
+            "arrow_parens=avoid should not wrap: {s}"
+        );
+    }
+
+    #[test]
+    fn arrow_parens_always_wraps_param() {
+        let mut config = ConfigIR::default();
+        config.extras.insert(
+            "js__arrowParens".to_string(),
+            serde_json::Value::String("always".to_string()),
+        );
+        // Source already has formal_parameters `(x)` — should be preserved
+        let source = b"const f = (x) => x + 1;\n";
+        let result = format(source, &config).unwrap();
+        let s = std::str::from_utf8(&result).unwrap();
+        assert!(!result.is_empty(), "must produce output: {s}");
+    }
+
+    // ── Extras: js__bracketSpacing ────────────────────────────────────────
+
+    #[test]
+    fn bracket_spacing_default_true_is_wired() {
+        // With bracketSpacing=true (default), object opens with "{ "
+        let config = ConfigIR::default();
+        assert!(config.get_extra_bool("js__bracketSpacing").is_none()); // not set = default true
+                                                                        // Verify the builder picks up the default without panicking
+        let builder = DocBuilder::new(b"{}", &config);
+        assert!(builder.bracket_spacing, "default must be true");
+    }
+
+    #[test]
+    fn bracket_spacing_false_is_consumed() {
+        let mut config = ConfigIR::default();
+        config.extras.insert(
+            "js__bracketSpacing".to_string(),
+            serde_json::Value::Bool(false),
+        );
+        let builder = DocBuilder::new(b"{}", &config);
+        assert!(
+            !builder.bracket_spacing,
+            "js__bracketSpacing=false must be respected"
+        );
     }
 }

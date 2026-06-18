@@ -514,13 +514,14 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
+    "vscode:prepublish": "npm run build:all",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "package": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
     "build": "npm run package",
     "build:workers": "esbuild workers/formatWorker.ts --bundle --outfile=dist/workers/formatWorker.js --platform=node --target=node20 --format=cjs",
-    "build:all": "npm run build && npm run build:workers",
+    "build:verify": "node -e \"const fs=require('fs'),p='./dist/workers/formatWorker.js',s=fs.existsSync(p)&&fs.statSync(p).size;if(!s||s<1024){console.error('build:verify FAILED: '+p+' missing or too small ('+s+' bytes)');process.exit(1);}console.log('[build:verify] dist/workers/formatWorker.js OK ('+s+' bytes)');\"",
+    "build:all": "npm run build && npm run build:workers && npm run build:verify",
     "lint": "eslint src/ workers/ --ext .ts",
     "test": "jest --testPathPattern='src/__tests__' --passWithNoTests",
     "format:check": "prettier --check 'src/**/*.ts' 'workers/**/*.ts'"

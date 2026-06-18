@@ -51,7 +51,15 @@ export interface ResolvedConfig {
   sources: string[];
 }
 
-/** A partial ConfigIR — all fields optional, to allow partial overrides. */
+/** A partial ConfigIR — all fields optional, to allow partial overrides.
+ *
+ * In addition to the baseline fields below, any language-specific schema key
+ * (following the `<lang>__<option>` naming convention, e.g.
+ * `swift__braceStyle`, `objc__nullabilityAnnotations`,
+ * `kotlin__trailingComma`) may be present. These are forwarded verbatim to
+ * the WASM core and collected into `ConfigIR.extras` via `serde(flatten)`.
+ * The index signature `[key: string]: unknown` captures them without error.
+ */
 interface PartialConfig {
   printWidth?:   number;
   indentSize?:   number;
@@ -62,6 +70,7 @@ interface PartialConfig {
   endOfLine?:    "lf" | "crlf" | "cr" | "auto";
   mode?:         "opinionated" | "advanced";
   postFormat?:   string[];
+  /** Accepts language-specific schema keys, e.g. `swift__braceStyle`. */
   [key: string]: unknown;
 }
 
@@ -102,6 +111,14 @@ export class ConfigAdapter {
     if (nativeConfig) {
       merged = { ...merged, ...nativeConfig.config };
       sources.push(nativeConfig.source);
+    }
+
+    // Layer 1b: VS Code workspace settings — extract lang-specific schema keys.
+    // e.g. omniformatter.swift__braceStyle → swift__braceStyle in ConfigIR.
+    const vsCodeSchemaKeys = this.extractVsCodeLangSchemaKeys(languageId);
+    if (Object.keys(vsCodeSchemaKeys).length > 0) {
+      merged = { ...merged, ...vsCodeSchemaKeys };
+      sources.push("vscode-settings");
     }
 
     // Layer 1: .omnifmt.json (highest priority among static files)
@@ -158,6 +175,69 @@ export class ConfigAdapter {
     }
     // Fallback: directory of the document itself
     return path.dirname(docPath);
+  }
+
+  // ── Language-specific schema key extraction ───────────────────────────────
+
+  /**
+   * Extract language-specific schema keys from `.omnifmt.json`.
+   *
+   * When a key inside the per-language or global block contains `__` (the
+   * OmniFormatter `<lang>__<option>` convention) it is forwarded to the WASM
+   * payload verbatim so the Rust `ConfigIR.extras` map receives it.
+   *
+   * Example `.omnifmt.json`:
+   * ```json
+   * {
+   *   "global": { "printWidth": 100 },
+   *   "swift": {
+   *     "swift__braceStyle": "k&r",
+   *     "swift__statementTerminator": "newline"
+   *   }
+   * }
+   * ```
+   *
+   * All non-baseline keys that contain `__` are forwarded without
+   * transformation, regardless of which language block they came from.
+   */
+  private isLangSchemaKey(key: string): boolean {
+    // Language-specific keys always contain __ (e.g. swift__braceStyle).
+    // Baseline keys never do.
+    return key.includes("__");
+  }
+
+  /**
+   * Read language-specific schema keys from VS Code workspace settings.
+   *
+   * Looks for `omniformatter.<lang>__<option>` entries in the VS Code
+   * configuration and strips the `omniformatter.` namespace prefix before
+   * forwarding them to the WASM payload.
+   *
+   * Example `settings.json`:
+   * ```json
+   * {
+   *   "omniformatter.swift__braceStyle": "k&r",
+   *   "omniformatter.objc__nullabilityAnnotations": true
+   * }
+   * ```
+   */
+  private extractVsCodeLangSchemaKeys(languageId: string): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    try {
+      const cfg = vscode.workspace.getConfiguration("omniformatter");
+      // cfg.keys() is not available in all VS Code versions; iterate known
+      // lang prefixes instead by inspecting all inspectable keys.
+      const rawCfg = cfg as unknown as Record<string, unknown>;
+      for (const [rawKey, value] of Object.entries(rawCfg)) {
+        // Only forward keys matching the __-convention.
+        if (this.isLangSchemaKey(rawKey) && value !== undefined && value !== null) {
+          result[rawKey] = value;
+        }
+      }
+    } catch {
+      // VS Code API unavailable (unit tests / headless) — safe to ignore.
+    }
+    return result;
   }
 
   // ── .omnifmt.json ─────────────────────────────────────────────────────────

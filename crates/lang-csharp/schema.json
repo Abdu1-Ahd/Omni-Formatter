@@ -1,9 +1,46 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter C# / F# language module Config",
+  "title": "OmniFormatter C# / F# Configuration Schema",
+  "description": "Merged formatting configuration for C# and F#. Defaults match the .NET SDK editorconfig conventions.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "indentationSpaces": { "type": "integer", "minimum": 1, "maximum": 8, "default": 4 },
+    "useTabs": { "type": "boolean", "default": false },
+    "braceStyle": {
+      "type": "string", "enum": ["k&r", "allman"], "default": "allman",
+      "description": "[C#] Allman style is the historical C# default; K&R is used in modern .editorconfig defaults."
+    },
+    "maxLineLength": { "type": "integer", "minimum": 1, "maximum": 500, "default": 120 },
+    "statementTerminator": { "type": "string", "enum": ["semicolon"], "default": "semicolon" },
+    "quoteStyle": {
+      "type": "string", "enum": ["double", "single"], "default": "double",
+      "description": "[C#] String literal quote style. Double quotes are the C# standard."
+    },
+    "namingConvention": {
+      "type": "string", "enum": ["pascal-case", "camel-case", "preserve"], "default": "pascal-case",
+      "description": "[C#] Types, methods, properties, and namespaces use PascalCase; fields/locals use camelCase."
+    },
+    "usingOrdering": {
+      "type": "string", "enum": ["system-first", "alphabetical", "preserve"], "default": "system-first",
+      "description": "[C#] Ordering of using directives. System.* first is the dotnet standard."
+    },
+    "endOfLine": {
+      "type": "string", "enum": ["lf", "crlf", "auto"], "default": "crlf",
+      "description": ".NET projects are Windows-native; CRLF is the default."
+    },
+    "fsharp__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4,
+      "description": "[F#] Spaces per indentation level. F# uses significant whitespace."
+    },
+    "fsharp__pipeStyle": {
+      "type": "string", "enum": ["multi-line", "single-line", "auto"], "default": "multi-line",
+      "description": "[F#] Whether to place each pipe |> on its own line in pipeline chains."
+    },
+    "fsharp__openStyle": {
+      "type": "string", "enum": ["alphabetical", "preserve"], "default": "alphabetical",
+      "description": "[F#] Ordering of open statements."
+    },
+    "newlineAtEndOfFile": { "type": "boolean", "default": true }
+  },
+  "additionalProperties": false
 }

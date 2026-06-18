@@ -1,9 +1,72 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter Haskell / Elixir / Erlang / OCaml / Clojure / R / Julia language module Config",
+  "title": "OmniFormatter Haskell / Elixir / Erlang / OCaml / Clojure / Lisp / Racket / Scheme / Elm / Scala / Groovy / Prolog Configuration Schema",
+  "description": "Merged formatting configuration for functional and logic programming languages.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "indentationSpaces": { "type": "integer", "minimum": 1, "maximum": 8, "default": 2 },
+    "useTabs": { "type": "boolean", "default": false },
+    "maxLineLength": { "type": "integer", "minimum": 1, "maximum": 500, "default": 80 },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "haskell__style": {
+      "type": "string", "enum": ["ormolu", "fourmolu", "stylish-haskell"], "default": "ormolu",
+      "description": "[Haskell] Formatting tool style. Ormolu is the opinionated default."
+    },
+    "haskell__importOrdering": {
+      "type": "string", "enum": ["qualified-first", "alphabetical", "preserve"], "default": "alphabetical"
+    },
+    "elixir__mixFormat": {
+      "type": "boolean", "default": true,
+      "description": "[Elixir] Apply mix format rules. Elixir uses significant whitespace; 2-space indent."
+    },
+    "elixir__pipeChainStyle": {
+      "type": "string", "enum": ["multi-line", "single-line", "auto"], "default": "multi-line",
+      "description": "[Elixir] Place each |> pipe on its own line."
+    },
+    "erlang__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4,
+      "description": "[Erlang] Spaces per indentation level."
+    },
+    "erlang__commaStyle": {
+      "type": "string", "enum": ["end-of-line", "start-of-line"], "default": "end-of-line"
+    },
+    "ocaml__style": {
+      "type": "string", "enum": ["ocamlformat", "preserve"], "default": "ocamlformat",
+      "description": "[OCaml] Apply ocamlformat conventions."
+    },
+    "clojure__namespaceOrdering": {
+      "type": "string", "enum": ["alphabetical", "preserve"], "default": "alphabetical",
+      "description": "[Clojure] Ordering of :require and :import namespace declarations."
+    },
+    "clojure__parenSpacing": {
+      "type": "boolean", "default": true,
+      "description": "[Clojure/Lisp] No space before the first argument after opening paren: (fn arg) not (fn  arg)."
+    },
+    "scala__style": {
+      "type": "string", "enum": ["scalafmt", "preserve"], "default": "scalafmt",
+      "description": "[Scala] Apply Scalafmt conventions."
+    },
+    "scala__importOrdering": {
+      "type": "string", "enum": ["ascii", "scalastyle", "preserve"], "default": "ascii"
+    },
+    "elm__style": {
+      "type": "string", "enum": ["elm-format", "preserve"], "default": "elm-format",
+      "description": "[Elm] elm-format is opinionated and has no configuration; style is always elm-format."
+    },
+    "r__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 2,
+      "description": "[R] Spaces per indentation level. Tidyverse style uses 2."
+    },
+    "r__pipestyle": {
+      "type": "string", "enum": ["magrittr", "native", "auto"], "default": "native",
+      "description": "[R] Pipe operator: |> (native, R 4.1+) or %>% (magrittr)."
+    },
+    "julia__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4
+    },
+    "prolog__indentationSpaces": {
+      "type": "integer", "minimum": 1, "maximum": 8, "default": 4
+    }
+  },
+  "additionalProperties": false
 }

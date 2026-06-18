@@ -1,9 +1,54 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter Swift / Objective-C / Objective-C++ language module Config",
+  "title": "OmniFormatter Swift / Objective-C / Objective-C++ Configuration Schema",
+  "description": "Merged formatting configuration for Apple platform languages.",
   "type": "object",
   "properties": {
-    "indent_size": { "type": "integer", "default": 2 },
-    "column_limit": { "type": "integer", "default": 80 }
-  }
+    "indentationSpaces": { "type": "integer", "minimum": 1, "maximum": 8, "default": 4 },
+    "useTabs": { "type": "boolean", "default": false },
+    "maxLineLength": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "auto"], "default": "lf" },
+    "swift__statementTerminator": {
+      "type": "string", "enum": ["newline", "semicolon"], "default": "newline",
+      "description": "[Swift] Semicolons are optional and strongly discouraged."
+    },
+    "swift__braceStyle": {
+      "type": "string", "enum": ["k&r", "allman"], "default": "k&r",
+      "description": "[Swift] Opening brace on same line (K&R, SE-0001)."
+    },
+    "swift__trailingComma": {
+      "type": "string", "enum": ["always", "never", "multiline"], "default": "never"
+    },
+    "swift__argumentLabelStyle": {
+      "type": "string", "enum": ["explicit", "suppress-when-unused"], "default": "explicit",
+      "description": "[Swift] Argument labels are mandatory at call sites unless suppressed by _."
+    },
+    "swift__indentCaseLabels": {
+      "type": "boolean", "default": true
+    },
+    "swift__swiftFormatEnabled": {
+      "type": "boolean", "default": true,
+      "description": "[Swift] Apply swift-format rules from the Swift toolchain."
+    },
+    "objc__importStyle": {
+      "type": "string", "enum": ["angle-bracket", "quote"], "default": "angle-bracket",
+      "description": "[Objective-C] System frameworks use #import <Framework/File.h>; local uses quotes."
+    },
+    "objc__nullabilityAnnotations": {
+      "type": "boolean", "default": true,
+      "description": "[Objective-C] Require nullable/nonnull annotations on properties and method params."
+    },
+    "objc__messageAlignment": {
+      "type": "string", "enum": ["aligned-colons", "preserve"], "default": "aligned-colons",
+      "description": "[Objective-C] Align colons in multi-line message sends."
+    },
+    "objc__blockIndentWidth": {
+      "type": "integer", "minimum": 0, "maximum": 8, "default": 4
+    },
+    "pointerAlignment": {
+      "type": "string", "enum": ["Left", "Right", "Middle"], "default": "Right",
+      "description": "[Objective-C/C++] Pointer/reference alignment."
+    }
+  },
+  "additionalProperties": false
 }

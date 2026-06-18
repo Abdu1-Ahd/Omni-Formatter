@@ -1,55 +1,59 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFormatter lang-js Configuration Schema",
-  "description": "Configuration options for the JS/TS/JSX/TSX language module. All fields are optional. Unspecified fields use the module's defaults (Prettier 3.x defaults).",
+  "title": "OmniFormatter JavaScript / TypeScript / JSX / TSX / Vue / Svelte / Angular / Astro / CoffeeScript Configuration Schema",
+  "description": "Merged formatting configuration for JavaScript-ecosystem languages. Defaults match Prettier 3.x.",
   "type": "object",
   "properties": {
-    "printWidth": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 500,
-      "default": 80,
-      "description": "Maximum line length in display columns. Enforced using Unicode display widths (CJK = 2 columns)."
-    },
-    "tabWidth": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 16,
-      "default": 2,
-      "description": "Number of spaces per indentation level."
-    },
-    "useTabs": {
-      "type": "boolean",
-      "default": false,
-      "description": "Indent lines with tabs instead of spaces."
-    },
+    "printWidth": { "type": "integer", "minimum": 1, "maximum": 500, "default": 80 },
+    "tabWidth": { "type": "integer", "minimum": 1, "maximum": 16, "default": 2 },
+    "useTabs": { "type": "boolean", "default": false },
     "semi": {
-      "type": "boolean",
-      "default": true,
-      "description": "Add semicolons at the end of statements."
+      "type": "boolean", "default": true,
+      "description": "Add semicolons at end of statements. When false, relies on ASI (dangerous — see rules)."
     },
-    "singleQuote": {
-      "type": "boolean",
-      "default": false,
-      "description": "Use single quotes instead of double quotes."
+    "singleQuote": { "type": "boolean", "default": false },
+    "jsxSingleQuote": {
+      "type": "boolean", "default": false,
+      "description": "[JSX/TSX] Use single quotes in JSX attributes."
     },
     "trailingComma": {
-      "type": "string",
-      "enum": ["all", "es5", "none"],
-      "default": "all",
-      "description": "Where to add trailing commas. 'all' = ES2017+, 'es5' = ES5-compatible, 'none' = no trailing commas."
+      "type": "string", "enum": ["all", "es5", "none"], "default": "all",
+      "description": "Where to add trailing commas."
     },
-    "endOfLine": {
-      "type": "string",
-      "enum": ["lf", "crlf", "cr", "auto"],
-      "default": "lf",
-      "description": "Line ending style."
+    "bracketSpacing": { "type": "boolean", "default": true },
+    "bracketSameLine": {
+      "type": "boolean", "default": false,
+      "description": "[JSX/TSX] Put the closing > of JSX elements on the same line as the last prop."
+    },
+    "arrowParens": { "type": "string", "enum": ["always", "avoid"], "default": "always" },
+    "quoteProps": {
+      "type": "string", "enum": ["as-needed", "consistent", "preserve"], "default": "as-needed"
+    },
+    "endOfLine": { "type": "string", "enum": ["lf", "crlf", "cr", "auto"], "default": "lf" },
+    "moduleSystem": {
+      "type": "string", "enum": ["esm", "cjs", "auto"], "default": "esm",
+      "description": "Preferred module system: ES Modules (import/export) or CommonJS."
+    },
+    "ts__strictTypeChecking": {
+      "type": "boolean", "default": true,
+      "description": "[TypeScript] Enable strict mode in tsconfig (strictNullChecks, noImplicitAny, etc.)."
+    },
+    "ts__importStyle": {
+      "type": "string", "enum": ["type-imports", "regular", "auto"], "default": "auto",
+      "description": "[TypeScript] Use 'import type' for type-only imports."
+    },
+    "vue__indentScriptAndStyle": {
+      "type": "boolean", "default": false,
+      "description": "[Vue SFC] Indent <script> and <style> blocks inside .vue files."
+    },
+    "vue__singleFileComponentOrder": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["template", "script", "style"] },
+      "default": ["template", "script", "style"],
+      "description": "[Vue] Order of blocks in a Single File Component."
     },
     "mode": {
-      "type": "string",
-      "enum": ["opinionated", "advanced"],
-      "default": "opinionated",
-      "description": "Module mode. 'opinionated' = Prettier 3.x compat guaranteed. 'advanced' = full option surface, compat voided."
+      "type": "string", "enum": ["opinionated", "advanced"], "default": "opinionated"
     }
   },
   "additionalProperties": false
