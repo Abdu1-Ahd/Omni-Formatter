@@ -1,6 +1,6 @@
 {
   "name": "core",
-  "version": "0.2.24",
-  "download_url": "https://github.com/Abdu1-Ahd/Omni-Formatter/releases/download/v0.2.24/omni_core_bg.wasm",
-  "sha256": "39fd1a285a46c55082d69f14422b35edc98865a510c3ca09d04f4cc3cc2b31d2"
+  "version": "0.2.25",
+  "download_url": "https://github.com/Abdu1-Ahd/Omni-Formatter/releases/download/v0.2.25/omni_core_bg.wasm",
+  "sha256": "57eaeb5e722579b718e3fbca6885552ba8acaa0cd7486f01cd1be018850cdbbb"
 }
