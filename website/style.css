@@ -31,16 +31,21 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-    background: rgba(10, 10, 15, 0.8);
-    border-radius: 4px;
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(59, 130, 246, 0.4);
+    background: transparent;
     border-radius: 4px;
+}
+
+/* Show scrollbar thumb when hovering over the scrollable area */
+:hover::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Brighter thumb when hovering directly on it */
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(59, 130, 246, 0.7);
 }
