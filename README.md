@@ -77,42 +77,42 @@ That's it. Keep using your existing configuration files (e.g., `.prettierrc`, `r
 ## 🏗️ Architecture
 
 ```text
-┌───────────────────────────────────┐
-│       🔌 VS Code Extension        │
-│           (TypeScript)            │
-└─────────────────┬─────────────────┘
-│
-[ Zero-Copy IPC ]
-│
-▼
-┌───────────────────────────────────┐
-│          ⚡ Worker Pool           │
-│             (Node.js)             │
-└─────────────────┬─────────────────┘
-│
-[ Fast WASM Call ]
-│
-▼
-┌───────────────────────────────────┐
-│           ⚙️ WASM Core            │
-│              (Rust)               │
-└────────┬─────────────────┬────────┘
-│                 │
-[ Loads on Demand ] [ Reads Configs ]
-│                 │
-▼                 ▼
-┌───────────────┐ ┌───────────────┐
-│📦 Lang Modules│ │🛠️ Config Adpt│
-│ (.wasm binary)│ │(Native Format)│
-└───────┬───────┘ └───────────────┘
-│
-[ Fetched & Cached]
-│
-▼
-┌───────────────┐
-│ ☁️ Registry   │
-│(GitHub Pages) │
-└───────────────┘
+   ┌───────────────────────────────────┐
+   │       🔌 VS Code Extension        │
+   │           (TypeScript)            │
+   └─────────────────┬─────────────────┘
+                     │
+             [ Zero-Copy IPC ]
+                     │
+                     ▼
+   ┌───────────────────────────────────┐
+   │          ⚡ Worker Pool           │
+   │             (Node.js)             │
+   └─────────────────┬─────────────────┘
+                     │
+            [ Fast WASM Call ]
+                     │
+                     ▼
+   ┌───────────────────────────────────┐
+   │           ⚙️ WASM Core            │
+   │              (Rust)               │
+   └────────┬─────────────────┬────────┘
+            │                 │
+  [ Loads on Demand ] [ Reads Configs ]
+            │                 │
+            ▼                 ▼
+    ┌───────────────┐ ┌───────────────┐
+    │📦 Lang Modules│ │🛠️ Config Adpt│
+    │ (.wasm binary)│ │(Native Format)│
+    └───────┬───────┘ └───────────────┘
+            │
+  [ Fetched & Cached]
+            │
+            ▼
+    ┌───────────────┐
+    │ ☁️ Registry   │
+    │(GitHub Pages) │
+    └───────────────┘
 ```
 
 ## 🤝 Contributing
