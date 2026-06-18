@@ -59,7 +59,8 @@ if (Test-Path "../README.md") {
      └───────────────────┘
 ```'
     $readme = $readme -replace $mermaidBlock, $unicodeDiagram
-    $readme | Set-Content README.md -Force -Encoding utf8
+    # ponytail: disabled auto-sync for this release to preserve manual edits
+    # $readme | Set-Content README.md -Force -Encoding utf8
 }
 if (Test-Path "../LICENSE") {
     Copy-Item ../LICENSE LICENSE -Force
