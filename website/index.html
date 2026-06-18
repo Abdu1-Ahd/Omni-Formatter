@@ -6,6 +6,7 @@
     <title>OmniFormatter - The Universal Code Formatter</title>
     <meta name="description" content="A blazing fast, WASM-powered, universal code formatter for VS Code.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/overlayscrollbars/2.4.5/styles/overlayscrollbars.min.css" />
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -275,6 +276,30 @@
 
             wrapper.addEventListener('mouseleave', () => {
                 clearInterval(scrollInterval);
+            });
+        });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/overlayscrollbars/2.4.5/browser/overlayscrollbars.browser.es6.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const { OverlayScrollbars } = OverlayScrollbarsGlobal;
+            
+            // Initialize animated scrollbars on body
+            OverlayScrollbars(document.body, {
+                scrollbars: {
+                    theme: "os-theme-omni",
+                    autoHide: "move",
+                    autoHideDelay: 500
+                }
+            });
+
+            // Initialize animated scrollbars on diagram wrapper
+            OverlayScrollbars(document.querySelector('.arch-diagram-wrapper'), {
+                scrollbars: {
+                    theme: "os-theme-omni",
+                    autoHide: "move",
+                    autoHideDelay: 500
+                }
             });
         });
     </script>

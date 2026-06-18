@@ -24,30 +24,20 @@ body {
     position: relative;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background: transparent;
-    border-radius: 4px;
-}
-
-/* Show scrollbar thumb when hovering over the scrollable area */
-:hover::-webkit-scrollbar-thumb {
-    background: rgba(59, 130, 246, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-/* Brighter thumb when hovering directly on it */
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(59, 130, 246, 0.7);
+/* Animated Custom Scrollbar Theme (OverlayScrollbars) */
+.os-theme-omni {
+    --os-size: 8px;
+    --os-padding-perpendicular: 0;
+    --os-padding-axis: 0;
+    --os-track-border-radius: 4px;
+    --os-handle-border-radius: 4px;
+    --os-handle-bg: rgba(59, 130, 246, 0.4);
+    --os-handle-bg-hover: rgba(59, 130, 246, 0.7);
+    --os-handle-bg-active: rgba(59, 130, 246, 0.9);
+    --os-handle-interactive-area-offset: 4px;
+    --os-track-bg: transparent;
+    --os-track-bg-hover: transparent;
+    --os-track-bg-active: transparent;
 }
 
 .container {
