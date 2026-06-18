@@ -19,5 +19,3 @@ serde.workspace      = true
 serde_json.workspace = true
 wasm-bindgen.workspace = true
 log.workspace        = true
-pulldown-cmark   = "0.13"
-pulldown-cmark-to-cmark = "22.0.0"

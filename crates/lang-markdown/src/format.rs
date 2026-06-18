@@ -1,136 +1,217 @@
 //! lang-markdown formatting logic.
 //!
-//! Formatter target: prettier
-//! Strategy: AST-based normalization using pulldown-cmark.
+//! Strategy: conservative line-level pass-through.
+//!
+//! The previous AST round-trip (pulldown-cmark → cmark) discarded ALL
+//! indentation that is not structurally significant to CommonMark — including
+//! intentionally indented ASCII diagrams, tables drawn in plain text, and
+//! aligned prose blocks.  That is the wrong trade-off for a code editor where
+//! the author's layout intent must be preserved.
+//!
+//! This formatter only touches what is unambiguously garbage:
+//!   • trailing whitespace on every line (invisible, serves no purpose)
+//!   • runs of more than 2 consecutive blank lines (cosmetic cleanup)
+//!   • missing final newline
+//!
+//! Everything else — indentation, spacing, heading style, list markers — is
+//! left exactly as the author wrote it.
 //!
 //! # Schema keys consumed
 //!
-//! | Key                      | Type | Default | Effect                                          |
-//! |--------------------------|------|---------|--------------------------------------------------|
-//! | `md__hardBreakSpaces`    | bool | true    | Use two trailing spaces for hard line breaks     |
-//! | `md__proseWrap`          | str  | "preserve" | "always" / "never" / "preserve"             |
+//! | Key                   | Type | Default    | Effect                          |
+//! |-----------------------|------|------------|---------------------------------|
+//! | `md__maxBlankLines`   | u64  | 2          | Max consecutive blank lines kept|
 
 use protocol::config::ConfigIR;
 use protocol::FormatError;
-use pulldown_cmark::{Options, Parser};
-use pulldown_cmark_to_cmark::cmark;
 
-/// Normalise markdown formatting using AST-based parsing and re-serialization.
+/// Format markdown source with a conservative line-level pass-through.
 /// Returns source verbatim if it cannot be decoded as UTF-8.
 pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
     let text = match std::str::from_utf8(source) {
         Ok(s) => s,
-        Err(_) => return Ok(source.to_vec()), // binary file: return verbatim
+        Err(_) => return Ok(source.to_vec()), // binary: pass through verbatim
     };
 
-    // Read md-specific schema keys from extras
-    let _hard_break_spaces = config.get_extra_bool("md__hardBreakSpaces").unwrap_or(true);
-    let _prose_wrap = config.get_extra_str("md__proseWrap").unwrap_or("preserve");
+    // ponytail: max_blank_lines is the only tunable; everything else is fixed.
+    let max_blank: usize = config
+        .get_extra_u64("md__maxBlankLines")
+        .unwrap_or(2)
+        .min(10) as usize;
 
-    let mut options = Options::empty();
-    options.insert(Options::ENABLE_TABLES);
-    options.insert(Options::ENABLE_FOOTNOTES);
-    options.insert(Options::ENABLE_STRIKETHROUGH);
-    options.insert(Options::ENABLE_TASKLISTS);
-    options.insert(Options::ENABLE_SMART_PUNCTUATION);
+    let mut out = String::with_capacity(source.len());
+    let mut consecutive_blank: usize = 0;
+    let mut in_code_fence = false;
 
-    let parser = Parser::new_ext(text, options);
+    for raw in text.lines() {
+        // Detect fenced code blocks so we never touch their content.
+        // A fence starts with ``` or ~~~ (optionally indented).
+        let trimmed = raw.trim_start();
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            in_code_fence = !in_code_fence;
+            // Code fence delimiters: strip trailing whitespace only.
+            out.push_str(raw.trim_end());
+            out.push('\n');
+            consecutive_blank = 0;
+            continue;
+        }
 
-    let mut out = String::with_capacity(source.len() + 128);
-    match cmark(parser, &mut out) {
-        Ok(_) => {
-            if !out.ends_with('\n') {
+        if in_code_fence {
+            // Inside a fence: preserve the line exactly (indentation matters).
+            out.push_str(raw);
+            out.push('\n');
+            consecutive_blank = 0;
+            continue;
+        }
+
+        // Outside a fence: strip trailing whitespace, limit blank lines.
+        let stripped = raw.trim_end();
+        if stripped.is_empty() {
+            consecutive_blank += 1;
+            if consecutive_blank <= max_blank {
                 out.push('\n');
             }
-            Ok(out.into_bytes())
+        } else {
+            consecutive_blank = 0;
+            out.push_str(stripped);
+            out.push('\n');
         }
-        Err(e) => Err(FormatError::Internal {
-            message: format!("Markdown formatting failed: {}", e),
-        }),
     }
+
+    // Ensure the file ends with exactly one newline.
+    while out.ends_with("\n\n") {
+        out.pop();
+    }
+    if !out.ends_with('\n') {
+        out.push('\n');
+    }
+
+    Ok(out.into_bytes())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn config_with_extras(extras: &[(&str, serde_json::Value)]) -> ConfigIR {
-        let mut ir = ConfigIR::default();
-        for (k, v) in extras {
-            ir.extras.insert(k.to_string(), v.clone());
-        }
-        ir
-    }
-
     #[test]
     fn format_empty() {
-        let result = format(b"", &ConfigIR::default()).unwrap();
-        assert_eq!(result, b"\n");
+        assert_eq!(format(b"", &ConfigIR::default()).unwrap(), b"\n");
     }
 
     #[test]
-    fn format_headings() {
-        let src = b"# Heading 1\n##  Heading 2\n###   Heading 3";
-        let expected = b"# Heading 1\n\n## Heading 2\n\n### Heading 3\n";
+    fn preserves_indented_diagram() {
+        // ASCII diagrams inside Markdown paragraphs must not be re-indented.
+        let src = b"Here is a diagram:\n\n    +---+\n    | A |\n    +---+\n\nEnd.\n";
         let result = format(src, &ConfigIR::default()).unwrap();
-        assert_eq!(result, expected);
+        let s = std::str::from_utf8(&result).unwrap();
+        assert!(
+            s.contains("    +---+"),
+            "diagram indentation must be preserved:\n{}",
+            s
+        );
+        assert!(
+            s.contains("    | A |"),
+            "diagram indentation must be preserved:\n{}",
+            s
+        );
     }
 
     #[test]
-    fn format_lists() {
-        let src = b"-  Item 1\n*   Item 2\n1.   Item 3";
+    fn strips_trailing_whitespace_outside_fence() {
+        let src = b"# Hello   \nSome text   \n";
         let result = format(src, &ConfigIR::default()).unwrap();
-        let out_str = std::str::from_utf8(&result).unwrap();
-        assert!(out_str.contains("Item 1"));
-        assert!(out_str.contains("Item 2"));
-        assert!(out_str.contains("Item 3"));
+        let s = std::str::from_utf8(&result).unwrap();
+        for line in s.lines() {
+            assert_eq!(
+                line,
+                line.trim_end(),
+                "trailing whitespace found: {:?}",
+                line
+            );
+        }
     }
 
     #[test]
-    fn format_tables() {
-        let src = b"| A | B |\n|---|---|\n| 1 | 2 |";
+    fn preserves_content_inside_code_fence() {
+        // Trailing spaces inside a fence must not be stripped (they may matter).
+        let src = b"```\n  indented code   \n    more indent\n```\n";
         let result = format(src, &ConfigIR::default()).unwrap();
-        let out_str = std::str::from_utf8(&result).unwrap();
-        assert!(out_str.contains("A"));
-        assert!(out_str.contains("1"));
+        let s = std::str::from_utf8(&result).unwrap();
+        assert!(
+            s.contains("  indented code   "),
+            "fence content must be preserved verbatim:\n{}",
+            s
+        );
     }
 
     #[test]
-    fn format_nested_code_blocks() {
-        let src = b"```markdown\nSome markdown text\n\n```rust\nlet x = 1;\n```\nMore text\n```";
+    fn collapses_excess_blank_lines() {
+        let src = b"A\n\n\n\n\nB\n";
         let result = format(src, &ConfigIR::default()).unwrap();
-        let out_str = std::str::from_utf8(&result).unwrap();
-        assert!(out_str.contains("```rust"));
-        assert!(out_str.contains("let x = 1;"));
+        let s = std::str::from_utf8(&result).unwrap();
+        // Default max_blank = 2, so at most 2 blank lines between A and B.
+        let blanks = s
+            .split("A\n")
+            .nth(1)
+            .unwrap_or("")
+            .split("B")
+            .next()
+            .unwrap_or("")
+            .chars()
+            .filter(|&c| c == '\n')
+            .count();
+        assert!(
+            blanks <= 3,
+            "expected ≤2 blank lines between A and B, got {}:\n{}",
+            blanks - 1,
+            s
+        );
     }
 
     #[test]
-    fn format_html_boundaries() {
-        let src = b"<div>\n\n# Heading in HTML\n\n</div>";
+    fn ends_with_single_newline() {
+        let src = b"# Title\n\nParagraph.\n\n\n";
         let result = format(src, &ConfigIR::default()).unwrap();
-        let out_str = std::str::from_utf8(&result).unwrap();
-        assert!(out_str.contains("<div>"));
-        assert!(out_str.contains("# Heading in HTML"));
-        assert!(out_str.contains("</div>"));
-    }
-
-    // ── Schema key tests ──────────────────────────────────────────────────
-
-    #[test]
-    fn md_prose_wrap_key_is_consumed_without_error() {
-        let config =
-            config_with_extras(&[("md__proseWrap", serde_json::Value::String("always".into()))]);
-        // Verify the key is present and formatter does not panic
-        assert_eq!(config.get_extra_str("md__proseWrap"), Some("always"));
-        let result = format(b"# Hello\n", &config).unwrap();
-        assert!(!result.is_empty());
+        assert!(result.ends_with(b"\n"), "must end with newline");
+        assert!(
+            !result.ends_with(b"\n\n"),
+            "must not end with double newline"
+        );
     }
 
     #[test]
-    fn md_hard_break_spaces_key_is_consumed_without_error() {
-        let config = config_with_extras(&[("md__hardBreakSpaces", serde_json::Value::Bool(false))]);
-        assert_eq!(config.get_extra_bool("md__hardBreakSpaces"), Some(false));
-        let result = format(b"Hello world\n", &config).unwrap();
-        assert!(!result.is_empty());
+    fn headings_preserved_as_written() {
+        // The formatter must NOT reformat ATX heading spacing.
+        let src = b"# H1\n## H2\n### H3\n";
+        let result = format(src, &ConfigIR::default()).unwrap();
+        let s = std::str::from_utf8(&result).unwrap();
+        assert!(s.contains("# H1"), "H1 must be preserved");
+        assert!(s.contains("## H2"), "H2 must be preserved");
+        assert!(s.contains("### H3"), "H3 must be preserved");
+    }
+
+    #[test]
+    fn md_max_blank_lines_config_respected() {
+        let mut config = ConfigIR::default();
+        config.extras.insert(
+            "md__maxBlankLines".to_string(),
+            serde_json::Value::Number(1.into()),
+        );
+        let src = b"A\n\n\n\nB\n";
+        let result = format(src, &config).unwrap();
+        let s = std::str::from_utf8(&result).unwrap();
+        // max_blank=1 → at most 1 blank line kept
+        assert!(
+            !s.contains("A\n\n\n"),
+            "max 1 blank line must be enforced:\n{}",
+            s
+        );
+    }
+
+    #[test]
+    fn non_utf8_bytes_returned_verbatim() {
+        let src: &[u8] = &[0xFF, 0xFE, 0x00];
+        let result = format(src, &ConfigIR::default()).unwrap();
+        assert_eq!(result, src);
     }
 }
