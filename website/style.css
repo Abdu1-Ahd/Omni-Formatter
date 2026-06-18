@@ -26,7 +26,7 @@ body {
 
 /* Animated Custom Scrollbar Theme (OverlayScrollbars) */
 .os-theme-omni {
-    --os-size: 8px;
+    --os-size: 14px;
     --os-handle-bg: rgba(59, 130, 246, 0.5);
     --os-handle-bg-hover: rgba(59, 130, 246, 0.8);
     --os-handle-bg-active: rgba(59, 130, 246, 1);
@@ -38,12 +38,12 @@ body {
 /* Long Hexagon Shape for the Handles */
 .os-theme-omni.os-scrollbar-horizontal .os-scrollbar-handle {
     border-radius: 0 !important;
-    clip-path: polygon(0% 50%, 4px 0%, calc(100% - 4px) 0%, 100% 50%, calc(100% - 4px) 100%, 4px 100%);
+    clip-path: polygon(0% 50%, 7px 0%, calc(100% - 7px) 0%, 100% 50%, calc(100% - 7px) 100%, 7px 100%);
 }
 
 .os-theme-omni.os-scrollbar-vertical .os-scrollbar-handle {
     border-radius: 0 !important;
-    clip-path: polygon(50% 0%, 100% 4px, 100% calc(100% - 4px), 50% 100%, 0% calc(100% - 4px), 0% 4px);
+    clip-path: polygon(50% 0%, 100% 7px, 100% calc(100% - 7px), 50% 100%, 0% calc(100% - 7px), 0% 7px);
 }
 
 .container {
