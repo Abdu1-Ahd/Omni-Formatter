@@ -1,9 +1,8 @@
-<div align="center">
-<img src="extension/media/logo.png" alt="OmniFormatter Logo" width="300" />
-<br/>
-**One extension. Every language. Zero configuration.**<br/>
+# OmniFormatter
 
-[![VS Code Marketplace](https://img.shields.io/badge/VS_Code_Marketplace-Available-0066B8?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=Abdu1-Ahd.omni-formatter)
+**One extension. Every language. Zero configuration.**
+
+
 [![Build](https://img.shields.io/github/actions/workflow/status/Abdu1-Ahd/Omni-Formatter/ci.yml?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Abdu1-Ahd/Omni-Formatter/actions)
 <br/>
 [![Rust](https://img.shields.io/badge/Core-Rust-CE422B?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
@@ -114,4 +113,3 @@ That's it. Keep using your existing configuration files (e.g., `.prettierrc`, `r
 ## 🤝 Contributing
 
 Contributions are welcome! Adding a language does not require touching the core extension. See our [Language Blueprint](docs/ADD_LANGUAGE_TEMPLATE.md) for how to add a language module in 10 minutes.
-
