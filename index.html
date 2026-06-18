@@ -244,6 +244,39 @@
                 dropdown.classList.remove('active');
             }
         });
+
+        // Auto-scroll architecture diagram on edge hover
+        document.addEventListener('DOMContentLoaded', () => {
+            const wrapper = document.querySelector('.arch-diagram-wrapper');
+            let scrollInterval;
+
+            wrapper.addEventListener('mousemove', (e) => {
+                const rect = wrapper.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const threshold = 150; // pixels from edge to trigger scroll
+                const maxSpeed = 10; // scroll speed
+
+                clearInterval(scrollInterval);
+
+                let speed = 0;
+                if (x < threshold) {
+                    speed = -maxSpeed * (1 - x / threshold);
+                } else if (x > rect.width - threshold) {
+                    const distFromEdge = rect.width - x;
+                    speed = maxSpeed * (1 - distFromEdge / threshold);
+                }
+
+                if (speed !== 0) {
+                    scrollInterval = setInterval(() => {
+                        wrapper.scrollLeft += speed;
+                    }, 16);
+                }
+            });
+
+            wrapper.addEventListener('mouseleave', () => {
+                clearInterval(scrollInterval);
+            });
+        });
     </script>
 </body>
 </html>
