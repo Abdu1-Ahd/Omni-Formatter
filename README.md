@@ -37,7 +37,7 @@ Stop installing 10 different formatters (Prettier, ESLint, Black, rustfmt, clang
 <td>WASM core activates in under 5ms with zero-copy infinite file size scaling.</td>
 <td>Automatically detects and reads native configurations (<code>.prettierrc</code>, <code>pyproject.toml</code>).</td>
 <td>Runs in a strict WASM Sandbox. All modules are cryptographically signed.</td>
-<td>Supports 70+ languages out-of-the-box via dynamic edge registry.</td>
+<td>Supports 70+ languages out-of-the-box via the GitHub Pages registry.</td>
 </tr>
 </table>
 
