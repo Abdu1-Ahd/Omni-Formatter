@@ -1,4 +1,6 @@
 <div align="center">
+<img src="extension/media/logo.png" alt="OmniFormatter Logo" width="300" />
+<br/>
 **One extension. Every language. Zero configuration.**<br/>
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS_Code_Marketplace-Available-0066B8?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=Abdu1-Ahd.omni-formatter)
@@ -16,30 +18,30 @@
 
 ## 🚀 Why OmniFormatter?
 
-Stop installing 10 different formatters (Prettier, ESLint, Black, rustfmt, clang-format, gofmt...) that constantly conflict with each other. 
+Stop installing 10 different formatters (Prettier, ESLint, Black, rustfmt, clang-format, gofmt...) that constantly conflict with each other.
 
 **OmniFormatter eliminates the chaos.** It provides a single, blazing-fast WASM core that formats *everything* seamlessly.
 
 <table>
-  <tr>
-    <td align="center">⚡<br/><b>Blazing Fast</b></td>
-    <td align="center">📦<br/><b>Zero Config</b></td>
-    <td align="center">🛡️<br/><b>Secure</b></td>
-    <td align="center">🌍<br/><b>Universal</b></td>
-  </tr>
-  <tr>
-    <td>WASM core activates in under 5ms with zero-copy infinite file size scaling.</td>
-    <td>Automatically detects and reads native configurations (<code>.prettierrc</code>, <code>pyproject.toml</code>).</td>
-    <td>Runs in a strict WASM Sandbox. All modules are cryptographically signed.</td>
-    <td>Supports 70+ languages out-of-the-box via dynamic edge registry.</td>
-  </tr>
+<tr>
+<td align="center">⚡<br/><b>Blazing Fast</b></td>
+<td align="center">📦<br/><b>Zero Config</b></td>
+<td align="center">🛡️<br/><b>Secure</b></td>
+<td align="center">🌍<br/><b>Universal</b></td>
+</tr>
+<tr>
+<td>WASM core activates in under 5ms with zero-copy infinite file size scaling.</td>
+<td>Automatically detects and reads native configurations (<code>.prettierrc</code>, <code>pyproject.toml</code>).</td>
+<td>Runs in a strict WASM Sandbox. All modules are cryptographically signed.</td>
+<td>Supports 70+ languages out-of-the-box via dynamic edge registry.</td>
+</tr>
 </table>
 
 ---
 
 ## 🛠️ Supported Languages
 
-OmniFormatter downloads the tiny language modules you need **on-the-fly** and caches them forever. 
+OmniFormatter downloads the tiny language modules you need **on-the-fly** and caches them forever.
 
 * 🌐 **Frontend**: JavaScript, TypeScript, JSX, TSX, Vue, Svelte, Astro, HTML, CSS, SCSS, Sass, Less
 * ⚙️ **Systems**: Rust, C, C++, Objective-C, Go, Zig, Nim, D
@@ -71,44 +73,45 @@ That's it. Keep using your existing configuration files (e.g., `.prettierrc`, `r
 ## 🏗️ Architecture
 
 ```text
-     ┌───────────────────────────────────────┐
-     │         🔌 VS Code Extension          │
-     │            (TypeScript)               │
-     └──────────────────┬────────────────────┘
-                        │
-                [ Zero-Copy IPC ]
-                        │
-                        ▼
-     ┌───────────────────────────────────────┐
-     │           ⚡ Worker Pool              │
-     │              (Node.js)                │
-     └──────────────────┬────────────────────┘
-                        │
-               [ Fast WASM Call ]
-                        │
-                        ▼
-     ┌───────────────────────────────────────┐
-     │            ⚙️ WASM Core               │
-     │               (Rust)                  │
-     └─────────┬───────────────────┬─────────┘
-               │                   │
-      [ Loads on Demand ]  [ Reads Workspace ]
-               │                   │
-               ▼                   ▼
-     ┌───────────────────┐ ┌─────────────────┐
-     │ 📦 Lang Modules   │ │🛠️ Config Adapter│
-     │  (.wasm binary)   │ │ (Native Format) │
-     └─────────┬─────────┘ └─────────────────┘
-               │
-       [ Fetched & Cached ]
-               │
-               ▼
-     ┌───────────────────┐
-     │  ☁️ Edge Registry │
-     │(Cloudflare D1/R2) │
-     └───────────────────┘
+┌───────────────────────────────────────┐
+│         🔌 VS Code Extension          │
+│            (TypeScript)               │
+└──────────────────┬────────────────────┘
+│
+[ Zero-Copy IPC ]
+│
+▼
+┌───────────────────────────────────────┐
+│           ⚡ Worker Pool              │
+│              (Node.js)                │
+└──────────────────┬────────────────────┘
+│
+[ Fast WASM Call ]
+│
+▼
+┌───────────────────────────────────────┐
+│            ⚙️ WASM Core               │
+│               (Rust)                  │
+└─────────┬───────────────────┬─────────┘
+│                   │
+[ Loads on Demand ]  [ Reads Workspace ]
+│                   │
+▼                   ▼
+┌───────────────────┐ ┌─────────────────┐
+│ 📦 Lang Modules   │ │🛠️ Config Adapter│
+│  (.wasm binary)   │ │ (Native Format) │
+└─────────┬─────────┘ └─────────────────┘
+│
+[ Fetched & Cached ]
+│
+▼
+┌───────────────────┐
+│  ☁️ Edge Registry │
+│(Cloudflare D1/R2) │
+└───────────────────┘
 ```
 
 ## 🤝 Contributing
 
 Contributions are welcome! Adding a language does not require touching the core extension. See our [Language Blueprint](docs/ADD_LANGUAGE_TEMPLATE.md) for how to add a language module in 10 minutes.
+
