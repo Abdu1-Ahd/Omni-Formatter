@@ -6,9 +6,9 @@
 [![VS Code Marketplace](https://img.shields.io/badge/VS_Code_Marketplace-Available-0066B8?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=Abdu1-Ahd.omni-formatter)
 [![Build](https://img.shields.io/github/actions/workflow/status/Abdu1-Ahd/Omni-Formatter/ci.yml?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Abdu1-Ahd/Omni-Formatter/actions)
 <br/>
-[![Rust](https://img.shields.io/badge/Core-Rust-CE422B?style=flat-square&logo=rust)](https://www.rust-lang.org/)
-[![WebAssembly](https://img.shields.io/badge/Runtime-WebAssembly-654ff0?style=flat-square&logo=webassembly)](https://webassembly.org/)
-[![Cloudflare Workers](https://img.shields.io/badge/Registry-Cloudflare%20Workers-F38020?style=flat-square&logo=cloudflare)](https://workers.cloudflare.com/)
+[![Rust](https://img.shields.io/badge/Core-Rust-CE422B?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
+[![WebAssembly](https://img.shields.io/badge/Runtime-WebAssembly-654ff0?style=for-the-badge&logo=webassembly)](https://webassembly.org/)
+[![Registry](https://img.shields.io/badge/Registry-GitHub%20Pages-121013?style=for-the-badge&logo=github)](https://abdu1-ahd.github.io/Omni-Formatter/)
 
 [Install for VS Code](https://marketplace.visualstudio.com/items?itemName=Abdu1-Ahd.omni-formatter) • [Install for Open VSX](https://open-vsx.org/extension/Abdu1-Ahd/omni-formatter) • [Documentation](docs/) • [Add a Language](docs/ADD_LANGUAGE_TEMPLATE.md)
 
@@ -73,42 +73,42 @@ That's it. Keep using your existing configuration files (e.g., `.prettierrc`, `r
 ## 🏗️ Architecture
 
 ```text
-┌───────────────────────────────────────┐
-│         🔌 VS Code Extension          │
-│            (TypeScript)               │
-└──────────────────┬────────────────────┘
-│
-[ Zero-Copy IPC ]
-│
-▼
-┌───────────────────────────────────────┐
-│           ⚡ Worker Pool              │
-│              (Node.js)                │
-└──────────────────┬────────────────────┘
-│
-[ Fast WASM Call ]
-│
-▼
-┌───────────────────────────────────────┐
-│            ⚙️ WASM Core               │
-│               (Rust)                  │
-└─────────┬───────────────────┬─────────┘
-│                   │
-[ Loads on Demand ]  [ Reads Workspace ]
-│                   │
-▼                   ▼
-┌───────────────────┐ ┌─────────────────┐
-│ 📦 Lang Modules   │ │🛠️ Config Adapter│
-│  (.wasm binary)   │ │ (Native Format) │
-└─────────┬─────────┘ └─────────────────┘
-│
-[ Fetched & Cached ]
-│
-▼
-┌───────────────────┐
-│  ☁️ Edge Registry │
-│(Cloudflare D1/R2) │
-└───────────────────┘
+   ┌───────────────────────────────────┐
+   │       🔌 VS Code Extension        │
+   │           (TypeScript)            │
+   └─────────────────┬─────────────────┘
+                     │
+             [ Zero-Copy IPC ]
+                     │
+                     ▼
+   ┌───────────────────────────────────┐
+   │          ⚡ Worker Pool           │
+   │             (Node.js)             │
+   └─────────────────┬─────────────────┘
+                     │
+            [ Fast WASM Call ]
+                     │
+                     ▼
+   ┌───────────────────────────────────┐
+   │           ⚙️ WASM Core            │
+   │              (Rust)               │
+   └────────┬─────────────────┬────────┘
+            │                 │
+  [ Loads on Demand ] [ Reads Configs ]
+            │                 │
+            ▼                 ▼
+    ┌───────────────┐ ┌───────────────┐
+    │📦 Lang Modules│ │🛠️ Config Adpt│
+    │ (.wasm binary)│ │(Native Format)│
+    └───────┬───────┘ └───────────────┘
+            │
+  [ Fetched & Cached]
+            │
+            ▼
+    ┌───────────────┐
+    │ ☁️ Registry   │
+    │(GitHub Pages) │
+    └───────────────┘
 ```
 
 ## 🤝 Contributing

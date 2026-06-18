@@ -2,7 +2,7 @@
   "name": "omni-formatter",
   "displayName": "OmniFormatter",
   "description": "Universal code formatter — single WASM binary, 80+ languages, zero config migration",
-  "version": "0.2.25",
+  "version": "0.2.26",
   "publisher": "Abdu1-Ahd",
   "icon": "media/logo.png",
   "license": "MIT",
