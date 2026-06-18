@@ -104,6 +104,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Backup website assets
+        run: cp -r website /tmp/website || true
+
       # Check out gh-pages branch, or create it as an orphan on first run.
       - name: Prepare gh-pages branch
         run: |
@@ -116,6 +119,15 @@ jobs:
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git commit -m "chore: initialise gh-pages registry branch"
           )
+
+      - name: Restore website assets
+        env:
+          VERSION: ${{ needs.release-wasm.outputs.version }}
+        run: |
+          if [ -d "/tmp/website" ]; then
+            cp -r /tmp/website/* .
+            sed -i "s/{{VERSION}}/${VERSION}/g" index.html
+          fi
 
       # Generate resolve/core.json — the single file the extension queries.
       # Format mirrors RegistryResolveResponse in moduleLoader.ts.
@@ -137,6 +149,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add resolve/core.json
+          git add index.html style.css || true
           git diff --cached --quiet && echo "No changes to publish" && exit 0
-          git commit -m "registry: publish core v${{ needs.release-wasm.outputs.version }}"
+          git commit -m "registry: publish core v${{ needs.release-wasm.outputs.version }} and website"
           git push origin gh-pages
