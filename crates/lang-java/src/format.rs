@@ -302,8 +302,7 @@ impl<'a> JavaFormatter<'a> {
     // ── Helpers ───────────────────────────────────────────────────────────
 
     fn make_indent(&self, depth: usize) -> String {
-        let unit: String = std::iter::repeat_n(self.indent_char, self.indent_size)
-            .collect();
+        let unit: String = std::iter::repeat_n(self.indent_char, self.indent_size).collect();
         unit.repeat(depth)
     }
 

@@ -111,18 +111,9 @@ fn format_sql(source: &str, keyword_case: &str, indent_char: char, indent_size: 
                 || upper.starts_with(&format!("{}\n", kw))
         });
         let display_depth = if is_clause && block_depth == 0 {
-            0 // Top-level SQL clause keywords at depth 0
-        } else if is_clause {
-            block_depth // Inside a BEGIN block, keep at block depth
+            0 // Top-level SQL clause keywords always at depth 0
         } else {
-            block_depth
-                + if block_depth > 0
-                    || (!is_clause && !is_closer && block_depth == 0 && !upper.starts_with("--"))
-                {
-                    0
-                } else {
-                    0
-                }
+            block_depth // Inside BEGIN blocks or non-clause lines: use block depth
         };
 
         let current_indent = make_indent(indent_char, indent_size, display_depth.max(0) as usize);

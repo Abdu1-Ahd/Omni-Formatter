@@ -158,7 +158,7 @@ impl ConfigIR {
 
     /// Generic typed accessor — deserialises the stored JSON value into `T`.
     /// Prefer the specialised helpers above for the common primitive types.
-    pub fn get_extra<'de, T: serde::de::DeserializeOwned>(&self, key: &str) -> Option<T> {
+    pub fn get_extra<T: serde::de::DeserializeOwned>(&self, key: &str) -> Option<T> {
         self.extras
             .get(key)
             .and_then(|v| serde_json::from_value(v.clone()).ok())

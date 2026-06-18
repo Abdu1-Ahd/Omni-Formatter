@@ -50,7 +50,6 @@ impl Line {
 
 struct GoFormatter<'a> {
     source: &'a [u8],
-    config: &'a ConfigIR,
     /// go__groupImports: when true (default), separate stdlib imports from
     /// external imports with a blank line (goimports style).
     group_imports: bool,
@@ -61,7 +60,6 @@ impl<'a> GoFormatter<'a> {
         let group_imports = config.get_extra_bool("go__groupImports").unwrap_or(true);
         Self {
             source,
-            config,
             group_imports,
         }
     }
