@@ -225,7 +225,7 @@ mod tests {
 ┌─────────────────┬─────────────────┐\n";
         // Build the string with explicit leading spaces (not stripped by \n\).
         let connector = "                  │";
-        let label     = "          [ Zero-Copy IPC ]";
+        let label = "          [ Zero-Copy IPC ]";
         let full = format!("{src}{connector}\n{label}\n```\n");
 
         let result = super::format(full.as_bytes(), &ConfigIR::default()).unwrap();
