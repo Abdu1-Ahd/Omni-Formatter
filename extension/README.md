@@ -1,3 +1,4 @@
+<div align="center">
 # OmniFormatter
 
 **One extension. Every language. Zero configuration.**
@@ -9,7 +10,7 @@
 [![WebAssembly](https://img.shields.io/badge/Runtime-WebAssembly-654ff0?style=for-the-badge&logo=webassembly)](https://webassembly.org/)
 [![Registry](https://img.shields.io/badge/Registry-GitHub%20Pages-121013?style=for-the-badge&logo=github)](https://abdu1-ahd.github.io/Omni-Formatter/)
 
-[Install for VS Code](https://marketplace.visualstudio.com/items?itemName=Abdu1-Ahd.omni-formatter) • [Install for Open VSX](https://open-vsx.org/extension/Abdu1-Ahd/omni-formatter) • [Documentation](docs/) • [Add a Language](docs/ADD_LANGUAGE_TEMPLATE.md)
+• [Github](https://github.com/Abdu1-Ahd/Omni-Formatter) • [Add a Language](https://github.com/Abdu1-Ahd/Omni-Formatter/blob/main/ADD_LANGUAGE.md)
 
 </div>
 
@@ -72,44 +73,44 @@ That's it. Keep using your existing configuration files (e.g., `.prettierrc`, `r
 ## 🏗️ Architecture
 
 ```text
-   ┌───────────────────────────────────┐
-   │       🔌 VS Code Extension        │
-   │           (TypeScript)            │
-   └─────────────────┬─────────────────┘
-                     │
-             [ Zero-Copy IPC ]
-                     │
-                     ▼
-   ┌───────────────────────────────────┐
-   │          ⚡ Worker Pool           │
-   │             (Node.js)             │
-   └─────────────────┬─────────────────┘
-                     │
-            [ Fast WASM Call ]
-                     │
-                     ▼
-   ┌───────────────────────────────────┐
-   │           ⚙️ WASM Core            │
-   │              (Rust)               │
-   └────────┬─────────────────┬────────┘
-            │                 │
-  [ Loads on Demand ] [ Reads Configs ]
-            │                 │
-            ▼                 ▼
-    ┌───────────────┐ ┌───────────────┐
-    │📦 Lang Modules│ │🛠️ Config Adpt│
-    │ (.wasm binary)│ │(Native Format)│
-    └───────┬───────┘ └───────────────┘
-            │
-  [ Fetched & Cached]
-            │
-            ▼
-    ┌───────────────┐
-    │ ☁️ Registry   │
-    │(GitHub Pages) │
-    └───────────────┘
+┌───────────────────────────────────┐
+│       🔌 VS Code Extension        │
+│           (TypeScript)            │
+└─────────────────┬─────────────────┘
+                  │
+          [ Zero-Copy IPC ]
+                  │
+                  ▼
+┌───────────────────────────────────┐
+│          ⚡ Worker Pool           │
+│             (Node.js)             │
+└─────────────────┬─────────────────┘
+                  │
+         [ Fast WASM Call ]
+                  │
+                  ▼
+┌───────────────────────────────────┐
+│           ⚙️ WASM Core            │
+│              (Rust)               │
+└────────┬─────────────────┬────────┘
+         │                 │
+[ Loads on Demand ] [ Reads Configs ]
+         │                 │
+         ▼                 ▼
+ ┌───────────────┐ ┌───────────────┐
+ │📦 Lang Modules│ │🛠️ Config Adpt│
+ │ (.wasm binary)│ │(Native Format)│
+ └───────┬───────┘ └───────────────┘
+         │
+[ Fetched & Cached]
+         │
+         ▼
+ ┌───────────────┐
+ │ ☁️ Registry   │
+ │(GitHub Pages) │
+ └───────────────┘
 ```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Adding a language does not require touching the core extension. See our [Language Blueprint](docs/ADD_LANGUAGE_TEMPLATE.md) for how to add a language module in 10 minutes.
+Contributions are welcome! Adding a language does not require touching the core extension. See our [Language Blueprint](ADD_LANGUAGE_TEMPLATE.md) for how to add a language module in 10 minutes.

@@ -214,4 +214,31 @@ mod tests {
         let result = format(src, &ConfigIR::default()).unwrap();
         assert_eq!(result, src);
     }
+
+    #[test]
+    fn preserves_leading_spaces_inside_text_info_fence() {
+        // Regression: ASCII diagram connector lines inside a ```text fence
+        // must survive formatting with their leading spaces intact.
+        // The README architecture diagram uses this exact pattern.
+        // NOTE: raw string r#"..."# is required so \n\ doesn't eat leading spaces.
+        let src = "```text\n\
+┌─────────────────┬─────────────────┐\n";
+        // Build the string with explicit leading spaces (not stripped by \n\).
+        let connector = "                  │";
+        let label     = "          [ Zero-Copy IPC ]";
+        let full = format!("{src}{connector}\n{label}\n```\n");
+
+        let result = super::format(full.as_bytes(), &ConfigIR::default()).unwrap();
+        let s = std::str::from_utf8(&result).unwrap();
+        assert!(
+            s.contains(connector),
+            "leading-space connector must be preserved inside ```text fence:\n{}",
+            s
+        );
+        assert!(
+            s.contains(label),
+            "leading-space label must be preserved inside ```text fence:\n{}",
+            s
+        );
+    }
 }

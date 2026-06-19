@@ -1,14 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OmniFormatter - The Universal Code Formatter</title>
     <meta name="description" content="A blazing fast, WASM-powered, universal code formatter for VS Code.">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/overlayscrollbars/2.4.5/styles/overlayscrollbars.min.css" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/overlayscrollbars/2.4.5/styles/overlayscrollbars.min.css" />
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="background-elements">
         <div class="glow-orb orb-1"></div>
@@ -26,20 +31,37 @@
                 <span class="logo-text">Omni<span class="highlight">Formatter</span></span>
             </div>
             <div class="nav-links">
-                <a href="https://github.com/Abdu1-Ahd/Omni-Formatter" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a href="https://github.com/Abdu1-Ahd/Omni-Formatter" target="_blank"
+                    rel="noopener noreferrer">GitHub</a>
                 <a href="#features">Features</a>
                 <div class="dropdown" id="installDropdown">
-                    <button class="btn btn-primary btn-small" onclick="document.getElementById('installDropdown').classList.toggle('active')">
+                    <button class="btn btn-primary btn-small"
+                        onclick="document.getElementById('installDropdown').classList.toggle('active')">
                         Install
-                        <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
                     </button>
                     <div class="dropdown-menu glass">
-                        <a href="https://marketplace.visualstudio.com/items?itemName=Abdu1-Ahd.omni-formatter" class="dropdown-item" target="_blank" rel="noopener noreferrer">
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <a href="https://marketplace.visualstudio.com/items?itemName=Abdu1-Ahd.omni-formatter"
+                            class="dropdown-item" target="_blank" rel="noopener noreferrer">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
                             VS Code
                         </a>
-                        <a href="https://open-vsx.org/extension/Abdu1-Ahd/omni-formatter" class="dropdown-item" target="_blank" rel="noopener noreferrer">
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                        <a href="https://open-vsx.org/extension/Abdu1-Ahd/omni-formatter" class="dropdown-item"
+                            target="_blank" rel="noopener noreferrer">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                                <polyline points="2 17 12 22 22 17"></polyline>
+                                <polyline points="2 12 12 17 22 12"></polyline>
+                            </svg>
                             OpenVSX
                         </a>
                     </div>
@@ -53,18 +75,37 @@
             <div class="hero-content">
                 <div class="badge glass-badge">🚀 v{{VERSION}} is now live!</div>
                 <h1 class="hero-title">Format your code with <span class="gradient-text">universal speed</span></h1>
-                <p class="hero-subtitle">A blazing fast, WASM-powered, multi-language code formatter built as a single unified VS Code extension.</p>
+                <p class="hero-subtitle">A blazing fast, WASM-powered, multi-language code formatter built as a single
+                    unified VS Code extension.</p>
                 <div class="hero-cta">
-                    <a href="https://marketplace.visualstudio.com/items?itemName=Abdu1-Ahd.omni-formatter" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <a href="https://marketplace.visualstudio.com/items?itemName=Abdu1-Ahd.omni-formatter"
+                        class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
                         VS Code
                     </a>
-                    <a href="https://open-vsx.org/extension/Abdu1-Ahd/omni-formatter" class="btn btn-primary openvsx-btn" target="_blank" rel="noopener noreferrer">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                    <a href="https://open-vsx.org/extension/Abdu1-Ahd/omni-formatter"
+                        class="btn btn-primary openvsx-btn" target="_blank" rel="noopener noreferrer">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                            <polyline points="2 17 12 22 22 17"></polyline>
+                            <polyline points="2 12 12 17 22 12"></polyline>
+                        </svg>
                         OpenVSX
                     </a>
-                    <a href="https://github.com/Abdu1-Ahd/Omni-Formatter" class="btn btn-secondary glass" target="_blank" rel="noopener noreferrer">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                    <a href="https://github.com/Abdu1-Ahd/Omni-Formatter" class="btn btn-secondary glass"
+                        target="_blank" rel="noopener noreferrer">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
+                            </path>
+                        </svg>
                         Star
                     </a>
                 </div>
@@ -81,9 +122,12 @@
                         <div class="editor-title">main.rs</div>
                     </div>
                     <div class="editor-body">
-                        <div class="code-line"><span class="keyword">fn</span> <span class="function">format_magic</span>() {</div>
-                        <div class="code-line indent-1">println!(<span class="string">"Instant formatting"</span>);</div>
-                        <div class="code-line indent-1"><span class="keyword">let</span> result = <span class="keyword">super</span>::fast::execute();</div>
+                        <div class="code-line"><span class="keyword">fn</span> <span
+                                class="function">format_magic</span>() {</div>
+                        <div class="code-line indent-1">println!(<span class="string">"Instant formatting"</span>);
+                        </div>
+                        <div class="code-line indent-1"><span class="keyword">let</span> result = <span
+                                class="keyword">super</span>::fast::execute();</div>
                         <div class="code-line">}</div>
                     </div>
                 </div>
@@ -97,7 +141,8 @@
                     <div class="feature-glow"></div>
                 </div>
                 <h3>Blazing Fast</h3>
-                <p>WASM core activates in under 5ms with zero-copy infinite file size scaling for instant formatting.</p>
+                <p>WASM core activates in under 5ms with zero-copy infinite file size scaling for instant formatting.
+                </p>
             </div>
             <div class="feature-card glass">
                 <div class="feature-icon-wrapper">
@@ -105,7 +150,8 @@
                     <div class="feature-glow"></div>
                 </div>
                 <h3>Zero Config</h3>
-                <p>Automatically detects and reads your native configurations like <code>.prettierrc</code> or <code>pyproject.toml</code>.</p>
+                <p>Automatically detects and reads your native configurations like <code>.prettierrc</code> or
+                    <code>pyproject.toml</code>.</p>
             </div>
             <div class="feature-card glass">
                 <div class="feature-icon-wrapper">
@@ -113,14 +159,16 @@
                     <div class="feature-glow"></div>
                 </div>
                 <h3>Secure</h3>
-                <p>Runs in a strict WebAssembly sandbox. All formatting modules are isolated and cryptographically signed.</p>
+                <p>Runs in a strict WebAssembly sandbox. All formatting modules are isolated and cryptographically
+                    signed.</p>
             </div>
         </section>
 
         <section class="languages container">
             <div class="section-header text-center">
                 <h2>Universal Support</h2>
-                <p class="section-subtitle">One formatter to rule them all. Built to seamlessly format your entire tech stack.</p>
+                <p class="section-subtitle">One formatter to rule them all. Built to seamlessly format your entire tech
+                    stack.</p>
             </div>
             <div class="lang-grid">
                 <div class="lang-tag">Rust</div>
@@ -148,7 +196,7 @@
                 <h2>How It Works</h2>
                 <p class="section-subtitle">A highly optimized pipeline designed for zero-latency formatting.</p>
             </div>
-            
+
             <div class="arch-diagram-wrapper">
                 <div class="arch-diagram">
                     <!-- Node 1: VS Code -->
@@ -159,7 +207,7 @@
                             <span>TypeScript</span>
                         </div>
                     </div>
-                    
+
                     <div class="arch-connector">
                         <div class="connector-line"></div>
                         <span class="connector-label">IPC</span>
@@ -173,7 +221,7 @@
                             <span>Node.js</span>
                         </div>
                     </div>
-                    
+
                     <div class="arch-connector">
                         <div class="connector-line"></div>
                         <span class="connector-label">WASM Call</span>
@@ -187,9 +235,10 @@
                             <span>Rust</span>
                         </div>
                     </div>
-                    
+
                     <svg class="split-lines" width="60" height="240">
-                        <path d="M 0 120 L 30 120 L 30 45 L 60 45 M 30 120 L 30 195 L 60 195" stroke="rgba(59,130,246,0.5)" stroke-width="2" fill="none" />
+                        <path d="M 0 120 L 30 120 L 30 45 L 60 45 M 30 120 L 30 195 L 60 195"
+                            stroke="rgba(59,130,246,0.5)" stroke-width="2" fill="none" />
                     </svg>
 
                     <div class="arch-split">
@@ -213,7 +262,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="arch-branch">
                             <div class="arch-node">
                                 <div class="arch-icon">🛠️</div>
@@ -233,13 +282,14 @@
         <div class="container text-center">
             <p>Built with ❤️ by Abdu1-Ahd and the open-source community.</p>
             <p class="footer-links">
-                <a href="https://github.com/Abdu1-Ahd/Omni-Formatter" target="_blank" rel="noopener noreferrer">Source Code</a>
+                <a href="https://github.com/Abdu1-Ahd/Omni-Formatter" target="_blank" rel="noopener noreferrer">Source
+                    Code</a>
             </p>
         </div>
     </footer>
 
     <script>
-        document.addEventListener('click', function(event) {
+        document.addEventListener('click', function (event) {
             const dropdown = document.getElementById('installDropdown');
             if (!dropdown.contains(event.target)) {
                 dropdown.classList.remove('active');
@@ -279,11 +329,12 @@
             });
         });
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/overlayscrollbars/2.4.5/browser/overlayscrollbars.browser.es6.min.js"></script>
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/overlayscrollbars/2.4.5/browser/overlayscrollbars.browser.es6.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const { OverlayScrollbars } = OverlayScrollbarsGlobal;
-            
+
             // Initialize animated scrollbars on body
             OverlayScrollbars(document.body, {
                 scrollbars: {
@@ -304,4 +355,5 @@
         });
     </script>
 </body>
+
 </html>

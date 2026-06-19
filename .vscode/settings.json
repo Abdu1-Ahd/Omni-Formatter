@@ -1,0 +1,26 @@
+{
+  // ── OmniFormatter workspace settings ────────────────────────────────────
+  //
+  // These settings ensure OmniFormatter is the ONLY formatter running
+  // in this workspace. Without this, VS Code may silently invoke
+  // esbenp.prettier-vscode (if installed globally) on markdown files,
+  // which strips leading whitespace from code-block connector lines —
+  // breaking ASCII architecture diagrams.
+  "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter",
+  "editor.formatOnSave": true,
+
+  // ── Per-language overrides ───────────────────────────────────────────────
+  // Markdown: explicitly pin to OmniFormatter.
+  // Prettier formats markdown aggressively (proseWrap, indentation stripping)
+  // and MUST NOT run here.
+  "[markdown]": {
+    "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter",
+    "editor.formatOnSave": true
+  },
+
+  // ── File save settings ───────────────────────────────────────────────────
+  // trimTrailingWhitespace only removes TRAILING whitespace — leading
+  // indentation is always preserved by VS Code regardless of this setting.
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true
+}
