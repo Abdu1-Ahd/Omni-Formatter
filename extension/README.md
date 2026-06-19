@@ -1,5 +1,4 @@
 <div align="center">
-# OmniFormatter
 
 **One extension. Every language. Zero configuration.**
 
