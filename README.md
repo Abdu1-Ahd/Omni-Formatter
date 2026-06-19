@@ -76,7 +76,7 @@ That's it. Keep using your existing configuration files (e.g., `.prettierrc`, `r
 
 ## 🏗️ Architecture
 
-```text
+```
 ┌───────────────────────────────────┐
 │       🔌 VS Code Extension        │
 │           (TypeScript)            │
