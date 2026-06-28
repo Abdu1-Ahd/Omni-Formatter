@@ -32,7 +32,17 @@ pub fn format(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> 
         IndentStyle::Tabs => '\t',
         IndentStyle::Spaces => ' ',
     };
-    let indent_size = config.indent_size as usize;
+    // C# convention is 4-space indent. ConfigIR.indent_size defaults to 2 globally;
+    // honour any explicit user override but fall back to 4 for C# specifically.
+    let indent_size = if config.indent_size == 2 {
+        // Check for an explicit C#-specific override first
+        config
+            .get_extra_str("csharp__indentSize")
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(4)
+    } else {
+        config.indent_size as usize
+    };
 
     let fmt = CsharpFormatter {
         config,

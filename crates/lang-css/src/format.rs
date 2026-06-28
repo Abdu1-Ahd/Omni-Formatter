@@ -327,19 +327,78 @@ impl<'a> CssFormatter<'a> {
             .child_by_field_name("keyword")
             .map(|n| self.text_of(&n))
             .unwrap_or("at");
-        let query = node
-            .child_by_field_name("query")
-            .map(|n| format!(" {}", self.text_of(&n)))
-            .unwrap_or_default();
 
-        let block = {
-            let mut cursor = node.walk();
-            let res = node.children(&mut cursor).find(|n| n.kind() == "block");
-            res
+        // Collect the condition / query text:
+        // tree-sitter-css uses a named `query` field in some grammars, but not all.
+        // Fallback: join all children that are neither the keyword, a block, nor punctuation.
+        let query = {
+            let named_query = node
+                .child_by_field_name("query")
+                .map(|n| format!(" {}", self.text_of(&n)));
+
+            named_query.unwrap_or_else(|| {
+                // Collect all intermediate children between keyword and block
+                let mut cursor = node.walk();
+                let parts: Vec<&str> = node
+                    .children(&mut cursor)
+                    .filter(|n| {
+                        let k = n.kind();
+                        k != "@media"
+                            && k != "@keyframes"
+                            && k != "at-keyword"
+                            && k != "block"
+                            && k != ";"
+                            && !self.text_of(n).trim().is_empty()
+                            // skip the @ keyword itself (first child typically)
+                            && self.text_of(n).trim() != keyword
+                            && self.text_of(n).trim() != format!("@{}", keyword)
+                    })
+                    .map(|n| self.text_of(&n))
+                    .collect();
+                if parts.is_empty() {
+                    String::new()
+                } else {
+                    format!(" {}", parts.join(" "))
+                }
+            })
         };
-        if let Some(block) = block {
+
+        // Detect LESS @variable declarations: `@name: value;` (no block)
+        // These should NOT be treated as @rules with conditions.
+        let raw_text = self.text_of(&node).trim().to_string();
+        let has_block = {
+            let mut cursor = node.walk();
+            let x = node.children(&mut cursor).any(|n| n.kind() == "block"); x
+        };
+
+        if !has_block && raw_text.contains(':') && raw_text.starts_with('@')
+            && !raw_text.starts_with("@media")
+            && !raw_text.starts_with("@keyframes")
+            && !raw_text.starts_with("@import")
+            && !raw_text.starts_with("@charset")
+            && !raw_text.starts_with("@font-face")
+        {
+            // LESS variable declaration: emit verbatim normalized
+            let normalized = raw_text.trim_end_matches(';');
+            if let Some(colon_pos) = normalized.find(':') {
+                let prop = normalized[..colon_pos].trim();
+                let val = normalized[colon_pos + 1..].trim();
+                out.push(Line::new(indent, format!("{}: {};", prop, val)));
+            } else {
+                out.push(Line::new(indent, format!("{};" , normalized)));
+            }
+            return;
+        }
+
+        if has_block {
+            let block = {
+                let mut cursor = node.walk();
+                let x = node.children(&mut cursor).find(|n| n.kind() == "block"); x
+            };
             out.push(Line::new(indent, format!("@{}{} {{", keyword, query)));
-            self.walk_block_inner(block, indent + 1, out);
+            if let Some(block) = block {
+                self.walk_block_inner(block, indent + 1, out);
+            }
             out.push(Line::new(indent, "}".to_string()));
         } else {
             out.push(Line::new(indent, format!("@{}{};", keyword, query)));

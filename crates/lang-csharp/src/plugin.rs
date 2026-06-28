@@ -10,7 +10,7 @@ impl LanguagePlugin for CsharpPlugin {
     }
 
     fn extensions(&self) -> &[&str] {
-        &["cs", "fs", "fsi", "fsx"]
+        &["cs"]
     }
 
     fn format(&self, source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {

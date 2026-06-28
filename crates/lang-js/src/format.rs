@@ -502,6 +502,14 @@ impl<'a> DocBuilder<'a> {
     }
 
     fn build_function(&self, node: tree_sitter::Node) -> Doc {
+        // Detect `async` modifier: it appears as an unnamed child before `function`
+        let is_async = {
+            let mut cursor = node.walk();
+            let found = node.children(&mut cursor)
+                .any(|c| !c.is_named() && self.text_of(&c) == "async");
+            found
+        };
+        let async_prefix = if is_async { "async " } else { "" };
         let name = node
             .child_by_field_name("name")
             .map(|n| Doc::concat(Doc::text(" "), Doc::text(self.text_of(&n))))
@@ -519,7 +527,7 @@ impl<'a> DocBuilder<'a> {
             .map(|n| self.build_curly_block(n))
             .unwrap_or(Doc::text("{}"));
         Doc::concat(
-            Doc::concat(Doc::text("function"), name),
+            Doc::concat(Doc::text(format!("{}function", async_prefix)), name),
             Doc::concat(
                 Doc::concat(params, return_type),
                 Doc::concat(Doc::text(" "), body),
@@ -578,14 +586,17 @@ impl<'a> DocBuilder<'a> {
         let inner = if params.is_empty() {
             Doc::Nil
         } else {
-            let trailing = if self.config.trailing_comma && !params.is_empty() {
-                ","
+            // Trailing comma only in break (multi-line) mode — not in flat mode.
+            // When the group fits on one line, `Doc::Line` renders as empty string,
+            // so the comma never appears inline (e.g. `(x,)` is avoided).
+            let trailing = if self.config.trailing_comma {
+                Doc::Line { space_str: ",".into() }
             } else {
-                ""
+                Doc::Nil
             };
             Doc::concat(
                 Doc::join(Doc::concat(Doc::text(","), Doc::line()), params),
-                Doc::text(trailing),
+                trailing,
             )
         };
         Doc::group(Doc::concat(

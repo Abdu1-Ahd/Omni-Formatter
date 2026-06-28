@@ -45,6 +45,8 @@ pub fn format_for(source: &[u8], config: &ConfigIR, lang: &str) -> Result<Vec<u8
         "elixir" | "erlang" | ".ex" | ".exs" | ".erl" | ".hrl" => {
             format_do_end(text, indent_char, indent_size)
         }
+        // Lua — end-based blocks (function/if/for/while...end)
+        "lua" => format_lua(text, indent_char, indent_size),
         // Clojure / Lisp / Scheme / Racket — paren depth
         "clojure" | "lisp" | "scheme" | "racket" | ".clj" | ".cljs" | ".lisp" | ".lsp" | ".scm"
         | ".ss" => format_lisp(text, indent_char, indent_size),
@@ -54,9 +56,10 @@ pub fn format_for(source: &[u8], config: &ConfigIR, lang: &str) -> Result<Vec<u8
         }
         // R / Julia — brace-based, string-aware
         "r" | "julia" | ".r" | ".R" | ".jl" => format_brace_lang(text, indent_char, indent_size),
-        // Haskell / OCaml / Elm — significant whitespace: normalize trailing WS only
+        // Haskell / OCaml / Elm / F# — significant whitespace: normalize trailing WS only
         // Running a structural re-indenter on these would destroy the layout rule.
-        "haskell" | "ocaml" | "elm" | ".hs" | ".lhs" | ".ml" | ".mli" | ".elm" => {
+        "haskell" | "ocaml" | "elm" | "fsharp" | ".hs" | ".lhs" | ".ml" | ".mli" | ".elm"
+        | ".fs" | ".fsi" | ".fsx" => {
             format_layout_rule(text, config)
         }
         // Unknown functional language — safe whitespace normalization only
@@ -122,7 +125,68 @@ fn format_do_end(source: &str, indent_char: char, indent_size: usize) -> String 
         .join("\n")
 }
 
-// ── Clojure / Lisp / Scheme: parenthesis-based depth ─────────────────────
+// ── Lua: function/if/for/while/repeat/do...end blocks ─────────────────────
+
+fn format_lua(source: &str, indent_char: char, indent_size: usize) -> String {
+    // Keywords that open a new level AFTER the current line is emitted
+    let opens_kw: &[&str] = &["function", "if", "for", "while", "repeat", "do"];
+    // Keywords that close a level BEFORE the current line is emitted
+    let closes_kw: &[&str] = &["end", "until"];
+    // Keywords that close and re-open (else, elseif)
+    let reopen_kw: &[&str] = &["else", "elseif"];
+
+    let mut out: Vec<String> = Vec::with_capacity(source.lines().count());
+    let mut depth: i32 = 0;
+    let mut consecutive_blank = 0u32;
+
+    for raw in source.lines() {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            consecutive_blank += 1;
+            if consecutive_blank <= 1 {
+                out.push(String::new());
+            }
+            continue;
+        }
+        consecutive_blank = 0;
+
+        // Ignore pure comment lines for depth tracking
+        let is_comment = trimmed.starts_with("--");
+
+        let first_word = trimmed.split_whitespace().next().unwrap_or("");
+
+        // Close before emitting
+        let is_close = closes_kw.contains(&first_word);
+        let is_reopen = reopen_kw.contains(&first_word);
+        if is_close || is_reopen {
+            depth = (depth - 1).max(0);
+        }
+
+        let current_indent = make_indent(indent_char, indent_size, depth.max(0) as usize);
+        out.push(format!("{}{}", current_indent, trimmed));
+
+        if !is_comment {
+            // Open after emitting: a line that ends with `do`, `then`, `repeat`
+            // OR starts with an opening keyword (function, while, for, if without inline body)
+            let ends_with_open = trimmed.ends_with(" do")
+                || trimmed == "do"
+                || trimmed.ends_with(" then")
+                || trimmed == "then"
+                || trimmed == "repeat";
+            let starts_open = opens_kw.iter().any(|kw| first_word == *kw);
+            if (starts_open && ends_with_open) || is_reopen {
+                depth += 1;
+            }
+        }
+    }
+
+    out.iter()
+        .map(|l| l.trim_end().to_string())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+
 
 fn format_lisp(source: &str, indent_char: char, indent_size: usize) -> String {
     let mut out: Vec<String> = Vec::with_capacity(source.lines().count());

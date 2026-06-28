@@ -47,6 +47,8 @@ fn format_hcl(source: &str, brace_style: &str, indent_char: char, indent_size: u
     let mut depth: i32 = 0;
     let mut in_block_comment = false;
     let mut consecutive_blank = 0u32;
+    // Track whether the previous non-empty line ended with `\` (continuation)
+    let mut prev_was_continuation = false;
 
     for raw in source.lines() {
         let trimmed = raw.trim();
@@ -63,6 +65,7 @@ fn format_hcl(source: &str, brace_style: &str, indent_char: char, indent_size: u
                 in_block_comment = false;
             }
             consecutive_blank = 0;
+            prev_was_continuation = false;
             continue;
         }
 
@@ -71,9 +74,21 @@ fn format_hcl(source: &str, brace_style: &str, indent_char: char, indent_size: u
             if consecutive_blank <= 1 {
                 out.push(String::new());
             }
+            prev_was_continuation = false;
             continue;
         }
         consecutive_blank = 0;
+
+        // Continuation lines (previous line ended with `\`) preserve their
+        // leading whitespace verbatim — re-indenting them breaks Dockerfile
+        // multi-line instructions like RUN, ENV, HEALTHCHECK.
+        if prev_was_continuation {
+            // Preserve original indent (trim only trailing whitespace)
+            out.push(raw.trim_end().to_string());
+            // A continuation line may itself end with `\`
+            prev_was_continuation = trimmed.ends_with('\\');
+            continue;
+        }
 
         let (opens, closes) = count_brace_delta_hcl(trimmed);
         if closes > 0 && opens == 0 {
@@ -104,6 +119,9 @@ fn format_hcl(source: &str, brace_style: &str, indent_char: char, indent_size: u
         if trimmed.contains("/*") && !trimmed.contains("*/") {
             in_block_comment = true;
         }
+
+        // Mark whether this line opens a continuation sequence
+        prev_was_continuation = trimmed.ends_with('\\');
     }
 
     out.iter()

@@ -10,7 +10,7 @@ impl LanguagePlugin for RubyPlugin {
     }
 
     fn extensions(&self) -> &[&str] {
-        &["rb", "php", "pl", "pm", "lua"]
+        &["rb", "php", "pl", "pm"]
     }
 
     fn format(&self, source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {
