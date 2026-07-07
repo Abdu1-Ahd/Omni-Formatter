@@ -9,7 +9,7 @@
 [![WebAssembly](https://img.shields.io/badge/Runtime-WebAssembly-654ff0?style=for-the-badge&logo=webassembly)](https://webassembly.org/)
 [![Registry](https://img.shields.io/badge/Registry-GitHub%20Pages-121013?style=for-the-badge&logo=github)](https://abdu1-ahd.github.io/Omni-Formatter/)
 
-[Github](https://github.com/Abdu1-Ahd/Omni-Formatter) • [Add a Language](https://github.com/Abdu1-Ahd/Omni-Formatter/blob/main/ADD_LANGUAGE.md)
+[Github](https://github.com/Abdu1-Ahd/Omni-Formatter)
 
 </div>
 
@@ -112,4 +112,4 @@ That's it. Keep using your existing configuration files (e.g., `.prettierrc`, `r
 
 ## 🤝 Contributing
 
-Contributions are welcome! Adding a language does not require touching the core extension. See our [Language Blueprint](ADD_LANGUAGE_TEMPLATE.md) for how to add a language module in 10 minutes.
+Contributions are welcome! If you encounter any issues or formatting errors with the extension, please report them so we can fix them. We also deeply appreciate any [feedback](https://abdu1-ahd.github.io/Omni-Formatter/#feedback) or feature requests.
