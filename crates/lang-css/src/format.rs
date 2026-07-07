@@ -164,21 +164,18 @@ impl<'a> CssFormatter<'a> {
                                 let matches_value = next_raw.starts_with(':')
                                     || (next_raw.starts_with(at_name) && next_raw.contains(':'));
                                 if matches_value {
-                                    let val_part = if let Some(stripped) = next_raw.strip_prefix(':') {
-                                        stripped
-                                            .trim()
-                                            .trim_end_matches(';')
-                                            .trim()
-                                            .to_string()
-                                    } else if let Some(pos) = next_raw.find(':') {
-                                        next_raw[pos + 1..]
-                                            .trim()
-                                            .trim_end_matches(';')
-                                            .trim()
-                                            .to_string()
-                                    } else {
-                                        next_raw.trim_end_matches(';').trim().to_string()
-                                    };
+                                    let val_part =
+                                        if let Some(stripped) = next_raw.strip_prefix(':') {
+                                            stripped.trim().trim_end_matches(';').trim().to_string()
+                                        } else if let Some(pos) = next_raw.find(':') {
+                                            next_raw[pos + 1..]
+                                                .trim()
+                                                .trim_end_matches(';')
+                                                .trim()
+                                                .to_string()
+                                        } else {
+                                            next_raw.trim_end_matches(';').trim().to_string()
+                                        };
                                     if !val_part.is_empty() {
                                         if !first {
                                             out.push(Line::new(0, "".to_string()));

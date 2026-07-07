@@ -183,8 +183,8 @@ fn format_lua(source: &str, indent_char: char, indent_size: usize) -> String {
                 || trimmed == "repeat"
                 || (first_word == "function" && trimmed.ends_with(')'))
                 || (trimmed.starts_with("local function") && trimmed.ends_with(')'));
-            let starts_open = opens_kw.contains(&first_word)
-                || trimmed.starts_with("local function");
+            let starts_open =
+                opens_kw.contains(&first_word) || trimmed.starts_with("local function");
             let kw_opens = (starts_open && ends_with_open) || is_reopen;
 
             // Brace-based opens: net opens on this line (excluding brace-close lines)

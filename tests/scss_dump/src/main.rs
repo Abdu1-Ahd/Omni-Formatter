@@ -1,9 +1,6 @@
-
 fn main() {
     let mut parser = tree_sitter::Parser::new();
-    parser
-        .set_language(&tree_sitter_css::language())
-        .unwrap();
+    parser.set_language(&tree_sitter_css::language()).unwrap();
     let src = ".card {\n  .mixin();\n  .box-shadow(0 2px 4px, rgba(0,0,0,0.2));\n}";
     let tree = parser.parse(src, None).unwrap();
     let root = tree.root_node();

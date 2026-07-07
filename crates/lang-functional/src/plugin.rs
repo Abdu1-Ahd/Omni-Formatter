@@ -18,8 +18,8 @@ impl LanguagePlugin for FunctionalPlugin {
             "ex", "exs", "erl", "hrl", // OCaml / Elm
             "ml", "mli", // Clojure
             "clj", "cljs", // R
-            "r", "R", // Julia
-            "jl", // Lua — end-based blocks (not braces)
+            "r", "R",   // Julia
+            "jl",  // Lua — end-based blocks (not braces)
             "lua", // Lisp / Scheme
             "lisp", "lsp", "scm", "ss",
         ]
