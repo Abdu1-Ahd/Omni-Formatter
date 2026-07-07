@@ -434,6 +434,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // ── Step 11: Format-on-save ───────────────────────────────────────────
   context.subscriptions.push(
     vscode.workspace.onWillSaveTextDocument((event) => {
+      // Only format on manual save (Ctrl+S / Cmd+S). Prevents disrupting users with auto-save enabled.
+      if (event.reason !== vscode.TextDocumentSaveReason.Manual) {
+        return;
+      }
+
       const { document } = event;
       if (!(SUPPORTED_LANGUAGE_IDS as readonly string[]).includes(document.languageId)) {
         return;
