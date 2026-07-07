@@ -273,6 +273,11 @@
           ],
           "default": "warn",
           "description": "Log verbosity level for the OmniFormatter output channel."
+        },
+        "omniFormatter.ignoreAutoSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ignore VS Code's native format-on-save when triggered by auto-save (e.g., onFocusChange). Only format on manual save (Ctrl+S/Cmd+S) or explicit format commands."
         }
       }
     },

@@ -289,6 +289,7 @@ let workerPool:     WorkerPool | undefined;
 let statusBar:      StatusBar  | undefined;
 let wasmCompiler:   WasmCompiler | undefined;
 let configAdapter:  ConfigAdapter | undefined;
+let isAutoSaving:   boolean = false;
 
 // ── activate() ───────────────────────────────────────────────────────────
 
@@ -431,35 +432,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     );
   }
 
-  // ── Step 11: Format-on-save ───────────────────────────────────────────
+  // ── Step 11: Track Auto-Save State ─────────────────────────────────────
   context.subscriptions.push(
     vscode.workspace.onWillSaveTextDocument((event) => {
-      // Only format on manual save (Ctrl+S / Cmd+S). Prevents disrupting users with auto-save enabled.
+      // Track if this is an auto-save. This allows our formatter provider to
+      // opt out of formatting during auto-saves to prevent messing up incomplete code.
       if (event.reason !== vscode.TextDocumentSaveReason.Manual) {
-        return;
+        isAutoSaving = true;
+        // Reset the flag shortly after the save cycle completes.
+        setTimeout(() => { isAutoSaving = false; }, 1000);
       }
-
-      const { document } = event;
-      if (!(SUPPORTED_LANGUAGE_IDS as readonly string[]).includes(document.languageId)) {
-        return;
-      }
-
-      const config = vscode.workspace.getConfiguration("omniFormatter", document.uri);
-      if (!config.get<boolean>("enable", true)) { return; }
-
-      // Each save gets its own CancellationTokenSource that is always disposed.
-      const cts = new vscode.CancellationTokenSource();
-      context.subscriptions.push(cts); // disposes on extension deactivation as a safety net
-
-      event.waitUntil(
-        handleFormatRequest(
-          document,
-          { tabSize: 2, insertSpaces: true },
-          cts.token
-        ).finally(() => {
-          cts.dispose();
-        })
-      );
     })
   );
 
@@ -535,6 +517,15 @@ async function handleFormatRequest(
 
   if (!moduleName) {
     log.debug("No module registered for language", { langId });
+    return [];
+  }
+
+  // ── Guard: check auto-save ───────────────────────────────────────────
+  const globalConfig = vscode.workspace.getConfiguration("omniFormatter", document.uri);
+  if (isAutoSaving && globalConfig.get<boolean>("ignoreAutoSave", true)) {
+    log.debug("Format request ignored — skipping format on auto-save", {
+      uri: document.uri.toString(),
+    });
     return [];
   }
 
@@ -767,6 +758,14 @@ async function handleRangeFormatRequest(
   const moduleName = LANGUAGE_MODULE_MAP[langId];
   if (!moduleName) {
     log.debug("No module registered for language", { langId });
+    return [];
+  }
+
+  const globalConfig = vscode.workspace.getConfiguration("omniFormatter", document.uri);
+  if (isAutoSaving && globalConfig.get<boolean>("ignoreAutoSave", true)) {
+    log.debug("Range format request ignored — skipping format on auto-save", {
+      uri: document.uri.toString(),
+    });
     return [];
   }
 

@@ -60,12 +60,13 @@ Set OmniFormatter as your default formatter and enable format-on-save in your `s
 ```json
 {
   "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter",
-  "editor.formatOnSave": true,
-  "editor.formatOnType": true
+  "editor.formatOnSave": true
 }
 ```
 
-That's it. Keep using your existing configuration files (e.g., `.prettierrc`, `rustfmt.toml`), and OmniFormatter will adapt automatically.
+That's it. Keep using your existing configuration files (e.g., `.prettierrc`, `rustfmt.toml`), and OmniFormatter will adapt automatically. 
+
+**Pro Tip:** OmniFormatter intelligently ignores format-on-save requests triggered by VS Code's Auto Save (e.g., `onFocusChange`) to prevent disrupting your incomplete code. It safely formats only when you manually save (`Ctrl+S` / `Cmd+S`)!
 
 ---
 
