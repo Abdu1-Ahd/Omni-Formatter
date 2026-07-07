@@ -60,18 +60,17 @@ OmniFormatter downloads the tiny language modules you need **on-the-fly** and ca
 
 ## 💻 Quick Start
 
-Set OmniFormatter as your default formatter and enable format-on-save in your `settings.json`:
+Set OmniFormatter as your default formatter in your `settings.json`:
 
 ```json
 {
-  "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter",
-  "editor.formatOnSave": true
+  "editor.defaultFormatter": "Abdu1-Ahd.omni-formatter"
 }
 ```
 
 That's it. Keep using your existing configuration files (e.g., `.prettierrc`, `rustfmt.toml`), and OmniFormatter will adapt automatically.
 
-**Pro Tip:** OmniFormatter intelligently ignores format-on-save requests triggered by VS Code's Auto Save (e.g., `onFocusChange`) to prevent disrupting your incomplete code. It safely formats only when you manually save (`Ctrl+S` / `Cmd+S`)!
+**Pro Tip:** You do NOT need to enable `"editor.formatOnSave"`. OmniFormatter natively formats your code whenever you manually save (`Ctrl+S` / `Cmd+S`) and intelligently ignores VS Code's Auto Save (e.g., `onFocusChange`) to prevent disrupting your incomplete code!
 
 ---
 
