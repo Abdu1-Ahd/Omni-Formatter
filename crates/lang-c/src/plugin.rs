@@ -10,7 +10,7 @@ impl LanguagePlugin for CPlugin {
     }
 
     fn extensions(&self) -> &[&str] {
-        &["c", "h", "cpp", "hpp", "cc", "cxx"]
+        &["c", "h", "cpp", "hpp", "cc", "cxx", "cu", "cuh", "inl"]
     }
 
     fn format(&self, source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatError> {

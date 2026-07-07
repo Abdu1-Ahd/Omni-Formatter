@@ -57,6 +57,10 @@ enum Doc {
     Indent(Box<Doc>),
     /// Nothing.
     Nil,
+    /// Conditionally emit different text in break vs flat mode.
+    /// `break_str` is used in break mode; `flat_str` in flat mode.
+    /// Primarily used for trailing commas that must NOT appear inline.
+    IfBreak { break_str: String, flat_str: String },
 }
 
 impl Doc {
@@ -77,6 +81,15 @@ impl Doc {
         Doc::Line {
             space_str: "\x00".to_string(),
         } // sentinel: flat renderer breaks on \x00
+    }
+
+    /// Emits `break_str` when the enclosing group is broken, `flat_str` when flat.
+    /// Use `if_break(",", "")` for trailing commas that must be absent inline.
+    fn if_break(break_str: impl Into<String>, flat_str: impl Into<String>) -> Self {
+        Doc::IfBreak {
+            break_str: break_str.into(),
+            flat_str: flat_str.into(),
+        }
     }
 
     fn concat(a: Doc, b: Doc) -> Self {
@@ -129,6 +142,7 @@ impl Renderer {
                     col + space_str.chars().count()
                 }
             }
+            Doc::IfBreak { flat_str, .. } => col + flat_str.chars().count(),
             Doc::Concat(a, b) => {
                 let after_a = self.flat_len(a, col);
                 if after_a == usize::MAX {
@@ -166,6 +180,11 @@ impl Renderer {
                     out.push_str(&indent_str);
                     indent * self.indent_size
                 }
+            }
+            Doc::IfBreak { break_str, flat_str } => {
+                let s = if flat { flat_str } else { break_str };
+                out.push_str(s);
+                col + s.chars().count()
             }
             Doc::Concat(a, b) => {
                 let col2 = self.render_doc(a, indent, flat, out, col);
@@ -263,24 +282,14 @@ impl<'a> DocBuilder<'a> {
             "template_string" => self.build_template(node),
             "string" => self.build_string(node),
             "parenthesized_expression" => {
+                // Emit the inner expression wrapped in parens.
+                // Do NOT use Group+Indent+Line here — that would cause
+                // re-parsing of `(expr)` as `parenthesized_expression` again
+                // and double-wrap it on the second format pass, growing:
+                //   (!x) → ((!x)) → (((!x))) ...
+                // Instead, just emit `(` inner `)` verbatim.
                 let inner = node.child(1).map(|n| self.build(n)).unwrap_or(Doc::Nil);
-                Doc::group(Doc::concat(
-                    Doc::concat(
-                        Doc::text("("),
-                        Doc::indent(Doc::concat(
-                            Doc::Line {
-                                space_str: "".into(),
-                            },
-                            inner,
-                        )),
-                    ),
-                    Doc::concat(
-                        Doc::Line {
-                            space_str: "".into(),
-                        },
-                        Doc::text(")"),
-                    ),
-                ))
+                Doc::concat(Doc::concat(Doc::text("("), inner), Doc::text(")"))
             }
             "type_annotation" => {
                 let inner = node.child(1).map(|n| self.build(n)).unwrap_or(Doc::Nil);
@@ -319,6 +328,9 @@ impl<'a> DocBuilder<'a> {
     }
 
     fn build_if(&self, node: tree_sitter::Node) -> Doc {
+        // The tree-sitter JS grammar gives `condition` as a `parenthesized_expression`
+        // node — it already INCLUDES the `(` and `)`. Emitting `"if (" + cond + ")"`
+        // would double-wrap: `if ((!x))`. Instead, emit `"if " + cond` directly.
         let cond = node
             .child_by_field_name("condition")
             .map(|n| self.build(n))
@@ -332,7 +344,7 @@ impl<'a> DocBuilder<'a> {
             .map(|n| Doc::concat(Doc::text(" else "), self.build(n)));
 
         let mut doc = Doc::concat(
-            Doc::concat(Doc::text("if ("), Doc::concat(cond, Doc::text(")"))),
+            Doc::concat(Doc::text("if "), cond),
             Doc::concat(Doc::text(" "), cons),
         );
         if let Some(alt_doc) = alt {
@@ -586,11 +598,11 @@ impl<'a> DocBuilder<'a> {
         let inner = if params.is_empty() {
             Doc::Nil
         } else {
-            // Trailing comma only in break (multi-line) mode — not in flat mode.
-            // When the group fits on one line, `Doc::Line` renders as empty string,
-            // so the comma never appears inline (e.g. `(x,)` is avoided).
+            // Trailing comma: present in break (multi-line) mode only.
+            // Doc::if_break(",", "") renders "," when the group is broken,
+            // "" when the group fits on one line — so no inline `(x,)` ever.
             let trailing = if self.config.trailing_comma {
-                Doc::Line { space_str: ",".into() }
+                Doc::if_break(",", "")
             } else {
                 Doc::Nil
             };
@@ -680,7 +692,11 @@ impl<'a> DocBuilder<'a> {
         if args.is_empty() {
             return Doc::text("()");
         }
-        let trailing = if self.config.trailing_comma { "," } else { "" };
+        let trailing = if self.config.trailing_comma {
+            Doc::if_break(",", "")
+        } else {
+            Doc::Nil
+        };
         Doc::group(Doc::concat(
             Doc::text("("),
             Doc::concat(
@@ -690,7 +706,7 @@ impl<'a> DocBuilder<'a> {
                     },
                     Doc::concat(
                         Doc::join(Doc::concat(Doc::text(","), Doc::line()), args),
-                        Doc::text(trailing),
+                        trailing,
                     ),
                 )),
                 Doc::concat(
@@ -772,7 +788,11 @@ impl<'a> DocBuilder<'a> {
         if props.is_empty() {
             return Doc::text("{}");
         }
-        let trailing = if self.config.trailing_comma { "," } else { "" };
+        let trailing = if self.config.trailing_comma {
+            Doc::if_break(",", "")
+        } else {
+            Doc::Nil
+        };
         // js__bracketSpacing controls spaces inside `{ }` — default: true
         let (open, close) = if self.bracket_spacing {
             ("{ ", " }")
@@ -786,7 +806,7 @@ impl<'a> DocBuilder<'a> {
                     Doc::hard_line(),
                     Doc::concat(
                         Doc::join(Doc::concat(Doc::text(","), Doc::hard_line()), props),
-                        Doc::text(trailing),
+                        trailing,
                     ),
                 )),
                 Doc::concat(Doc::hard_line(), Doc::text(close)),
@@ -805,7 +825,11 @@ impl<'a> DocBuilder<'a> {
         if items.is_empty() {
             return Doc::text("[]");
         }
-        let trailing = if self.config.trailing_comma { "," } else { "" };
+        let trailing = if self.config.trailing_comma {
+            Doc::if_break(",", "")
+        } else {
+            Doc::Nil
+        };
         Doc::group(Doc::concat(
             Doc::text("["),
             Doc::concat(
@@ -815,7 +839,7 @@ impl<'a> DocBuilder<'a> {
                     },
                     Doc::concat(
                         Doc::join(Doc::concat(Doc::text(","), Doc::line()), items),
-                        Doc::text(trailing),
+                        trailing,
                     ),
                 )),
                 Doc::concat(
@@ -952,7 +976,15 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
         indent_char,
     };
 
-    let mut rendered = renderer.render(&doc);
+    let rendered = renderer.render(&doc);
+
+    // Strip trailing whitespace from every line (comments are emitted verbatim
+    // and may carry trailing spaces from the source).
+    let mut rendered = rendered
+        .lines()
+        .map(|l| l.trim_end())
+        .collect::<Vec<_>>()
+        .join("\n");
 
     while rendered.ends_with('\n') {
         rendered.pop();

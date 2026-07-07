@@ -344,7 +344,31 @@ impl<'a> GoFormatter<'a> {
                 .child_by_field_name("type")
                 .map(|n| self.text_of(&n))
                 .unwrap_or("?");
-            out.push(Line::new(indent, format!("type {} {}", name, type_val)));
+
+            // If the type value is a multi-line struct body, re-indent with tabs.
+            if type_val.contains('\n') {
+                let lines: Vec<&str> = type_val.lines().collect();
+                // First line: `type Name struct {`
+                out.push(Line::new(indent, format!("type {} {}", name, lines[0].trim())));
+                // Middle lines: field declarations — re-indent at indent+1 tabs
+                for inner in &lines[1..lines.len().saturating_sub(1)] {
+                    let trimmed = inner.trim();
+                    if trimmed.is_empty() {
+                        out.push(Line::new(0, String::new()));
+                    } else {
+                        out.push(Line::new(indent + 1, trimmed.to_string()));
+                    }
+                }
+                // Last line: closing `}`
+                if let Some(last) = lines.last() {
+                    let trimmed = last.trim();
+                    if !trimmed.is_empty() {
+                        out.push(Line::new(indent, trimmed.to_string()));
+                    }
+                }
+            } else {
+                out.push(Line::new(indent, format!("type {} {}", name, type_val)));
+            }
         }
     }
 
@@ -584,11 +608,32 @@ fn format_internal(source: &[u8], config: &ConfigIR) -> Result<Vec<u8>, FormatEr
 
     let out = group_imports(&raw, formatter.group_imports);
 
-    let cleaned: String = out
+    // Post-process: convert any remaining leading spaces to tabs (gofmt mandate).
+    // Verbatim text_of() calls for closures/goroutines may leave space-based indentation.
+    let space_to_tabs: String = out
         .lines()
-        .map(|l| l.trim_end())
+        .map(|l| {
+            let leading_spaces = l.len() - l.trim_start_matches(' ').len();
+            if leading_spaces == 0 || l.starts_with('\t') {
+                l.trim_end().to_string()
+            } else {
+                // Convert leading spaces to tabs (4 or 8 spaces → 1 tab each 4 spaces in Go)
+                let tab_count = leading_spaces / 4;
+                let remainder = leading_spaces % 4;
+                let tabs = "\t".repeat(tab_count.max(1));
+                let rest = l.trim_start();
+                if remainder > 0 && tab_count == 0 {
+                    // Fewer than 4 spaces of indent — just use 1 tab
+                    format!("\t{}", rest.trim_end())
+                } else {
+                    format!("{}{}", tabs, rest.trim_end())
+                }
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n");
+
+    let cleaned: String = space_to_tabs;
     let mut cleaned = cleaned;
     if !cleaned.ends_with('\n') {
         cleaned.push('\n');

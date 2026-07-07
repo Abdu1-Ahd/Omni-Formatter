@@ -119,6 +119,79 @@ impl<'a> CssFormatter<'a> {
                                     continue;
                                 }
                             }
+                        } else if err_text.starts_with('@') && err_text.contains(':') && !err_text.contains('{') {
+                            if let Some(pos) = err_text.find(':') {
+                                let prop = err_text[..pos].trim();
+                                let val = err_text[pos + 1..].trim().trim_end_matches(';').trim();
+                                if !first { out.push(Line::new(0, "")); }
+                                first = false;
+                                out.push(Line::new(indent, format!("{}: {};", prop, val)));
+                                i += 1;
+                                continue;
+                            }
+                        }
+                    }
+
+                    // LESS variable heuristic: tree-sitter-css sometimes parses
+                    // `@base: #f938ab;` as at_rule("@base") + declaration("base: #f938ab;")
+                    // or at_rule("@base") with the value as a separate sibling.
+                    // Detect that pattern and reassemble as `@base: value;`.
+                    if child.kind() == "at_rule" {
+                        let at_raw = self.text_of(&child).trim().to_string();
+                        // A LESS variable at-rule: starts with @, no block { ... }
+                        let has_block_child = {
+                            let mut c = child.walk();
+                            let mut found = false;
+                            for n in child.children(&mut c) {
+                                if n.kind() == "block" { found = true; break; }
+                            }
+                            found
+                        };
+                        if !has_block_child && at_raw.starts_with('@') && !at_raw.contains(':') {
+                            // Strategy 1: check named next sibling for the missing value
+                            let mut handled = false;
+                            if let Some(&next) = children.get(i + 1) {
+                                let next_raw = self.text_of(&next).trim().to_string();
+                                let at_name = at_raw.trim_start_matches('@');
+                                let matches_value = next_raw.starts_with(':')
+                                    || (next_raw.starts_with(at_name) && next_raw.contains(':'));
+                                if matches_value {
+                                    let val_part = if next_raw.starts_with(':') {
+                                        next_raw[1..].trim().trim_end_matches(';').trim().to_string()
+                                    } else if let Some(pos) = next_raw.find(':') {
+                                        next_raw[pos + 1..].trim().trim_end_matches(';').trim().to_string()
+                                    } else {
+                                        next_raw.trim_end_matches(';').trim().to_string()
+                                    };
+                                    if !val_part.is_empty() {
+                                        if !first { out.push(Line::new(0, "".to_string())); }
+                                        first = false;
+                                        out.push(Line::new(indent, format!("{}: {};", at_raw, val_part)));
+                                        i += 2;
+                                        handled = true;
+                                    }
+                                }
+                            }
+                            if handled { continue; }
+                            // Strategy 2: scan the source line at this node's start position
+                            // to reconstruct the full `@name: value;` that tree-sitter split.
+                            let start = child.start_byte();
+                            if let Ok(src_str) = std::str::from_utf8(self.source.get(start..).unwrap_or(b"")) {
+                                let line_end = src_str.find('\n').unwrap_or(src_str.len());
+                                let src_line = src_str[..line_end].trim();
+                                if src_line.starts_with(&at_raw) && src_line.contains(':') {
+                                    if let Some(colon_pos) = src_line.find(':') {
+                                        let val = src_line[colon_pos + 1..].trim().trim_end_matches(';').trim();
+                                        if !val.is_empty() {
+                                            if !first { out.push(Line::new(0, "".to_string())); }
+                                            first = false;
+                                            out.push(Line::new(indent, format!("{}: {};", at_raw, val)));
+                                            i += 1;
+                                            continue;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -200,7 +273,9 @@ impl<'a> CssFormatter<'a> {
                 out.push(Line::new(indent, format!("{}: {};", prop, val)));
             }
             "declaration" => {
-                out.push(Line::new(indent, self.format_declaration(node)));
+                for line in self.format_declaration(node) {
+                    out.push(Line::new(indent, line));
+                }
             }
             "block" => {
                 let mut cursor = node.walk();
@@ -211,7 +286,7 @@ impl<'a> CssFormatter<'a> {
                     self.walk(child, indent, out);
                 }
             }
-            // SCSS/Less extensions — normalize spacing in declaration-like statements
+            // SCSS/Less extensions
             "mixin_statement"
             | "include_statement"
             | "extend_statement"
@@ -221,7 +296,6 @@ impl<'a> CssFormatter<'a> {
             | "if_statement"
             | "else_statement"
             | "apply_statement"
-            | "variable_declaration"
             | "use_statement"
             | "forward_statement"
             | "error_statement"
@@ -229,35 +303,12 @@ impl<'a> CssFormatter<'a> {
             | "debug_statement"
             | "function_statement"
             | "return_statement" => {
-                let raw = self.text_of(&node).trim();
-                // Normalize `$var: value ;` → `$var: value;`
-                let normalized = if raw.contains(':') && !raw.contains('{') {
-                    if let Some(pos) = raw.find(':') {
-                        let prop = raw[..pos].trim();
-                        let val = raw[pos + 1..].trim().trim_end_matches(';').trim();
-                        format!("{}: {};", prop, val)
-                    } else {
-                        let s = raw.to_string();
-                        if s.ends_with(';') || s.ends_with('}') {
-                            s
-                        } else {
-                            format!("{};", s)
-                        }
-                    }
-                } else {
-                    let s = raw.to_string();
-                    if s.ends_with(';') || s.ends_with('}') {
-                        s
-                    } else {
-                        format!("{};", s)
-                    }
-                };
-                out.push(Line::new(indent, normalized));
+                self.walk_at_rule(node, indent, out);
             }
             "ERROR" => {
-                let mut cursor = node.walk();
-                for child in node.children(&mut cursor) {
-                    self.walk(child, indent, out);
+                let text = self.text_of(&node);
+                for l in text.lines() {
+                    out.push(Line::new(indent, l.trim().to_string()));
                 }
             }
             _ => {
@@ -323,21 +374,102 @@ impl<'a> CssFormatter<'a> {
     }
 
     fn walk_at_rule(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
-        let keyword = node
-            .child_by_field_name("keyword")
-            .map(|n| self.text_of(&n))
-            .unwrap_or("at");
+        // ── Step 1: get the raw source text for this entire at-rule node ──────
+        let raw_text = self.text_of(&node).trim().to_string();
 
-        // Collect the condition / query text:
-        // tree-sitter-css uses a named `query` field in some grammars, but not all.
-        // Fallback: join all children that are neither the keyword, a block, nor punctuation.
+        let has_block = {
+            let mut cursor = node.walk();
+            let mut found = false;
+            for child in node.children(&mut cursor) {
+                if child.kind() == "block" { found = true; break; }
+            }
+            found
+        };
+
+        // ── Step 2: LESS @variable guard ─────────────────────────────────────
+        // LESS variables look like `@name: value;` — they are NOT @rules.
+        // Detect them by raw_text BEFORE any query reconstruction to avoid
+        // the partial-parse bug where the value is dropped and we emit `@name: ;`.
+        let is_known_at_rule = raw_text.starts_with("@media")
+            || raw_text.starts_with("@keyframes")
+            || raw_text.starts_with("@import")
+            || raw_text.starts_with("@charset")
+            || raw_text.starts_with("@font-face")
+            || raw_text.starts_with("@supports")
+            || raw_text.starts_with("@layer")
+            || raw_text.starts_with("@namespace")
+            || raw_text.starts_with("@use")
+            || raw_text.starts_with("@forward")
+            || raw_text.starts_with("@mixin")
+            || raw_text.starts_with("@include")
+            || raw_text.starts_with("@function")
+            || raw_text.starts_with("@each")
+            || raw_text.starts_with("@for")
+            || raw_text.starts_with("@while")
+            || raw_text.starts_with("@if")
+            || raw_text.starts_with("@else")
+            || raw_text.starts_with("@at-root");
+
+        if !has_block && !is_known_at_rule && raw_text.starts_with('@') && raw_text.contains(':') {
+            // LESS/SCSS variable declaration — emit verbatim, normalized.
+            let normalized = raw_text.trim_end_matches(|c: char| c == ';' || c.is_whitespace());
+            if let Some(colon_pos) = normalized.find(':') {
+                let prop = normalized[..colon_pos].trim();
+                let val = normalized[colon_pos + 1..].trim();
+                if !val.is_empty() {
+                    out.push(Line::new(indent, format!("{}: {};", prop, val)));
+                } else {
+                    out.push(Line::new(indent, format!("{};", prop)));
+                }
+            } else {
+                out.push(Line::new(indent, format!("{};", normalized)));
+            }
+            return;
+        }
+
+        // ── Step 3: keyword + query for proper @rules ─────────────────────────
+        // First try the named "keyword" field; if absent, parse from raw_text.
+        let keyword: String = {
+            let field_kw = node
+                .child_by_field_name("keyword")
+                .map(|n| self.text_of(&n).trim_start_matches('@').to_string());
+            if let Some(kw) = field_kw {
+                kw
+            } else {
+                // Extract keyword from raw text: `@mixin respond-to(...)` → "mixin"
+                // Also try the "at-keyword" child node kind
+                let from_child = {
+                    let mut c = node.walk();
+                    let mut kw = None;
+                    for child in node.children(&mut c) {
+                        if child.kind() == "at-keyword" {
+                            kw = Some(self.text_of(&child).trim_start_matches('@').to_string());
+                            break;
+                        }
+                    }
+                    kw
+                };
+                from_child.unwrap_or_else(|| {
+                    // Final fallback: parse from raw_text `@mixin ...` → "mixin"
+                    raw_text
+                        .trim_start_matches('@')
+                        .split_whitespace()
+                        .next()
+                        .unwrap_or("at")
+                        .split('(')
+                        .next()
+                        .unwrap_or("at")
+                        .to_string()
+                })
+            }
+        };
+
         let query = {
             let named_query = node
                 .child_by_field_name("query")
                 .map(|n| format!(" {}", self.text_of(&n)));
 
             named_query.unwrap_or_else(|| {
-                // Collect all intermediate children between keyword and block
                 let mut cursor = node.walk();
                 let parts: Vec<&str> = node
                     .children(&mut cursor)
@@ -349,9 +481,8 @@ impl<'a> CssFormatter<'a> {
                             && k != "block"
                             && k != ";"
                             && !self.text_of(n).trim().is_empty()
-                            // skip the @ keyword itself (first child typically)
-                            && self.text_of(n).trim() != keyword
-                            && self.text_of(n).trim() != format!("@{}", keyword)
+                            && self.text_of(n).trim() != keyword.as_str()
+                            && self.text_of(n).trim() != format!("@{}", keyword).as_str()
                     })
                     .map(|n| self.text_of(&n))
                     .collect();
@@ -363,53 +494,86 @@ impl<'a> CssFormatter<'a> {
             })
         };
 
-        // Detect LESS @variable declarations: `@name: value;` (no block)
-        // These should NOT be treated as @rules with conditions.
-        let raw_text = self.text_of(&node).trim().to_string();
-        let has_block = {
-            let mut cursor = node.walk();
-            let x = node.children(&mut cursor).any(|n| n.kind() == "block"); x
-        };
-
-        if !has_block && raw_text.contains(':') && raw_text.starts_with('@')
-            && !raw_text.starts_with("@media")
-            && !raw_text.starts_with("@keyframes")
-            && !raw_text.starts_with("@import")
-            && !raw_text.starts_with("@charset")
-            && !raw_text.starts_with("@font-face")
-        {
-            // LESS variable declaration: emit verbatim normalized
-            let normalized = raw_text.trim_end_matches(';');
-            if let Some(colon_pos) = normalized.find(':') {
-                let prop = normalized[..colon_pos].trim();
-                let val = normalized[colon_pos + 1..].trim();
-                out.push(Line::new(indent, format!("{}: {};", prop, val)));
-            } else {
-                out.push(Line::new(indent, format!("{};" , normalized)));
-            }
-            return;
-        }
+        // ── Step 4: emit ──────────────────────────────────────────────────────
+        // For SCSS-specific at-rules, use raw_text header verbatim to avoid
+        // mangling $variable syntax during keyword+query reconstruction.
+        let scss_verbatim = matches!(
+            keyword.as_str(),
+            "mixin" | "include" | "function" | "if" | "else" | "each" | "for" | "while"
+                | "return" | "at-root"
+        );
 
         if has_block {
-            let block = {
-                let mut cursor = node.walk();
-                let x = node.children(&mut cursor).find(|n| n.kind() == "block"); x
+            let mut block_node = None;
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "block" { block_node = Some(child); break; }
+            }
+            let header = if scss_verbatim {
+                if let Some(brace_pos) = raw_text.find('{') {
+                    raw_text[..brace_pos].split_whitespace().collect::<Vec<_>>().join(" ")
+                } else {
+                    format!("@{}{}", keyword, query)
+                }
+            } else {
+                format!("@{}{}", keyword, query)
             };
-            out.push(Line::new(indent, format!("@{}{} {{", keyword, query)));
-            if let Some(block) = block {
+            out.push(Line::new(indent, format!("{} {{", header)));
+            if let Some(block) = block_node {
                 self.walk_block_inner(block, indent + 1, out);
             }
             out.push(Line::new(indent, "}".to_string()));
         } else {
-            out.push(Line::new(indent, format!("@{}{};", keyword, query)));
+            let line_text = if scss_verbatim {
+                let trimmed = raw_text.trim_end_matches(';').trim();
+                format!("{};", trimmed)
+            } else if query.trim().is_empty() && !raw_text.contains(':') {
+                // Bare @name with no query and no colon: tree-sitter may have split
+                // a LESS variable `@base: #f938ab;` into at_rule("@base") + unnamed(": #f938ab;").
+                // Peek into source bytes after this node to reconstruct the value.
+                let end = node.end_byte();
+                let remainder = std::str::from_utf8(
+                    self.source.get(end..).unwrap_or(b"")
+                ).unwrap_or("").trim_start();
+                if remainder.starts_with(':') {
+                    // Take up to the next `;` or newline
+                    let val_end = remainder.find(|c| c == ';' || c == '\n').unwrap_or(remainder.len());
+                    let val = remainder[1..val_end].trim();
+                    if !val.is_empty() {
+                        format!("@{}: {};", keyword, val)
+                    } else {
+                        format!("@{};", keyword)
+                    }
+                } else {
+                    format!("@{}{};", keyword, query)
+                }
+            } else {
+                format!("@{}{};", keyword, query)
+            };
+            out.push(Line::new(indent, line_text));
         }
     }
 
     fn walk_media(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
+        // Try the named "query" field first (grammar-dependent).
+        // Fallback: join all non-body, non-punctuation children as the condition.
         let query = node
             .child_by_field_name("query")
-            .map(|n| self.text_of(&n))
-            .unwrap_or("");
+            .map(|n| self.text_of(&n).to_string())
+            .unwrap_or_else(|| {
+                // Collect all named children except the block body
+                let mut cursor = node.walk();
+                let mut parts: Vec<String> = Vec::new();
+                for child in node.children(&mut cursor) {
+                    let k = child.kind();
+                    if k == "block" || k == ";" { continue; }
+                    let text = self.text_of(&child).trim().to_string();
+                    if text == "@media" || text.is_empty() { continue; }
+                    parts.push(text);
+                }
+                parts.join(" ")
+            });
+
         out.push(Line::new(indent, format!("@media {} {{", query)));
         if let Some(block) = node.child_by_field_name("body") {
             let mut cursor = block.walk();
@@ -418,9 +582,29 @@ impl<'a> CssFormatter<'a> {
                     continue;
                 }
                 if !out.is_empty() {
-                    out.push(Line::new(0, ""));
+                    out.push(Line::new(0, "".to_string()));
                 }
                 self.walk(child, indent + 1, out);
+            }
+        } else {
+            // Try unnamed block (some grammar versions don't name the body field)
+            let mut cursor = node.walk();
+            let mut block_opt = None;
+            for child in node.children(&mut cursor) {
+                if child.kind() == "block" {
+                    block_opt = Some(child);
+                    break;
+                }
+            }
+            if let Some(block) = block_opt {
+                let mut cursor2 = block.walk();
+                for child in block.children(&mut cursor2) {
+                    if !child.is_named() { continue; }
+                    if !out.is_empty() {
+                        out.push(Line::new(0, "".to_string()));
+                    }
+                    self.walk(child, indent + 1, out);
+                }
             }
         }
         out.push(Line::new(indent, "}".to_string()));
@@ -428,13 +612,15 @@ impl<'a> CssFormatter<'a> {
 
     fn walk_block_inner(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
         let mut cursor = node.walk();
-        for child in node.children(&mut cursor) {
-            if !child.is_named() {
-                continue;
-            }
+        let children: Vec<_> = node.children(&mut cursor).filter(|n| n.is_named()).collect();
+        let mut i = 0;
+        while i < children.len() {
+            let child = children[i];
             match child.kind() {
                 "declaration" => {
-                    out.push(Line::new(indent, self.format_declaration(child)));
+                    for line in self.format_declaration(child) {
+                        out.push(Line::new(indent, line));
+                    }
                 }
                 "rule_set" => {
                     // Nested rules (SCSS/Less)
@@ -445,6 +631,43 @@ impl<'a> CssFormatter<'a> {
                 }
                 "comment" => {
                     out.push(Line::new(indent, self.text_of(&child)));
+                }
+                "ERROR" => {
+                    let raw = self.text_of(&child);
+                    let text = raw.trim();
+                    if text.ends_with(':') {
+                        if let Some(&next) = children.get(i + 1) {
+                            if next.kind() == "at_rule" {
+                                let next_raw = self.text_of(&next).trim();
+                                let prop = text.trim_end_matches(':').trim();
+                                let val = next_raw.trim_end_matches(';').trim();
+                                out.push(Line::new(indent, format!("{}: {};", prop, val)));
+                                i += 2;
+                                continue;
+                            }
+                        }
+                    }
+                    // tree-sitter-css may create ERROR nodes for non-standard declarations
+                    // like `display:flex` (no space). Normalize them as declarations.
+                    let raw = self.text_of(&child);
+                    let text = raw.trim();
+                    if !text.is_empty() {
+                        if text.contains(':') && !text.contains('{') && !text.contains('}') {
+                            let normalized = if let Some(pos) = text.find(':') {
+                                let prop = text[..pos].trim().to_lowercase();
+                                let val = text[pos + 1..].trim().trim_end_matches(';').trim();
+                                format!("{}: {};", prop, val)
+                            } else {
+                                format!("{};", text.trim_end_matches(';'))
+                            };
+                            out.push(Line::new(indent, normalized));
+                        } else {
+                            // Multi-line or block ERROR
+                            for l in text.lines() {
+                                out.push(Line::new(indent, l.trim().to_string()));
+                            }
+                        }
+                    }
                 }
                 _ => {
                     let raw = self.text_of(&child);
@@ -467,25 +690,34 @@ impl<'a> CssFormatter<'a> {
                     }
                 }
             }
+            i += 1;
         }
     }
 
-    fn format_declaration(&self, node: tree_sitter::Node) -> String {
+    fn format_declaration(&self, node: tree_sitter::Node) -> Vec<String> {
         let raw = self.text_of(&node).trim();
-        // Split on first colon: normalises `prop : val` → `prop: val;`
-        if let Some(colon_pos) = raw.find(':') {
-            let prop = raw[..colon_pos].trim().to_lowercase();
-            let after = raw[colon_pos + 1..].trim().trim_end_matches(';').trim();
-            let (val, imp) = if after.trim_end().ends_with("!important") {
-                let v = after[..after.rfind('!').unwrap_or(after.len())].trim();
-                (v, " !important")
+        let mut results = Vec::new();
+        for part in raw.split(';') {
+            let text = part.trim();
+            if text.is_empty() { continue; }
+            if let Some(colon_pos) = text.find(':') {
+                let prop = text[..colon_pos].trim().to_lowercase();
+                let after = text[colon_pos + 1..].trim();
+                let (val, imp) = if after.trim_end().ends_with("!important") {
+                    let v = after[..after.rfind('!').unwrap_or(after.len())].trim();
+                    (v, " !important")
+                } else {
+                    (after, "")
+                };
+                results.push(format!("{}: {}{};", prop, val, imp));
             } else {
-                (after, "")
-            };
-            format!("{}: {}{};", prop, val, imp)
-        } else {
-            raw.to_string()
+                results.push(format!("{};", text));
+            }
         }
+        if results.is_empty() && !raw.is_empty() {
+            results.push(raw.to_string());
+        }
+        results
     }
 }
 

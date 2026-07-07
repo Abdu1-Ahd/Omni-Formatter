@@ -155,10 +155,20 @@ fn format_lua(source: &str, indent_char: char, indent_size: usize) -> String {
 
         let first_word = trimmed.split_whitespace().next().unwrap_or("");
 
-        // Close before emitting
-        let is_close = closes_kw.contains(&first_word);
+        // ── Brace counting for table constructors ──────────────────────────
+        // Count unquoted { and } to track table-constructor depth changes.
+        let (brace_opens, brace_closes) = if !is_comment {
+            count_unquoted_braces(trimmed)
+        } else {
+            (0i32, 0i32)
+        };
+
+        // Close before emitting: keyword closers AND lines that start with `}`
+        let is_kw_close = closes_kw.contains(&first_word);
         let is_reopen = reopen_kw.contains(&first_word);
-        if is_close || is_reopen {
+        let is_brace_close_line = !is_comment && trimmed.starts_with('}') && brace_closes > brace_opens;
+
+        if is_kw_close || is_reopen || is_brace_close_line {
             depth = (depth - 1).max(0);
         }
 
@@ -166,15 +176,23 @@ fn format_lua(source: &str, indent_char: char, indent_size: usize) -> String {
         out.push(format!("{}{}", current_indent, trimmed));
 
         if !is_comment {
-            // Open after emitting: a line that ends with `do`, `then`, `repeat`
-            // OR starts with an opening keyword (function, while, for, if without inline body)
+            // Keyword-based opens
             let ends_with_open = trimmed.ends_with(" do")
                 || trimmed == "do"
                 || trimmed.ends_with(" then")
                 || trimmed == "then"
-                || trimmed == "repeat";
-            let starts_open = opens_kw.iter().any(|kw| first_word == *kw);
-            if (starts_open && ends_with_open) || is_reopen {
+                || trimmed == "repeat"
+                || (first_word == "function" && trimmed.ends_with(')'))
+                || (trimmed.starts_with("local function") && trimmed.ends_with(')'));
+            let starts_open = opens_kw.iter().any(|kw| first_word == *kw)
+                || trimmed.starts_with("local function");
+            let kw_opens = (starts_open && ends_with_open) || is_reopen;
+
+            // Brace-based opens: net opens on this line (excluding brace-close lines)
+            let net_brace_open = brace_opens - brace_closes;
+            let brace_opens_depth = !is_brace_close_line && net_brace_open > 0;
+
+            if kw_opens || brace_opens_depth {
                 depth += 1;
             }
         }
@@ -186,7 +204,29 @@ fn format_lua(source: &str, indent_char: char, indent_size: usize) -> String {
         .join("\n")
 }
 
-
+/// Count unquoted `{` and `}` in a Lua line, ignoring string contents.
+fn count_unquoted_braces(line: &str) -> (i32, i32) {
+    let mut opens = 0i32;
+    let mut closes = 0i32;
+    let mut in_single = false;
+    let mut in_double = false;
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '\'' if !in_double => in_single = !in_single,
+            '"' if !in_single => in_double = !in_double,
+            '{' if !in_single && !in_double => opens += 1,
+            '}' if !in_single && !in_double => closes += 1,
+            '-' if !in_single && !in_double => {
+                if chars.peek() == Some(&'-') {
+                    break; // rest of line is a comment
+                }
+            }
+            _ => {}
+        }
+    }
+    (opens, closes)
+}
 
 fn format_lisp(source: &str, indent_char: char, indent_size: usize) -> String {
     let mut out: Vec<String> = Vec::with_capacity(source.lines().count());
