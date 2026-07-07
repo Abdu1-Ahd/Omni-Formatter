@@ -73,7 +73,7 @@
     <main>
         <section class="hero container">
             <div class="hero-content">
-                <div class="badge glass-badge">🚀 v0.2.30 is now live!</div>
+                <div class="badge glass-badge">🚀 v0.2.33 is now live!</div>
                 <h1 class="hero-title">Format your code with <span class="gradient-text">universal speed</span></h1>
                 <p class="hero-subtitle">A blazing fast, WASM-powered, multi-language code formatter built as a single
                     unified VS Code extension.</p>
@@ -277,6 +277,30 @@
             </div>
         </section>
     </main>
+
+    <section id="feedback" class="feedback container">
+        <div class="section-header text-center">
+            <h2>Feedback & Issues</h2>
+            <p class="section-subtitle">Found a formatting bug or have a feature request? Let us know!</p>
+        </div>
+        <div class="feedback-container glass">
+            <form action="https://formspree.io/f/placeholder" method="POST" class="feedback-form">
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" class="form-control" required placeholder="Your Name">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" class="form-control" required placeholder="Your Email">
+                </div>
+                <div class="form-group">
+                    <label for="message">Message</label>
+                    <textarea id="message" name="message" class="form-control" rows="5" required placeholder="Describe the issue or feedback..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit Feedback</button>
+            </form>
+        </div>
+    </section>
 
     <footer class="footer">
         <div class="container text-center">
