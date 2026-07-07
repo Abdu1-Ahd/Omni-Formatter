@@ -181,7 +181,10 @@ impl Renderer {
                     indent * self.indent_size
                 }
             }
-            Doc::IfBreak { break_str, flat_str } => {
+            Doc::IfBreak {
+                break_str,
+                flat_str,
+            } => {
                 let s = if flat { flat_str } else { break_str };
                 out.push_str(s);
                 col + s.chars().count()
@@ -517,7 +520,8 @@ impl<'a> DocBuilder<'a> {
         // Detect `async` modifier: it appears as an unnamed child before `function`
         let is_async = {
             let mut cursor = node.walk();
-            let found = node.children(&mut cursor)
+            let found = node
+                .children(&mut cursor)
                 .any(|c| !c.is_named() && self.text_of(&c) == "async");
             found
         };

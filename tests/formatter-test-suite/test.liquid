@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{ page.title }}</title>
+</head>
+<body>
+
+{%- comment -%}
+── CASE 1: Variables and filters ────────────────────────────────────────────
+{%- endcomment -%}
+
+<h1>Hello, {{ customer.name | upcase }}!</h1>
+<p>Account: {{ customer.email | downcase }}</p>
+<p>Balance: {{ account.balance | money }}</p>
+
+{% comment %} ── CASE 2: If/elsif/else — mixed indentation ──────────────── {% endcomment %}
+{% if customer.tags contains 'vip' %}
+    <span class="badge vip">VIP Member</span>
+{% elsif customer.orders_count > 10 %}
+  <span class="badge loyal">Loyal Customer</span>
+{% else %}
+        <span class="badge standard">Standard</span>
+{% endif %}
+
+{% comment %} ── CASE 3: For loop with limit and offset ─────────────────── {% endcomment %}
+<ul class="products">
+  {% for product in collection.products limit:5 offset:0 %}
+    <li class="product{% if forloop.first %} first{% endif %}{% if forloop.last %} last{% endif %}">
+          <a href="{{ product.url }}">{{ product.title }}</a>
+      <span class="price">{{ product.price | money }}</span>
+          {% if product.available %}
+        <button data-id="{{ product.id }}">Add to Cart</button>
+          {% else %}
+            <span class="sold-out">Sold Out</span>
+          {% endif %}
+    </li>
+  {% else %}
+    <li>No products found.</li>
+  {% endfor %}
+</ul>
+
+{% comment %} ── CASE 4: Assign and capture ────────────────────────────── {% endcomment %}
+{% assign sale_price = product.price | times: 0.9 %}
+{% capture full_description %}
+  {{ product.title }}: {{ product.description | strip_html | truncate: 150 }}
+{% endcapture %}
+
+<p>{{ full_description }}</p>
+<p>Sale: {{ sale_price | money }}</p>
+
+{% comment %} ── CASE 5: Unless and case/when ────────────────────────────── {% endcomment %}
+{% unless customer.has_account %}
+  <p>Please <a href="/account/login">log in</a>.</p>
+{% endunless %}
+
+{% case shipping_method %}
+  {% when 'standard' %}
+    <p>Arrives in 5-7 business days.</p>
+  {% when 'express' %}
+        <p>Arrives in 1-2 business days.</p>
+  {% else %}
+    <p>Shipping information unavailable.</p>
+{% endcase %}
+
+</body>
+</html>

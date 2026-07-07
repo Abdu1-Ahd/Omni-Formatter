@@ -1,0 +1,295 @@
+﻿cargo : warning: hiding a lifetime that's elided elsewhere is confusing
+At line:1 char:1
++ cargo run -p fmt-suite --release 2>&1 | Out-File -Encoding UTF8 "test ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: hiding...re is confusing:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   --> vendor\tree-sitter-0.22.6\binding_rust\lib.rs:480:19
+    |
+480 |     pub fn logger(&self) -> Option<&Logger> {
+    |                   ^^^^^            ^^^^^^^
+    |                   |                ||
+    |                   |                |the same lifetime is hidden here
+    |                   |                the same lifetime is elided here
+    |                   the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+    = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: use `'_` for type paths
+    |
+480 |     pub fn logger(&self) -> Option<&Logger<'_>> {
+    |                                           ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor\tree-sitter-0.22.6\binding_rust\lib.rs:851:22
+    |
+851 |     pub fn root_node(&self) -> Node {
+    |                      ^^^^^     ^^^^ the same lifetime is hidden here
+    |                      |
+    |                      the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+851 |     pub fn root_node(&self) -> Node<'_> {
+    |                                    ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor\tree-sitter-0.22.6\binding_rust\lib.rs:859:34
+    |
+859 |     pub fn root_node_with_offset(&self, offset_bytes: usize, offset_extent: Point) -> Node {
+    |                                  ^^^^^ the lifetime is elided here                    ^^^^ the same lifetime is 
+hidden here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+859 |     pub fn root_node_with_offset(&self, offset_bytes: usize, offset_extent: Point) -> Node<'_> {
+    |                                                                                           ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor\tree-sitter-0.22.6\binding_rust\lib.rs:873:21
+    |
+873 |     pub fn language(&self) -> LanguageRef {
+    |                     ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                     |
+    |                     the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+873 |     pub fn language(&self) -> LanguageRef<'_> {
+    |                                          ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor\tree-sitter-0.22.6\binding_rust\lib.rs:893:17
+    |
+893 |     pub fn walk(&self) -> TreeCursor {
+    |                 ^^^^^     ^^^^^^^^^^ the same lifetime is hidden here
+    |                 |
+    |                 the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+893 |     pub fn walk(&self) -> TreeCursor<'_> {
+    |                                     ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+    --> vendor\tree-sitter-0.22.6\binding_rust\lib.rs:1033:21
+     |
+1033 |     pub fn language(&self) -> LanguageRef {
+     |                     ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+     |                     |
+     |                     the lifetime is elided here
+     |
+     = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+     |
+1033 |     pub fn language(&self) -> LanguageRef<'_> {
+     |                                          ++++
+
+warning: `tree-sitter` (lib) generated 6 warnings (run `cargo fix --lib -p tree-sitter` to apply 6 suggestions)
+   Compiling lang-css v0.2.0 
+(C:\Users\zawia\.antigravity\Development\ACTIVE_PROJECTS\Omni\OmniFormatter\crates\lang-css)
+   Compiling lang-go v0.2.0 (C:\Users\zawia\.antigravity\Development\ACTIVE_PROJECTS\Omni\OmniFormatter\crates\lang-go)
+   Compiling core v0.2.0 (C:\Users\zawia\.antigravity\Development\ACTIVE_PROJECTS\Omni\OmniFormatter\crates\core)
+   Compiling fmt-suite v0.2.0 
+(C:\Users\zawia\.antigravity\Development\ACTIVE_PROJECTS\Omni\OmniFormatter\tests\fmt-suite)
+    Finished `release` profile [optimized] target(s) in 10.77s
+     Running `target\release\fmt-suite.exe`
+[CSS] Parse: 0.44ms, Format: 0.15ms, Emit: 0.03ms
+[CSS] Parse: 0.26ms, Format: 0.09ms, Emit: 0.02ms
+[Go] Parse: 0.52ms, Format: 0.08ms, Emit: 0.04ms
+[Go] Parse: 0.34ms, Format: 0.08ms, Emit: 0.03ms
+[CSS] Parse: 0.04ms, Format: 0.01ms, Emit: 0.00ms
+Evaluating language id...
+Getting JS language
+Creating Parser::new()...
+Calling set_language...
+Calling parser.parse...
+Finished parser.parse.
+Calling build_block...
+Finished build_block.
+[JS] Parse: 0.18ms, Format: 0.06ms, Emit: 0.01ms
+[HTML] Parse: 0.22ms, Format: 0.53ms, Emit: 0.01ms
+[CSS] Parse: 0.03ms, Format: 0.01ms, Emit: 0.00ms
+Evaluating language id...
+Getting JS language
+Creating Parser::new()...
+Calling set_language...
+Calling parser.parse...
+Finished parser.parse.
+Calling build_block...
+Finished build_block.
+[JS] Parse: 0.06ms, Format: 0.03ms, Emit: 0.00ms
+[HTML] Parse: 0.20ms, Format: 0.30ms, Emit: 0.01ms
+Evaluating language id...
+Getting TS language
+Creating Parser::new()...
+Calling set_language...
+Calling parser.parse...
+Finished parser.parse.
+Calling build_block...
+Finished build_block.
+[TS] Parse: 0.77ms, Format: 0.19ms, Emit: 0.03ms
+Evaluating language id...
+Getting TS language
+Creating Parser::new()...
+Calling set_language...
+Calling parser.parse...
+Finished parser.parse.
+Calling build_block...
+Finished build_block.
+[TS] Parse: 0.38ms, Format: 0.16ms, Emit: 0.03ms
+Evaluating language id...
+Getting TS language
+Creating Parser::new()...
+Calling set_language...
+Calling parser.parse...
+Finished parser.parse.
+Evaluating language id...
+Getting TS language
+Creating Parser::new()...
+Calling set_language...
+Calling parser.parse...
+Finished parser.parse.
+[LESS] Parse: 0.55ms, Format: 0.09ms, Emit: 0.02ms
+[LESS] Parse: 0.50ms, Format: 0.07ms, Emit: 0.02ms
+[Python] Parse: 0.89ms, Format: 0.09ms, Emit: 0.01ms
+[Python] Parse: 0.60ms, Format: 0.09ms, Emit: 0.01ms
+[Rust] Parse: 0.81ms, Format: 0.12ms, Emit: 0.02ms
+[SCSS] Parse: 0.50ms, Format: 0.07ms, Emit: 0.01ms
+[SCSS] Parse: 0.43ms, Format: 0.05ms, Emit: 0.01ms
+Evaluating language id...
+Getting TS language
+Creating Parser::new()...
+Calling set_language...
+Calling parser.parse...
+Finished parser.parse.
+Calling build_block...
+Finished build_block.
+[TS] Parse: 0.56ms, Format: 0.09ms, Emit: 0.02ms
+Evaluating language id...
+Getting TS language
+Creating Parser::new()...
+Calling set_language...
+Calling parser.parse...
+Finished parser.parse.
+Calling build_block...
+Finished build_block.
+[TS] Parse: 0.42ms, Format: 0.08ms, Emit: 0.02ms
+Evaluating language id...
+Getting TS language
+Creating Parser::new()...
+Calling set_language...
+Calling parser.parse...
+Finished parser.parse.
+Evaluating language id...
+Getting TS language
+Creating Parser::new()...
+Calling set_language...
+Calling parser.parse...
+Finished parser.parse.
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ         OmniFormatter Formatting Rules Test Suite           Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+Γ£ô  test.ahk                                   6P  0F  0S
+Γ£ô  test.asm                                   6P  0F  0S
+Γ£ô  test.astro                                 6P  0F  0S
+Γ£ô  test.c                                     6P  0F  0S
+Γ£ô  test.clj                                   9P  0F  0S
+Γ£ô  test.cob                                   6P  0F  0S
+Γ£ô  test.cpp                                   6P  0F  0S
+Γ£ô  test.cs                                    9P  0F  0S
+Γ£ù  test.css                                   8P  1F  0S
+   Γ£ù [colon-spacing                 ] CSS declarations must have exactly one space after colon (e.g., 'color: red')
+Γ£ô  test.cu                                    6P  0F  0S
+Γ£ô  test.d                                     6P  0F  0S
+Γ£ô  test.dart                                  6P  0F  0S
+Γ£ô  test.dockerfile                            8P  0F  0S
+Γ£ô  test.ejs                                   7P  0F  0S
+Γ£ô  test.erl                                   6P  0F  0S
+Γ£ô  test.ex                                    8P  0F  0S
+Γ£ô  test.f90                                   6P  0F  0S
+Γ£ô  test.fs                                    9P  0F  0S
+Γ£ô  test.gd                                    6P  0F  0S
+Γ£ô  test.go                                    8P  0F  0S
+Γ£ô  test.graphql                               8P  0F  0S
+Γ£ô  test.groovy                                6P  0F  0S
+Γ£ô  test.hbs                                   7P  0F  0S
+Γ£ô  test.hs                                    8P  0F  0S
+Γ£ô  test.html                                  9P  0F  0S
+Γ£ô  test.ini                                   6P  0F  0S
+Γ£ô  test.java                                  8P  0F  0S
+Γ£ô  test.jinja                                 8P  0F  0S
+Γ£ô  test.jl                                    6P  0F  0S
+Γ£ô  test.js                                   10P  0F  0S
+Γ£ô  test.json                                  8P  0F  0S
+Γ£ô  test.json5                                 8P  0F  0S
+Γ£ô  test.jsx                                   9P  0F  1S
+   ┬╖ [async-preserved               ] SKIP: no async in source
+Γ£ô  test.kt                                    6P  0F  0S
+Γ£ù  test.less                                  8P  2F  0S
+   Γ£ù [colon-spacing                 ] CSS declarations must have exactly one space after colon (e.g., 'color: red')
+   Γ£ù [idempotency                   ] Not idempotent. First diff: Line 3: "@base" ΓåÆ "@base;"
+Γ£ô  test.liquid                                8P  0F  0S
+Γ£ô  test.lisp                                  6P  0F  0S
+Γ£ô  test.lua                                   9P  0F  0S
+Γ£ô  test.m                                     6P  0F  0S
+Γ£ô  test.makefile                              6P  0F  0S
+Γ£ô  test.md                                    8P  0F  0S
+Γ£ô  test.ml                                    6P  0F  0S
+Γ£ô  test.mm                                    6P  0F  0S
+Γ£ô  test.nim                                   6P  0F  0S
+Γ£ô  test.nix                                   6P  0F  0S
+Γ£ô  test.php                                   6P  0F  0S
+Γ£ô  test.pl                                    6P  0F  0S
+Γ£ô  test.ps1                                   6P  0F  0S
+Γ£ô  test.py                                    9P  0F  0S
+Γ£ô  test.r                                     6P  0F  0S
+Γ£ô  test.rb                                    9P  0F  0S
+Γ£ô  test.rs                                    9P  0F  0S
+Γ£ô  test.sass                                  9P  0F  0S
+Γ£ô  test.scala                                 6P  0F  0S
+Γ£ô  test.scm                                   6P  0F  0S
+Γ£ù  test.scss                                  9P  2F  0S
+   Γ£ù [colon-spacing                 ] CSS declarations must have exactly one space after colon (e.g., 'color: red')
+   Γ£ù [idempotency                   ] Not idempotent. First diff: Line 59: "/* ΓöÇΓöÇ CASE 5: Placeholder selectors (%) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */" ΓåÆ ""
+Γ£ô  test.sh                                    8P  0F  0S
+Γ£ô  test.sol                                   6P  0F  0S
+Γ£ô  test.sql                                   7P  0F  0S
+Γ£ô  test.svelte                                6P  0F  0S
+Γ£ô  test.swift                                 9P  0F  0S
+Γ£ô  test.tex                                   6P  0F  0S
+Γ£ô  test.tf                                    9P  0F  0S
+Γ£ô  test.toml                                  7P  0F  0S
+Γ£ô  test.ts                                   10P  0F  0S
+Γ£ô  test.tsx                                   9P  0F  1S
+   ┬╖ [async-preserved               ] SKIP: no async in source
+Γ£ô  test.twig                                  8P  0F  0S
+Γ£ô  test.vue                                   6P  0F  0S
+Γ£ô  test.xml                                   7P  0F  0S
+Γ£ô  test.yaml                                  7P  0F  0S
+Γ£ô  test.zig                                   6P  0F  0S
+Γ£ô  test.zsh                                   8P  0F  0S
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+Results: 72 files  |  520 PASS  |  5 FAIL  |  2 SKIP
+
+ΓöÇΓöÇ Failures grouped by rule ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+  [colon-spacing                 ]  (3 files)
+      ΓÇó test.css: CSS declarations must have exactly one space after colon (e.g., 'color: red')
+      ΓÇó test.less: CSS declarations must have exactly one space after colon (e.g., 'color: red')
+      ΓÇó test.scss: CSS declarations must have exactly one space after colon (e.g., 'color: red')
+
+  [idempotency                   ]  (2 files)
+      ΓÇó test.less: Not idempotent. First diff: Line 3: "@base" ΓåÆ "@base;"
+      ΓÇó test.scss: Not idempotent. First diff: Line 59: "/* ΓöÇΓöÇ CASE 5: Placeholder selectors (%) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */" ΓåÆ ""
+
+Γ¥î  SOME RULES FAILED. See details above.
+error: process didn't exit successfully: `target\release\fmt-suite.exe` (exit code: 1)

@@ -1,0 +1,81 @@
+# ── CASE 1: Schema definition — type system ──────────────────────────────
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  age: Int
+  role: UserRole!
+  posts: [Post!]!
+  createdAt: String!
+}
+
+type Post {
+  id: ID!
+  title: String!
+  content: String!
+  published: Boolean!
+  author: User!
+  tags: [String!]!
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  MODERATOR
+  GUEST
+}
+
+# ── CASE 2: Interface and union ───────────────────────────────────────────
+interface Node {
+  id: ID!
+}
+
+union SearchResult = User | Post
+
+# ── CASE 3: Query type — mixed spacing ────────────────────────────────────
+type Query {
+  user(id:ID!): User
+  users(limit:Int=10,offset:Int=0): [User!]!
+  post(id: ID!): Post
+  search( query: String! , types: [String!] ): [SearchResult!]!
+}
+
+# ── CASE 4: Mutation type ─────────────────────────────────────────────────
+type Mutation {
+  createUser(name:String!,email:String!,role:UserRole=USER): User!
+  updateUser(id:ID!,name:String,email:String): User
+  deleteUser(id:ID!): Boolean!
+  createPost(title:String!,content:String!,authorId:ID!): Post!
+}
+
+# ── CASE 5: Input types ───────────────────────────────────────────────────
+input CreateUserInput {
+  name: String!
+  email:  String!
+  age: Int
+  role: UserRole
+}
+
+input PaginationInput {
+  limit:Int=10
+  offset: Int=0
+  sortBy: String
+  sortOrder:String = "ASC"
+}
+
+# ── CASE 6: Directives ────────────────────────────────────────────────────
+directive @auth(requires:UserRole=USER) on FIELD_DEFINITION
+directive @deprecated(reason:String="Use the new field instead") on FIELD_DEFINITION | ENUM_VALUE
+
+# ── CASE 7: Subscription type ─────────────────────────────────────────────
+type Subscription {
+  userCreated: User!
+  postPublished(authorId: ID): Post!
+  messageReceived(roomId:ID!): Message!
+}
+
+type Message {
+  id: ID!
+  text: String!
+  sender: User!
+}

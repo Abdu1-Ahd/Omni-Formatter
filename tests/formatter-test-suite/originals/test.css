@@ -1,0 +1,85 @@
+/* ── CASE 1: Basic rule — property spacing ────────────────────────────────── */
+body {
+  color : red;
+    display:flex;
+  background-color:   white;
+  margin:0;
+  padding : 0 ;
+}
+
+/* ── CASE 2: Prettier-ignore — must not touch this block ──────────────────── */
+/* prettier-ignore */
+.ignored {
+  color:    blue;   display: block;   font-size:  12px;
+}
+
+/* ── CASE 3: Long selector — should stay as-is or wrap ───────────────────── */
+.very-long-class-name-that-exceeds-one-hundred-characters-in-total-length-and-forces-a-line-wrap-in-css {
+    background-color: black;
+  color: white;
+}
+
+/* ── CASE 4: Multiple selectors — one per line ───────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+.selector-one,.selector-two,.selector-three {
+  display: block;
+}
+
+/* ── CASE 5: Vendor prefixes ──────────────────────────────────────────────── */
+.box {
+  -webkit-transform: rotate(45deg);
+    -moz-transform: rotate(45deg);
+      -ms-transform: rotate(45deg);
+          transform: rotate(45deg);
+}
+
+/* ── CASE 6: Missing semicolons on declarations ──────────────────────────── */
+.missing-semis {
+  color: red
+  background: blue
+  font-size: 16px
+}
+
+/* ── CASE 7: Extra spaces in property values ─────────────────────────────── */
+.extra-spaces {
+  margin:  10px  20px  30px  40px ;
+  padding:   5px  ;
+  border:  1px   solid   black ;
+}
+
+/* ── CASE 8: Trailing whitespace ─────────────────────────────────────────── */
+.trailing {   
+  color: red;   
+  display: block;  
+}
+
+/* ── CASE 9: Media queries ───────────────────────────────────────────────── */
+@media (max-width:768px){
+  .container{
+    flex-direction:column;
+    padding:10px;
+  }
+}
+
+/* ── CASE 10: Keyframe animation ─────────────────────────────────────────── */
+@keyframes fadeIn {
+  from{opacity:0;transform:translateY(-10px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* ── CASE 11: Custom properties (CSS variables) ──────────────────────────── */
+:root {
+  --primary-color:#007bff;
+    --secondary-color :   #6c757d;
+  --font-size-base:  16px;
+}
+
+/* ── CASE 12: Pseudo-classes and pseudo-elements ────────────────────────────*/
+a:hover{color:blue;text-decoration:underline}
+a:focus{outline:2px solid var(--primary-color)}
+p::before{content:'';display:block}
+p::after{content:'';display:block}

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+</head>
+<body>
+
+<%# ── CASE 1: Variables and expressions ───────────────────────────────── %>
+<h1>Hello, <%= user.name.toUpperCase() %>!</h1>
+<p>Email: <%= user.email %></p>
+<p>Score: <%= (user.score * 100).toFixed(1) %>%</p>
+
+<%# ── CASE 2: Conditionals — mixed indentation ─────────────────────────── %>
+<% if (user.isAdmin) { %>
+    <span class="badge admin">Admin</span>
+<% } else if (user.role === 'moderator') { %>
+  <span class="badge mod">Moderator</span>
+<% } else { %>
+        <span class="badge user">User</span>
+<% } %>
+
+<%# ── CASE 3: For loop ─────────────────────────────────────────────────── %>
+<ul class="item-list">
+  <% for (let i = 0; i < items.length; i++) { %>
+    <% const item = items[i]; %>
+    <li class="item <%= item.featured ? 'featured' : '' %>">
+          <strong><%= i + 1 %>.</strong> <%= item.name %>
+          <% if (item.price) { %>
+        <span class="price">$<%= item.price.toFixed(2) %></span>
+          <% } %>
+    </li>
+  <% } %>
+  <% if (items.length === 0) { %>
+    <li class="empty">No items found.</li>
+  <% } %>
+</ul>
+
+<%# ── CASE 4: forEach and map ─────────────────────────────────────────── %>
+<div class="tags">
+  <% tags.forEach(tag => { %>
+    <span class="tag"><%= tag %></span>
+  <% }); %>
+</div>
+
+<%# ── CASE 5: Escaped vs unescaped output ─────────────────────────────── %>
+<p>Escaped: <%= userInput %></p>
+<p>Raw HTML: <%- rawHtml %></p>
+
+<%# ── CASE 6: Include (conceptual) ───────────────────────────────────────%>
+<%- include('partials/header', { title: title, user: user }) %>
+
+<%# ── CASE 7: Long expression ─────────────────────────────────────────── %>
+<p class="summary"><%= items.filter(i => i.available).map(i => i.name).join(', ') || 'No available items' %></p>
+
+</body>
+</html>

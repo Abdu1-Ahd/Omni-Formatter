@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ── CASE 1: Basic element structure — mixed indentation ─────────────────── -->
+<catalog>
+  <book id="001" category="fiction">
+      <title lang="en">The Great Gatsby</title>
+    <author>F. Scott Fitzgerald</author>
+      <year>1925</year>
+    <price   currency="USD">12.99</price>
+  </book>
+
+    <book id="002" category="nonfiction">
+    <title lang="en">Sapiens: A Brief History of Humankind</title>
+        <author>Yuval Noah Harari</author>
+    <year>2011</year>
+    <price currency="USD">16.99</price>
+    </book>
+</catalog>
+
+<!-- ── CASE 2: Self-closing tags ──────────────────────────────────────────── -->
+<configuration>
+  <setting name="timeout"   value="30"   type="integer"/>
+  <setting name="debug"   value="false"   type="boolean"/>
+    <setting name="host" value="localhost" type="string"/>
+</configuration>
+
+<!-- ── CASE 3: CDATA section ─────────────────────────────────────────────── -->
+<script type="text/javascript">
+  <![CDATA[
+    function hello() {
+      console.log("hello from CDATA");
+    }
+  ]]>
+</script>
+
+<!-- ── CASE 4: Namespaces ─────────────────────────────────────────────────── -->
+<root xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:dc="http://purl.org/dc/elements/1.1/"
+      xsi:schemaLocation="http://example.com schema.xsd">
+    <dc:title>Dublin Core Title</dc:title>
+    <dc:creator>Author Name</dc:creator>
+</root>
+
+<!-- ── CASE 5: Long attribute line ────────────────────────────────────────── -->
+<element very-long-attribute-name-one="value1" very-long-attribute-name-two="value2" very-long-attribute-name-three="value3" very-long-attribute-name-four="value4">
+  content
+</element>
+
+<!-- ── CASE 6: Deep nesting ───────────────────────────────────────────────── -->
+<a>
+  <b>
+      <c>
+    <d>
+            <e>deep content</e>
+          </d>
+      </c>
+  </b>
+</a>

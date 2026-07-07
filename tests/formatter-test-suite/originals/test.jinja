@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+</head>
+<body>
+{# ── CASE 1: Variables and filters ─────────────────────────────────────── #}
+<h1>Hello, {{ user.name | upper }}!</h1>
+<p>Joined: {{ user.created_at | date("Y-m-d") }}</p>
+
+{# ── CASE 2: If/else block — mixed indentation ──────────────────────────── #}
+{% if user.is_admin %}
+    <span class="badge admin">Admin</span>
+{% elif user.role == 'moderator' %}
+  <span class="badge mod">Moderator</span>
+{% else %}
+        <span class="badge user">User</span>
+{% endif %}
+
+{# ── CASE 3: For loop ────────────────────────────────────────────────────── #}
+<ul>
+{% for item in items %}
+  <li class="{{ loop.index is odd ? 'odd' : 'even' }}">
+        {{ loop.index }}. {{ item.name | e }}
+        {% if item.featured %}
+      <strong>(Featured)</strong>
+        {% endif %}
+  </li>
+{% else %}
+    <li>No items found.</li>
+{% endfor %}
+</ul>
+
+{# ── CASE 4: Macro definition ────────────────────────────────────────────── #}
+{% macro input_field(name, label, type='text', required=false) %}
+    <div class="form-group">
+        <label for="{{ name }}">{{ label }}</label>
+        <input
+            type="{{ type }}"
+            id="{{ name }}"
+            name="{{ name }}"
+            {% if required %}required{% endif %}
+        >
+    </div>
+{% endmacro %}
+
+{# ── CASE 5: Macro usage and set ─────────────────────────────────────────── #}
+{% set form_title = "User Registration" %}
+<h2>{{ form_title }}</h2>
+<form method="post">
+    {{ input_field('username', 'Username', required=true) }}
+    {{ input_field('email', 'Email', type='email', required=true) }}
+    {{ input_field('password', 'Password', type='password', required=true) }}
+    <button type="submit">Register</button>
+</form>
+
+{# ── CASE 6: Raw block — must not be formatted ───────────────────────────── #}
+{% raw %}
+    {{ this.will.not.be.processed }}
+    {% for x in y %}still raw{% endfor %}
+{% endraw %}
+</body>
+</html>

@@ -1,0 +1,55 @@
+// ── CASE 1: Basic CSS indented style block ────────────────────────────────
+// sass uses indentation instead of braces
+
+body
+  color : red
+    display: flex
+  background-color:   white
+  margin: 0
+  padding : 0
+
+// ── CASE 2: Nested rules ──────────────────────────────────────────────────
+.container
+  max-width: 1200px
+  margin: 0 auto
+
+  .header
+      font-size: 24px
+    font-weight: bold
+
+    h1
+      color: $primary
+        text-transform: uppercase
+
+// ── CASE 3: Variables and mixins ──────────────────────────────────────────
+$primary: #007bff
+$secondary: #6c757d
+$font-size: 16px
+
+=flex-center
+  display: flex
+  justify-content: center
+  align-items: center
+
+.centered
+  +flex-center
+  padding: 20px
+
+// ── CASE 4: Control directives ────────────────────────────────────────────
+@each $color in red, green, blue
+  .text-#{$color}
+    color: $color
+
+@for $i from 1 through 5
+  .col-#{$i}
+    width: percentage($i / 5)
+
+// ── CASE 5: Trailing whitespace   
+.trailing   
+  color: red   
+  display: block  
+
+// ── CASE 6: Long selector line ────────────────────────────────────────────
+.very-long-class-name-that-exceeds-one-hundred-characters-in-total-length-and-forces-a-line-wrap-in-sass
+  background: black
+  color: white

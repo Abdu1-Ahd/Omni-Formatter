@@ -349,7 +349,10 @@ impl<'a> GoFormatter<'a> {
             if type_val.contains('\n') {
                 let lines: Vec<&str> = type_val.lines().collect();
                 // First line: `type Name struct {`
-                out.push(Line::new(indent, format!("type {} {}", name, lines[0].trim())));
+                out.push(Line::new(
+                    indent,
+                    format!("type {} {}", name, lines[0].trim()),
+                ));
                 // Middle lines: field declarations — re-indent at indent+1 tabs
                 for inner in &lines[1..lines.len().saturating_sub(1)] {
                     let trimmed = inner.trim();

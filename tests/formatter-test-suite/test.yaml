@@ -1,0 +1,78 @@
+# ── CASE 1: String and number scalars ────────────────────────────────────
+name: "John Doe"
+age: 30
+email:  john@example.com
+score:  9.5
+active:   true
+nothing: null
+
+# ── CASE 2: Nested mappings — mixed indentation ────────────────────────────
+address:
+  street: "123 Main St"
+    city: Springfield
+      state: IL
+    zip: "62701"
+
+server:
+    host: localhost
+    port: 5432
+    database: mydb
+    options:
+      timeout: 30
+        pool_size: 10
+
+# ── CASE 3: Sequences ────────────────────────────────────────────────────
+hobbies:
+  - reading
+  - coding
+    - hiking
+  - gaming
+
+ports:
+  - 8080
+  - 8443
+    - 9090
+
+# ── CASE 4: Inline flow style ─────────────────────────────────────────────
+tags: [user, active, premium, verified]
+coordinates: {lat: 40.7128, lng: -74.0060}
+
+# ── CASE 5: Multi-line strings ────────────────────────────────────────────
+description: |
+  This is a multi-line
+  literal block scalar.
+  Indentation is preserved.
+
+summary: >
+  This is a folded
+  block scalar where
+  newlines become spaces.
+
+# ── CASE 6: Anchors and aliases ───────────────────────────────────────────
+defaults: &defaults
+  adapter: postgres
+  encoding: unicode
+  pool: 5
+
+development:
+  <<: *defaults
+  database: myapp_development
+
+production:
+  <<: *defaults
+  database: myapp_production
+  pool: 10
+
+# ── CASE 7: List of mappings ──────────────────────────────────────────────
+users:
+  - id: 1
+    name: Alice
+      email: alice@example.com
+    role: admin
+  - id: 2
+    name: Bob
+    email: bob@example.com
+      role: user
+
+# ── CASE 8: Long values ───────────────────────────────────────────────────
+message: "This is a very long string value that might exceed the normal line width of eighty characters and test how the formatter handles long scalars"

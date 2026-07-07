@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Page</title>
+    <style>
+        body {
+      color : red;
+            display:flex;
+        background-color:   white;
+        }
+
+        /* prettier-ignore */
+        .ignored {
+          color:    blue;   display: block;
+        }
+
+        .container {
+                max-width: 1200px;
+          margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- CASE 1: Attribute spacing and long attribute values -->
+    <div   class="very-long-class-name-that-exceeds-one-hundred-characters-in-total-length-and-forces-a-line-wrap"   id="main-container"   data-testid="container"  >
+        Hello
+    </div>
+
+    <!-- CASE 2: Inconsistent indentation in nested elements -->
+    <nav>
+      <ul>
+            <li><a href="/">Home</a></li>
+        <li><a href="/about">About</a></li>
+              <li><a href="/contact">Contact</a></li>
+      </ul>
+    </nav>
+
+    <!-- prettier-ignore -->
+    <div class="ignored-block">
+        <span>   this   is   ignored   </span>
+    </div>
+
+    <!-- CASE 3: Self-closing tags and void elements -->
+    <input type="text"   name="email"   placeholder="Enter email"  />
+    <br/>
+    <img src="logo.png"   alt="Logo"   width="200"   height="100" />
+
+    <!-- CASE 4: Embedded script — indentation of JS content ─────────────── -->
+    <script>
+        const   x='hello';
+	    let y =  "world" ;
+
+        // prettier-ignore
+      const  ignored= [
+    1,2,3
+    ] ;
+
+        function handleClick ( event ) {
+            event.preventDefault();
+          console.log( 'clicked' );
+        }
+    </script>
+
+    <!-- CASE 5: Inline styles — should normalize spacing ────────────────── -->
+    <p style="color:red;  font-size:16px;  margin-top:10px;">Inline styled</p>
+    <span style="display:flex;    align-items:center;">Flex span</span>
+
+    <!-- CASE 6: Trailing whitespace on HTML lines ───────────────────────── -->
+    <section>   
+        <h1>Title</h1>   
+        <p>Paragraph content here.</p>  
+    </section>
+
+    <!-- CASE 7: Boolean attributes ──────────────────────────────────────── -->
+    <input type="checkbox" checked=true disabled="disabled" required />
+    <select multiple="multiple">
+        <option value="1">One</option>
+        <option value="2" selected>Two</option>
+    </select>
+</body>
+</html>

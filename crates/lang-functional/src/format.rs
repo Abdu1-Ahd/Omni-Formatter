@@ -59,9 +59,7 @@ pub fn format_for(source: &[u8], config: &ConfigIR, lang: &str) -> Result<Vec<u8
         // Haskell / OCaml / Elm / F# — significant whitespace: normalize trailing WS only
         // Running a structural re-indenter on these would destroy the layout rule.
         "haskell" | "ocaml" | "elm" | "fsharp" | ".hs" | ".lhs" | ".ml" | ".mli" | ".elm"
-        | ".fs" | ".fsi" | ".fsx" => {
-            format_layout_rule(text, config)
-        }
+        | ".fs" | ".fsi" | ".fsx" => format_layout_rule(text, config),
         // Unknown functional language — safe whitespace normalization only
         _ => format_layout_rule(text, config),
     };
@@ -166,7 +164,8 @@ fn format_lua(source: &str, indent_char: char, indent_size: usize) -> String {
         // Close before emitting: keyword closers AND lines that start with `}`
         let is_kw_close = closes_kw.contains(&first_word);
         let is_reopen = reopen_kw.contains(&first_word);
-        let is_brace_close_line = !is_comment && trimmed.starts_with('}') && brace_closes > brace_opens;
+        let is_brace_close_line =
+            !is_comment && trimmed.starts_with('}') && brace_closes > brace_opens;
 
         if is_kw_close || is_reopen || is_brace_close_line {
             depth = (depth - 1).max(0);
@@ -184,7 +183,7 @@ fn format_lua(source: &str, indent_char: char, indent_size: usize) -> String {
                 || trimmed == "repeat"
                 || (first_word == "function" && trimmed.ends_with(')'))
                 || (trimmed.starts_with("local function") && trimmed.ends_with(')'));
-            let starts_open = opens_kw.iter().any(|kw| first_word == *kw)
+            let starts_open = opens_kw.contains(&first_word)
                 || trimmed.starts_with("local function");
             let kw_opens = (starts_open && ends_with_open) || is_reopen;
 
@@ -217,10 +216,8 @@ fn count_unquoted_braces(line: &str) -> (i32, i32) {
             '"' if !in_single => in_double = !in_double,
             '{' if !in_single && !in_double => opens += 1,
             '}' if !in_single && !in_double => closes += 1,
-            '-' if !in_single && !in_double => {
-                if chars.peek() == Some(&'-') {
-                    break; // rest of line is a comment
-                }
+            '-' if !in_single && !in_double && chars.peek() == Some(&'-') => {
+                break; // rest of line is a comment
             }
             _ => {}
         }

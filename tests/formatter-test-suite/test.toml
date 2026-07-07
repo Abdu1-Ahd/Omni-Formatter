@@ -1,0 +1,63 @@
+# ── CASE 1: Basic key-value pairs — spacing ───────────────────────────────
+[package]
+name="my-project"
+version  =  "0.1.0"
+edition ="2021"
+authors = ["Alice <alice@example.com>","Bob <bob@example.com>"]
+
+# ── CASE 2: Multiple sections ──────────────────────────────────────────────
+[lib]
+name = "mylib"
+crate-type = ["cdylib","rlib"]
+
+[[bin]]
+name="cli"
+path = "src/main.rs"
+
+[[bin]]
+name   = "server"
+path="src/server.rs"
+
+# ── CASE 3: Dependencies — mixed format ───────────────────────────────────
+[dependencies]
+serde = {version="1.0",features=["derive"]}
+tokio = { version = "1.0" , features = [ "full" ] }
+reqwest = { version = "0.11", default-features=false, features=["json","rustls-tls"] }
+clap = "4.0"
+anyhow   =   "1.0"
+
+[dev-dependencies]
+pretty_assertions = "1.0"
+tempfile = "3.0"
+
+# ── CASE 4: Inline tables ────────────────────────────────────────────────
+[profile.release]
+opt-level=3
+lto=true
+codegen-units=1
+strip={symbols=true,debuginfo=true}
+
+[profile.dev]
+opt-level = 0
+debug=true
+
+# ── CASE 5: Array of tables ───────────────────────────────────────────────
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+required-features = ["integration"]
+
+[[bench]]
+name   = "benchmarks"
+harness = false
+
+# ── CASE 6: Multiline values ──────────────────────────────────────────────
+[package.metadata.docs.rs]
+features = [
+    "full",
+    "derive",
+    "serde",
+]
+
+# ── CASE 7: Long values ──────────────────────────────────────────────────
+description = "A very long description string that might exceed the typical line width of eighty characters and tests how the TOML formatter handles long string values"

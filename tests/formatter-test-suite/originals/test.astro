@@ -1,0 +1,43 @@
+---
+// ── CASE 1: Frontmatter and script block ──────────────────────────────────
+import { getCollection } from 'astro:content';
+
+const posts = await getCollection('blog');
+const title  =  'My Astro Page';
+let   count=0;
+
+interface Post {
+  slug:string;
+  data:{title:string;date:Date};
+}
+---
+
+<!-- ── CASE 2: Template — attribute spacing ──────────────────────────────── -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{title}</title>
+</head>
+<body>
+    <header   class="site-header"   data-testid="header">
+        <h1>{title}</h1>
+    </header>
+
+    <!-- ── CASE 3: Expression and iteration ──────────────────────────────── -->
+    <main>
+        <ul>
+        {posts.map((post)=>(
+            <li><a href={`/blog/${post.slug}`}>{post.data.title}</a></li>
+        ))}
+        </ul>
+    </main>
+
+    <script>
+        // ── CASE 4: Embedded client-side script ───────────────────────────
+        const btn = document.querySelector('button');
+        btn.addEventListener('click', ( ) => {
+            console.log( 'clicked' );
+        });
+    </script>
+</body>
+</html>

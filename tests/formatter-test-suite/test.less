@@ -1,0 +1,76 @@
+/* ── CASE 1: Basic property spacing ──────────────────────────────────────── */
+@base: #f938ab;
+@padding-small: 3px;
+
+body {
+  color : @base;
+    display:flex;
+  background:   white;
+  padding: @padding-small ;
+}
+
+/* ── CASE 2: Nested rules ─────────────────────────────────────────────────── */
+.container {
+    max-width: 1200px;
+  margin: 0 auto;
+
+    .header {
+        font-size: 24px;
+    font-weight: bold;
+    }
+
+    &:hover {
+          background: lighten(@base, 10%);
+    }
+}
+
+/* ── CASE 3: Mixins ───────────────────────────────────────────────────────── */
+.mixin() {
+  color: @base;
+    font-size: 14px;
+}
+
+.box-shadow(@style, @c) when (iscolor(@c)) {
+  -webkit-box-shadow: @style @c;
+  box-shadow:         @style @c;
+}
+
+.card {
+    .mixin();
+  .box-shadow(0 2px 4px, rgba(0,0,0,0.2));
+}
+
+/* ── CASE 4: Variables and operations ────────────────────────────────────── */
+@link-color:   #428bca;
+@link-color-hover: darken(@link-color, 10%);
+
+a {
+    color: @link-color;
+}
+a:hover {
+  color: @link-color-hover;
+}
+
+/* ── CASE 5: Prettier-ignore ─────────────────────────────────────────────── */
+/* prettier-ignore */
+.ignored {
+  color:    blue;   display: block;
+}
+
+/* ── CASE 6: Media queries ───────────────────────────────────────────────── */
+@media (max-width:768px){
+  .container{
+    flex-direction:column;
+  }
+}
+
+/* ── CASE 7: Long selector ───────────────────────────────────────────────── */
+.very-long-class-name-that-exceeds-one-hundred-characters-in-total-length-and-forces-a-line-wrap-in-less {
+    background-color: black;
+  color: white;
+}
+
+/* ── CASE 8: Trailing whitespace ─────────────────────────────────────────── */
+.trailing {   
+  color: red;   
+}

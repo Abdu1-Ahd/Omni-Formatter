@@ -1,0 +1,9 @@
+﻿[package]
+name = "css_debug"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+core = { path = "../../crates/core" }
+lang_css = { path = "../../crates/lang-css", package = "lang-css" }
+protocol = { path = "../../crates/protocol" }

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{title}}</title>
+</head>
+<body>
+
+{{!-- ── CASE 1: Variables and expressions ────────────────────────────── --}}
+<h1>Hello, {{user.name}}!</h1>
+<p>Email: {{user.email}}</p>
+<p>Score: {{formatNumber user.score decimals=2}}</p>
+
+{{!-- ── CASE 2: Built-in helpers — if/else ──────────────────────────── --}}
+{{#if user.isAdmin}}
+    <span class="badge admin">Admin</span>
+{{else if (eq user.role "moderator")}}
+  <span class="badge mod">Moderator</span>
+{{else}}
+        <span class="badge user">User</span>
+{{/if}}
+
+{{!-- ── CASE 3: Each loop — mixed indentation ────────────────────────── --}}
+<ul>
+  {{#each items}}
+    <li class="item{{#if this.featured}} featured{{/if}}" data-index="{{@index}}">
+          {{#if @first}}<strong>{{/if}}
+          {{this.name}}
+          {{#if @first}}</strong>{{/if}}
+          {{#if this.price}}
+        <span class="price">${{this.price}}</span>
+          {{/if}}
+    </li>
+  {{else}}
+    <li>No items.</li>
+  {{/each}}
+</ul>
+
+{{!-- ── CASE 4: Unless helper ─────────────────────────────────────────── --}}
+{{#unless user.hasAccount}}
+  <p>Please log in to continue.</p>
+{{/unless}}
+
+{{!-- ── CASE 5: With helper ───────────────────────────────────────────── --}}
+{{#with user.address}}
+  <address>
+    {{street}}<br>
+    {{city}}, {{state}} {{zip}}
+  </address>
+{{/with}}
+
+{{!-- ── CASE 6: Partial and partial block ───────────────────────────── --}}
+{{> header title=title user=user}}
+
+{{#> layout}}
+  {{#*inline "content"}}
+    <main>
+      <h2>{{pageTitle}}</h2>
+      <p>{{description}}</p>
+    </main>
+  {{/inline}}
+{{/layout}}
+
+{{!-- ── CASE 7: Custom block helper ─────────────────────────────────── --}}
+{{#times 3}}
+  <div class="item-{{@index}}">Repeated content</div>
+{{/times}}
+
+</body>
+</html>

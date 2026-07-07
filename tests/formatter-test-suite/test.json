@@ -1,0 +1,44 @@
+{
+  "name": "John Doe",
+    "age": 30,
+  "email":   "john@example.com",
+    "address": {
+    "street": "123 Main St",
+      "city": "Springfield",
+        "state": "IL",
+      "zip": "62701"
+    },
+  "hobbies": [
+        "reading",
+    "coding",
+      "hiking"
+  ],
+  "scores": [ 95 , 87 , 92 , 78 , 85 ],
+  "metadata": {
+    "created": "2024-01-01",
+      "updated":   "2024-06-15",
+    "version": 2
+  },
+  "preferences": {
+    "theme":   "dark",
+        "language": "en",
+    "notifications": {
+      "email": true,
+        "sms": false,
+      "push": true
+    }
+  },
+  "tags": ["user","active","premium","verified","beta-tester"],
+  "emptyArray": [],
+  "emptyObject": {},
+  "nullValue": null,
+  "boolTrue": true,
+  "boolFalse": false,
+  "integer": 42,
+  "float": 3.14159,
+  "negativeNumber": -273.15,
+  "scientificNotation": 1.5e10,
+  "unicodeString": "Hello, 世界! 🌍",
+  "escapedChars": "Line1\nLine2\tTabbed",
+  "longString": "This is a very long string that might exceed the print width limit and could potentially need to be wrapped or handled specially by the formatter"
+}

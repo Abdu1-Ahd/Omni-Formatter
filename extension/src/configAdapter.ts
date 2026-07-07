@@ -221,7 +221,7 @@ export class ConfigAdapter {
    * }
    * ```
    */
-  private extractVsCodeLangSchemaKeys(languageId: string): Record<string, unknown> {
+  private extractVsCodeLangSchemaKeys(_languageId: string): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     try {
       const cfg = vscode.workspace.getConfiguration("omniformatter");

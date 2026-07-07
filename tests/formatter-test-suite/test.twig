@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{% block title %}{{ title|default('Default Title') }}{% endblock %}</title>
+</head>
+<body>
+
+{# ── CASE 1: Variables and filters ──────────────────────────────────────── #}
+<h1>Hello, {{ user.name|upper }}!</h1>
+<p>Joined: {{ user.createdAt|date('Y-m-d') }}</p>
+<p>Score: {{ user.score|number_format(2) }}%</p>
+
+{# ── CASE 2: If/elseif/else — mixed indentation ─────────────────────────── #}
+{% if user.isAdmin %}
+    <span class="badge admin">Admin</span>
+{% elseif user.role == 'moderator' %}
+  <span class="badge mod">Moderator</span>
+{% else %}
+        <span class="badge user">User</span>
+{% endif %}
+
+{# ── CASE 3: For loop ────────────────────────────────────────────────────── #}
+<ul>
+  {% for item in items %}
+    <li class="{{ loop.index is odd ? 'odd' : 'even' }}{% if item.featured %} featured{% endif %}">
+          <a href="{{ item.url }}">{{ item.name|e }}</a>
+          {% if item.price is defined %}
+        <span>${{ item.price|number_format(2) }}</span>
+          {% endif %}
+    </li>
+  {% else %}
+    <li>No items found.</li>
+  {% endfor %}
+</ul>
+
+{# ── CASE 4: Set and block ───────────────────────────────────────────────── #}
+{% set fullName = user.firstName ~ ' ' ~ user.lastName %}
+{% set count = items|length %}
+
+<p>{{ fullName }} has {{ count }} item{{ count != 1 ? 's' : '' }}.</p>
+
+{# ── CASE 5: Block inheritance ───────────────────────────────────────────── #}
+{% block content %}
+  <main>
+    <h2>{{ pageTitle|default('Welcome') }}</h2>
+    <p>{{ description|trim|nl2br }}</p>
+  </main>
+{% endblock %}
+
+{# ── CASE 6: Include and embed ───────────────────────────────────────────── #}
+{% include 'partials/nav.html.twig' with { 'user': user } only %}
+
+{% embed 'layout/card.html.twig' %}
+  {% block card_header %}{{ item.title }}{% endblock %}
+  {% block card_body %}{{ item.description }}{% endblock %}
+{% endembed %}
+
+{# ── CASE 7: Macro ───────────────────────────────────────────────────────── #}
+{% macro input(name, label, type='text', required=false) %}
+    <div class="field">
+        <label for="{{ name }}">{{ label }}</label>
+        <input type="{{ type }}" id="{{ name }}" name="{{ name }}"{{ required ? ' required' : '' }}>
+    </div>
+{% endmacro %}
+
+{{ _self.input('email', 'Email', 'email', true) }}
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+﻿[package]
+name = "tmp_debug"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tree-sitter = { path = "../../vendor/tree-sitter-0.22.6" }
+tree-sitter-css = { path = "../../vendor/tree-sitter-css-0.21.1" }

@@ -1,0 +1,45 @@
+// JSON5 — superset of JSON: supports comments, trailing commas, unquoted keys
+{
+  // ── CASE 1: Unquoted keys ─────────────────────────────────────────────
+  name: "John Doe",
+    age: 30,
+  email:   "john@example.com",
+
+  // ── CASE 2: Trailing comma ───────────────────────────────────────────
+  hobbies: [
+        "reading",
+    "coding",
+      "hiking",
+  ],
+
+  // ── CASE 3: Single-quoted strings ────────────────────────────────────
+  nickname: 'Johnny',
+  status: 'active',
+
+  // ── CASE 4: Multi-line strings (not standard but JSON5 supports \) ───
+  description: "This is a long description that might \
+need to span multiple lines",
+
+  // ── CASE 5: Hexadecimal numbers ──────────────────────────────────────
+  flags: 0xFF,
+  mask: 0b1010,  // not JSON5 standard, but some parsers accept
+
+  // ── CASE 6: +/- Infinity and NaN ─────────────────────────────────────
+  maxValue: Infinity,
+  minValue: -Infinity,
+
+  // ── CASE 7: Mixed indentation in nested object ─────────────────────
+  address: {
+    street: "123 Main St",
+      city: "Springfield",
+        state: "IL",
+    zip: "62701",
+  },
+
+  // ── CASE 8: Trailing comma at top level ──────────────────────────────
+  scores: [95, 87, 92, 78, 85,],
+  metadata: {
+    created: "2024-01-01",
+      version: 2,
+  },
+}

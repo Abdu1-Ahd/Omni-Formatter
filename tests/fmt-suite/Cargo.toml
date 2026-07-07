@@ -1,0 +1,38 @@
+[package]
+name = "fmt-suite"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "fmt-suite"
+path = "src/main.rs"
+
+[dependencies]
+core      = { path = "../../crates/core" }
+protocol  = { path = "../../crates/protocol" }
+
+# Every language plugin — must stay in sync with core's default_registry
+lang-js         = { path = "../../crates/lang-js" }
+lang-css        = { path = "../../crates/lang-css" }
+lang-python     = { path = "../../crates/lang-python" }
+lang-rust       = { path = "../../crates/lang-rust" }
+lang-go         = { path = "../../crates/lang-go" }
+lang-c          = { path = "../../crates/lang-c" }
+lang-java       = { path = "../../crates/lang-java" }
+lang-csharp     = { path = "../../crates/lang-csharp" }
+lang-ruby       = { path = "../../crates/lang-ruby" }
+lang-functional = { path = "../../crates/lang-functional" }
+lang-data       = { path = "../../crates/lang-data" }
+lang-markdown   = { path = "../../crates/lang-markdown" }
+lang-sass       = { path = "../../crates/lang-sass" }
+lang-shell      = { path = "../../crates/lang-shell" }
+lang-sql        = { path = "../../crates/lang-sql" }
+lang-devops     = { path = "../../crates/lang-devops" }
+lang-swift      = { path = "../../crates/lang-swift" }
+lang-template   = { path = "../../crates/lang-template" }
+lang-mobile     = { path = "../../crates/lang-mobile" }
+lang-modern     = { path = "../../crates/lang-modern" }
+lang-other      = { path = "../../crates/lang-other" }

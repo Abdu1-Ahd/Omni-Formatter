@@ -1,0 +1,96 @@
+// ── CASE 1: SCSS variable declarations ────────────────────────────────────
+$primary-color: #333 ;
+$secondary-color:#007bff;
+$font-stack:     Helvetica, sans-serif;
+$base-size :16px;
+
+/* ── CASE 2: Prettier-ignore ──────────────────────────────────────────────── */
+/* prettier-ignore */
+.ignored {
+  color:    blue;   display: block;
+}
+
+/* ── CASE 3: Nesting — mixed indentation ─────────────────────────────────── */
+body {
+  color : $primary-color;
+    display:flex;
+
+    .nested {
+        margin:0;
+    padding:0;
+        font-size: $base-size;
+
+    &:hover {
+          background: lighten($primary-color, 10%);
+        }
+
+        &__element {
+      color: darken($primary-color, 10%);
+          font-weight: bold;
+    }
+    }
+}
+
+/* ── CASE 4: Mixin definitions ────────────────────────────────────────────── */
+@mixin flex-center {
+  display:flex;
+    justify-content:center;
+  align-items:center;
+}
+
+@mixin respond-to($breakpoint) {
+  @if $breakpoint == 'small' {
+    @media (max-width: 767px) { @content; }
+  } @else if $breakpoint == 'medium' {
+    @media (min-width: 768px) and (max-width: 1199px) { @content; }
+  }
+}
+
+/* ── CASE 5: Placeholder selectors (%) ───────────────────────────────────── */
+%button-base {
+    padding:8px 16px;
+  border-radius:4px;
+    cursor:pointer;
+}
+
+.btn-primary {
+  @extend %button-base;
+    background: $primary-color;
+  color: white;
+}
+
+/* ── CASE 6: Each loops and maps ─────────────────────────────────────────── */
+$theme-colors: (
+  primary: #007bff,
+    secondary:#6c757d,
+  success:    #28a745,
+    danger: #dc3545
+);
+
+@each $name, $color in $theme-colors {
+  .text-#{$name} {
+    color: $color;
+  }
+    .bg-#{$name} {
+        background-color: $color;
+  }
+}
+
+/* ── CASE 7: Long selectors and deep nesting ─────────────────────────────── */
+.very-long-class-name-that-exceeds-one-hundred-characters-in-total-length-and-forces-a-line-wrap-in-scss {
+    background-color: black;
+  color: white;
+
+    .deeply {
+        .nested {
+      .selector {
+            color: red;
+            }
+        }
+    }
+}
+
+/* ── CASE 8: Trailing whitespace ─────────────────────────────────────────── */
+.trailing-ws {   
+  color: red;   
+}

@@ -119,11 +119,16 @@ impl<'a> CssFormatter<'a> {
                                     continue;
                                 }
                             }
-                        } else if err_text.starts_with('@') && err_text.contains(':') && !err_text.contains('{') {
+                        } else if err_text.starts_with('@')
+                            && err_text.contains(':')
+                            && !err_text.contains('{')
+                        {
                             if let Some(pos) = err_text.find(':') {
                                 let prop = err_text[..pos].trim();
                                 let val = err_text[pos + 1..].trim().trim_end_matches(';').trim();
-                                if !first { out.push(Line::new(0, "")); }
+                                if !first {
+                                    out.push(Line::new(0, ""));
+                                }
                                 first = false;
                                 out.push(Line::new(indent, format!("{}: {};", prop, val)));
                                 i += 1;
@@ -143,7 +148,10 @@ impl<'a> CssFormatter<'a> {
                             let mut c = child.walk();
                             let mut found = false;
                             for n in child.children(&mut c) {
-                                if n.kind() == "block" { found = true; break; }
+                                if n.kind() == "block" {
+                                    found = true;
+                                    break;
+                                }
                             }
                             found
                         };
@@ -156,36 +164,61 @@ impl<'a> CssFormatter<'a> {
                                 let matches_value = next_raw.starts_with(':')
                                     || (next_raw.starts_with(at_name) && next_raw.contains(':'));
                                 if matches_value {
-                                    let val_part = if next_raw.starts_with(':') {
-                                        next_raw[1..].trim().trim_end_matches(';').trim().to_string()
+                                    let val_part = if let Some(stripped) = next_raw.strip_prefix(':') {
+                                        stripped
+                                            .trim()
+                                            .trim_end_matches(';')
+                                            .trim()
+                                            .to_string()
                                     } else if let Some(pos) = next_raw.find(':') {
-                                        next_raw[pos + 1..].trim().trim_end_matches(';').trim().to_string()
+                                        next_raw[pos + 1..]
+                                            .trim()
+                                            .trim_end_matches(';')
+                                            .trim()
+                                            .to_string()
                                     } else {
                                         next_raw.trim_end_matches(';').trim().to_string()
                                     };
                                     if !val_part.is_empty() {
-                                        if !first { out.push(Line::new(0, "".to_string())); }
+                                        if !first {
+                                            out.push(Line::new(0, "".to_string()));
+                                        }
                                         first = false;
-                                        out.push(Line::new(indent, format!("{}: {};", at_raw, val_part)));
+                                        out.push(Line::new(
+                                            indent,
+                                            format!("{}: {};", at_raw, val_part),
+                                        ));
                                         i += 2;
                                         handled = true;
                                     }
                                 }
                             }
-                            if handled { continue; }
+                            if handled {
+                                continue;
+                            }
                             // Strategy 2: scan the source line at this node's start position
                             // to reconstruct the full `@name: value;` that tree-sitter split.
                             let start = child.start_byte();
-                            if let Ok(src_str) = std::str::from_utf8(self.source.get(start..).unwrap_or(b"")) {
+                            if let Ok(src_str) =
+                                std::str::from_utf8(self.source.get(start..).unwrap_or(b""))
+                            {
                                 let line_end = src_str.find('\n').unwrap_or(src_str.len());
                                 let src_line = src_str[..line_end].trim();
                                 if src_line.starts_with(&at_raw) && src_line.contains(':') {
                                     if let Some(colon_pos) = src_line.find(':') {
-                                        let val = src_line[colon_pos + 1..].trim().trim_end_matches(';').trim();
+                                        let val = src_line[colon_pos + 1..]
+                                            .trim()
+                                            .trim_end_matches(';')
+                                            .trim();
                                         if !val.is_empty() {
-                                            if !first { out.push(Line::new(0, "".to_string())); }
+                                            if !first {
+                                                out.push(Line::new(0, "".to_string()));
+                                            }
                                             first = false;
-                                            out.push(Line::new(indent, format!("{}: {};", at_raw, val)));
+                                            out.push(Line::new(
+                                                indent,
+                                                format!("{}: {};", at_raw, val),
+                                            ));
                                             i += 1;
                                             continue;
                                         }
@@ -287,22 +320,10 @@ impl<'a> CssFormatter<'a> {
                 }
             }
             // SCSS/Less extensions
-            "mixin_statement"
-            | "include_statement"
-            | "extend_statement"
-            | "each_statement"
-            | "for_statement"
-            | "while_statement"
-            | "if_statement"
-            | "else_statement"
-            | "apply_statement"
-            | "use_statement"
-            | "forward_statement"
-            | "error_statement"
-            | "warn_statement"
-            | "debug_statement"
-            | "function_statement"
-            | "return_statement" => {
+            "mixin_statement" | "include_statement" | "extend_statement" | "each_statement"
+            | "for_statement" | "while_statement" | "if_statement" | "else_statement"
+            | "apply_statement" | "use_statement" | "forward_statement" | "error_statement"
+            | "warn_statement" | "debug_statement" | "function_statement" | "return_statement" => {
                 self.walk_at_rule(node, indent, out);
             }
             "ERROR" => {
@@ -381,7 +402,10 @@ impl<'a> CssFormatter<'a> {
             let mut cursor = node.walk();
             let mut found = false;
             for child in node.children(&mut cursor) {
-                if child.kind() == "block" { found = true; break; }
+                if child.kind() == "block" {
+                    found = true;
+                    break;
+                }
             }
             found
         };
@@ -499,19 +523,33 @@ impl<'a> CssFormatter<'a> {
         // mangling $variable syntax during keyword+query reconstruction.
         let scss_verbatim = matches!(
             keyword.as_str(),
-            "mixin" | "include" | "function" | "if" | "else" | "each" | "for" | "while"
-                | "return" | "at-root"
+            "mixin"
+                | "include"
+                | "function"
+                | "if"
+                | "else"
+                | "each"
+                | "for"
+                | "while"
+                | "return"
+                | "at-root"
         );
 
         if has_block {
             let mut block_node = None;
             let mut cursor = node.walk();
             for child in node.children(&mut cursor) {
-                if child.kind() == "block" { block_node = Some(child); break; }
+                if child.kind() == "block" {
+                    block_node = Some(child);
+                    break;
+                }
             }
             let header = if scss_verbatim {
                 if let Some(brace_pos) = raw_text.find('{') {
-                    raw_text[..brace_pos].split_whitespace().collect::<Vec<_>>().join(" ")
+                    raw_text[..brace_pos]
+                        .split_whitespace()
+                        .collect::<Vec<_>>()
+                        .join(" ")
                 } else {
                     format!("@{}{}", keyword, query)
                 }
@@ -532,12 +570,14 @@ impl<'a> CssFormatter<'a> {
                 // a LESS variable `@base: #f938ab;` into at_rule("@base") + unnamed(": #f938ab;").
                 // Peek into source bytes after this node to reconstruct the value.
                 let end = node.end_byte();
-                let remainder = std::str::from_utf8(
-                    self.source.get(end..).unwrap_or(b"")
-                ).unwrap_or("").trim_start();
+                let remainder = std::str::from_utf8(self.source.get(end..).unwrap_or(b""))
+                    .unwrap_or("")
+                    .trim_start();
                 if remainder.starts_with(':') {
                     // Take up to the next `;` or newline
-                    let val_end = remainder.find(|c| c == ';' || c == '\n').unwrap_or(remainder.len());
+                    let val_end = remainder
+                        .find(|c| [';', '\n'].contains(&c))
+                        .unwrap_or(remainder.len());
                     let val = remainder[1..val_end].trim();
                     if !val.is_empty() {
                         format!("@{}: {};", keyword, val)
@@ -566,9 +606,13 @@ impl<'a> CssFormatter<'a> {
                 let mut parts: Vec<String> = Vec::new();
                 for child in node.children(&mut cursor) {
                     let k = child.kind();
-                    if k == "block" || k == ";" { continue; }
+                    if k == "block" || k == ";" {
+                        continue;
+                    }
                     let text = self.text_of(&child).trim().to_string();
-                    if text == "@media" || text.is_empty() { continue; }
+                    if text == "@media" || text.is_empty() {
+                        continue;
+                    }
                     parts.push(text);
                 }
                 parts.join(" ")
@@ -599,7 +643,9 @@ impl<'a> CssFormatter<'a> {
             if let Some(block) = block_opt {
                 let mut cursor2 = block.walk();
                 for child in block.children(&mut cursor2) {
-                    if !child.is_named() { continue; }
+                    if !child.is_named() {
+                        continue;
+                    }
                     if !out.is_empty() {
                         out.push(Line::new(0, "".to_string()));
                     }
@@ -612,7 +658,10 @@ impl<'a> CssFormatter<'a> {
 
     fn walk_block_inner(&self, node: tree_sitter::Node, indent: usize, out: &mut Vec<Line>) {
         let mut cursor = node.walk();
-        let children: Vec<_> = node.children(&mut cursor).filter(|n| n.is_named()).collect();
+        let children: Vec<_> = node
+            .children(&mut cursor)
+            .filter(|n| n.is_named())
+            .collect();
         let mut i = 0;
         while i < children.len() {
             let child = children[i];
@@ -699,7 +748,9 @@ impl<'a> CssFormatter<'a> {
         let mut results = Vec::new();
         for part in raw.split(';') {
             let text = part.trim();
-            if text.is_empty() { continue; }
+            if text.is_empty() {
+                continue;
+            }
             if let Some(colon_pos) = text.find(':') {
                 let prop = text[..colon_pos].trim().to_lowercase();
                 let after = text[colon_pos + 1..].trim();
