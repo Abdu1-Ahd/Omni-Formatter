@@ -9,7 +9,7 @@
 [![WebAssembly](https://img.shields.io/badge/Runtime-WebAssembly-654ff0?style=for-the-badge&logo=webassembly)](https://webassembly.org/)
 [![Registry](https://img.shields.io/badge/Registry-GitHub%20Pages-121013?style=for-the-badge&logo=github)](https://abdu1-ahd.github.io/Omni-Formatter/)
 
-• [Github](https://github.com/Abdu1-Ahd/Omni-Formatter) • [Add a Language](https://github.com/Abdu1-Ahd/Omni-Formatter/blob/main/ADD_LANGUAGE.md)
+[Github](https://github.com/Abdu1-Ahd/Omni-Formatter) • [Add a Language](https://github.com/Abdu1-Ahd/Omni-Formatter/blob/main/ADD_LANGUAGE.md)
 
 </div>
 
