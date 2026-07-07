@@ -8,7 +8,7 @@ members = [
     "crates/lang-rust",
     "crates/lang-go",
     "crates/lang-css",
-    # ── New language modules (v0.2.0) ───────────────────────────────────────
+    # â”€â”€ New language modules (v0.2.0) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     "crates/lang-c",
     "crates/lang-java",
     "crates/lang-csharp",
@@ -25,19 +25,19 @@ members = [
     "crates/lang-other",
     "crates/lang-template",
     "crates/lang-sass",
-    "cli", "tests/native_runner",
+    "cli", "tests/native_runner", "tests/scss_dump","tests/fmt-suite",
 ]
 
-# ── Vendor patches ────────────────────────────────────────────────────────────
+# â”€â”€ Vendor patches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # tree-sitter 0.22.6 calls dup() in ts_tree_print_dot_graph() (a debug-only
 # function). That syscall doesn't exist in wasm32-unknown-unknown. The vendored
 # copy stubs _ts_dup() to return -1 so the WASM build compiles cleanly.
-# This only affects the debug-graph feature — formatting is unaffected.
+# This only affects the debug-graph feature â€” formatting is unaffected.
 [patch.crates-io]
 tree-sitter = { path = "vendor/tree-sitter-0.22.6" }
 
 [workspace.package]
-version     = "0.2.0"
+version     = "0.2.1"
 edition     = "2021"
 license     = "MIT"
 authors     = ["Abdu1-Ahd"]
@@ -60,7 +60,7 @@ unicode-width = "0.1"
 # Tree-sitter parsing infrastructure
 tree-sitter = "0.22"
 
-# ── Existing language grammars ───────────────────────────────────────────────
+# â”€â”€ Existing language grammars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 tree-sitter-javascript = "0.21"
 tree-sitter-typescript = "0.21"
 tree-sitter-python     = "0.21"
@@ -69,7 +69,7 @@ tree-sitter-go         = "0.21"
 tree-sitter-css        = "0.21"
 tree-sitter-html       = "0.20.4"
 
-# ── New language grammars (v0.2.0) ──────────────────────────────────────────
+# â”€â”€ New language grammars (v0.2.0) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Systems / C family
 tree-sitter-c          = "0.21"
 tree-sitter-cpp        = "0.22"
@@ -117,7 +117,7 @@ log         = "0.4"
 toml        = { version = "0.8", features = ["parse"] }
 
 [profile.release]
-# Optimize for size — critical for WASM binary targets
+# Optimize for size â€” critical for WASM binary targets
 opt-level   = "s"
 lto         = true
 codegen-units = 1
@@ -126,4 +126,5 @@ codegen-units = 1
 # Faster incremental builds during development
 opt-level   = 0
 debug       = true
+
 
